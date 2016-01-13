@@ -216,7 +216,7 @@ public class SteamCondenserService {
         if (invalid) {
             try {
                 Integer version = loadLatestVersion();
-                if (version != null && cachedLatestVersion < version) {
+                if (cachedLatestVersion < version) {
                     cachedLatestVersion = version;
                     invalid = false;
                     log.info("New latest version: {}", cachedLatestVersion);

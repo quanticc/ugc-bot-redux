@@ -3,6 +3,9 @@ package com.ugcleague.ops.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @ConfigurationProperties(prefix = "league", ignoreUnknownFields = false)
 public class LeagueProperties {
@@ -12,6 +15,7 @@ public class LeagueProperties {
     private final Async async = new Async();
     private final Datasource datasource = new Datasource();
     private final Cache cache = new Cache();
+    private final Discord discord = new Discord();
 
     private int consoleListenPort = 7131;
     private String syncRepositoryDir = "sync-repository";
@@ -56,5 +60,11 @@ public class LeagueProperties {
         }
     }
 
-
+    @Data
+    public static class Discord {
+        private String email;
+        private String password;
+        private List<String> invites = new ArrayList<>();
+        private List<String> masters = new ArrayList<>();
+    }
 }

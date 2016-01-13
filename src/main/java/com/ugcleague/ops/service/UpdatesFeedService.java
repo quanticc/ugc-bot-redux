@@ -10,10 +10,12 @@ import com.rometools.fetcher.impl.HttpURLFeedFetcher;
 import com.rometools.rome.io.FeedException;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.Task;
+import com.ugcleague.ops.event.NewGameVersionAvailable;
 import com.ugcleague.ops.repository.TaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 
 @Service
@@ -33,31 +36,30 @@ public class UpdatesFeedService {
     private final SteamCondenserService condenserService;
     private final TaskRepository taskRepository;
     private final LeagueProperties leagueProperties;
+    private final ApplicationEventPublisher publisher;
 
-    private FeedFetcherCache feedInfoCache;
     private FeedFetcher feedFetcher;
     private URL url;
-    private String cachePath;
-    private String urlSpec;
 
     @Autowired
     public UpdatesFeedService(SteamCondenserService condenserService, TaskRepository taskRepository,
-                              LeagueProperties leagueProperties) {
+                              LeagueProperties leagueProperties, ApplicationEventPublisher publisher) {
         this.condenserService = condenserService;
         this.taskRepository = taskRepository;
         this.leagueProperties = leagueProperties;
+        this.publisher = publisher;
     }
 
     @PostConstruct
     private void init() {
-        cachePath = leagueProperties.getFeed().getCacheDir();
-        urlSpec = leagueProperties.getFeed().getUrl();
+        String cachePath = leagueProperties.getFeed().getCacheDir();
+        String urlSpec = leagueProperties.getFeed().getUrl();
         try {
             Files.createDirectories(Paths.get(cachePath));
         } catch (IOException e) {
             log.warn("Could not create cache path", e);
         }
-        feedInfoCache = new DiskFeedInfoCache(cachePath);
+        FeedFetcherCache feedInfoCache = new DiskFeedInfoCache(cachePath);
         feedFetcher = new HttpURLFeedFetcher(feedInfoCache);
         try {
             url = new URL(urlSpec);
@@ -90,8 +92,11 @@ public class UpdatesFeedService {
             if (FetcherEvent.EVENT_TYPE_FEED_POLLED.equals(eventType)) {
                 log.debug("[hlds_announce] Feed polled from {}", event.getUrlString());
             } else if (FetcherEvent.EVENT_TYPE_FEED_RETRIEVED.equals(eventType)) {
-                log.debug("[hlds_announce] Feed retrieved. Published at {}", event.getFeed().getPublishedDate().toInstant());
+                Instant lastPublishedDate = event.getFeed().getPublishedDate().toInstant();
+                log.debug("[hlds_announce] Feed retrieved. Published at {}", lastPublishedDate);
                 condenserService.invalidateLatestVersion();
+                int version = condenserService.getLatestVersion();
+                publisher.publishEvent(new NewGameVersionAvailable(this).instant(lastPublishedDate).version(version));
             } else if (FetcherEvent.EVENT_TYPE_FEED_UNCHANGED.equals(eventType)) {
                 log.debug("[hlds_announce] Feed unchanged");
             }

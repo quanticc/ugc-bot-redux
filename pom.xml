@@ -28,6 +28,10 @@
             <url>https://raw.github.com/asbachb/mvn-repo/master/releases</url>
         </repository>
         <repository>
+            <id>me.itsghost</id>
+            <url>http://itsghost.me/maven/</url>
+        </repository>
+        <repository>
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
@@ -81,7 +85,6 @@
         <lombok.version>1.16.6</lombok.version>
         <quartz.version>2.2.2</quartz.version>
         <tika-parsers.version>1.11</tika-parsers.version>
-        <discord4j.version>2.0.1</discord4j.version>
         <jodd-core.version>3.6.6</jodd-core.version>
     </properties>
 
@@ -116,12 +119,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <!--<exclusions>
+            <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-tomcat</artifactId>
                 </exclusion>
-            </exclusions>-->
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -244,11 +247,6 @@
             <version>${rome-fetcher.version}</version>
         </dependency>
         <dependency>
-            <groupId>sx.blah</groupId>
-            <artifactId>Discord4J</artifactId>
-            <version>${discord4j.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.mattbertolini</groupId>
             <artifactId>liquibase-slf4j</artifactId>
             <version>${liquibase-slf4j.version}</version>
@@ -295,6 +293,16 @@
                     <groupId>org.eclipse.jetty</groupId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.neovisionaries</groupId>
+            <artifactId>nv-websocket-client</artifactId>
+            <version>1.19</version>
+        </dependency>
+        <dependency>
+            <groupId>sx.blah</groupId>
+            <artifactId>Discord4J</artifactId>
+            <version>2.0.2</version>
         </dependency>
     </dependencies>
 
