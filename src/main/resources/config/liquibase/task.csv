@@ -1,0 +1,6 @@
+name;description
+refreshRconPasswords;Refreshes the "RCON" passwords of expired servers
+refreshServerStatus;Refreshes status, players, current map and game version of all servers
+updateGameServers;Compares the latest game version and updates all empty and outdated servers
+refreshExpireDates;Retrieves the latest data from GameServers expire status service
+refreshUpdatesFeed;Retrieves the "hlds_announce" feed to allow checking for game updates

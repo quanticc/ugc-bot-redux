@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+    <property name="now" value="now()" dbms="mysql,h2"/>
+    <property name="now" value="current_timestamp" dbms="postgresql"/>
+    <property name="now" value="sysdate" dbms="oracle"/>
+
+    <property name="autoIncrement" value="true" dbms="mysql,h2,postgresql,oracle"/>
+
+    <property name="floatType" value="float4" dbms="postgresql, h2"/>
+    <property name="floatType" value="float" dbms="mysql, oracle"/>
+
+    <!--
+        Added the entity GameServer.
+    -->
+    <changeSet id="20151201144010" author="ugc">
+        <createTable tableName="game_server">
+            <column name="id" type="bigint" autoIncrement="${autoIncrement}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="address" type="varchar(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)"/>
+            <column name="sub_id" type="varchar(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="ping" type="integer"/>
+            <column name="players" type="integer"/>
+            <column name="max_players" type="integer"/>
+            <column name="map_name" type="varchar(255)"/>
+            <column name="expire_date" type="datetime"/>
+            <column name="version" type="integer"/>
+            <column name="rcon_password" type="varchar(255)"/>
+            <column name="sv_password" type="varchar(255)"/>
+            <column name="tv_port" type="integer"/>
+            <column name="status_check_date" type="datetime"/>
+            <column name="expire_check_date" type="datetime"/>
+            <column name="last_rcon_date" type="datetime"/>
+            <column name="last_game_update" type="datetime"/>
+        </createTable>
+        <dropDefaultValue tableName="game_server" columnName="expire_date" columnDataType="datetime"/>
+
+        <dropDefaultValue tableName="game_server" columnName="status_check_date" columnDataType="datetime"/>
+
+        <dropDefaultValue tableName="game_server" columnName="expire_check_date" columnDataType="datetime"/>
+
+        <dropDefaultValue tableName="game_server" columnName="last_rcon_date" columnDataType="datetime"/>
+
+        <dropDefaultValue tableName="game_server" columnName="last_game_update" columnDataType="datetime"/>
+
+
+        <createTable tableName="game_server_flag">
+            <column name="flags_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="game_servers_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey columnNames="game_servers_id, flags_id" tableName="game_server_flag"/>
+
+        <addForeignKeyConstraint baseColumnNames="game_servers_id"
+                                 baseTableName="game_server_flag"
+                                 constraintName="fk_gameserver_flag_flag_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="game_server"/>
+
+        <addForeignKeyConstraint baseColumnNames="flags_id"
+                                 baseTableName="game_server_flag"
+                                 constraintName="fk_flag_flag_gameserver_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="flag"/>
+
+    </changeSet>
+</databaseChangeLog>

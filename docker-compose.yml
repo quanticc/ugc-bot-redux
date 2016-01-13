@@ -1,0 +1,13 @@
+ugc-bot-dev-mysql:
+  container_name: ugc-bot-dev-mysql
+  image: mysql:5.7.9
+  volumes:
+  - ~/volumes/ugc-bot/dev-mysql/:/var/lib/mysql/
+  environment:
+  - MYSQL_USER=root
+  - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+  - MYSQL_DATABASE=ugc_league
+  ports:
+  - "3306:3306"
+  command: mysqld --lower_case_table_names=1
+

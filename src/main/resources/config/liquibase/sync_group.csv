@@ -1,0 +1,6 @@
+id;local_dir;remote_dir;kind
+1;maps;/orangebox/tf/maps;MAPS
+2;cfg;/orangebox/tf/cfg;CFG
+3;cfg/sizzlingplugins;/orangebox/tf/cfg/sizzlingplugins;GENERAL
+4;addons/sizzlingplugins/sizzlingstats;/orangebox/tf/addons/sizzlingplugins/sizzlingstats;GENERAL
+5;addons;/orangebox/tf/addons;GENERAL
