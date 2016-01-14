@@ -20,6 +20,7 @@ import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.MessageBuilder;
 import sx.blah.discord.util.Presences;
 
+import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,6 +47,29 @@ public class DiscordService {
     @Autowired
     public DiscordService(LeagueProperties leagueProperties) {
         this.leagueProperties = leagueProperties;
+    }
+
+    @PostConstruct
+    private void configure() {
+        if (leagueProperties.getDiscord().isAutologin()) {
+            CompletableFuture.runAsync(() -> sleep(10000)).thenRun(this::tryLogin);
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void tryLogin() {
+        try {
+            login();
+        } catch (DiscordInstantiationException e) {
+            e.printStackTrace();
+        }
     }
 
     public void login() throws DiscordInstantiationException {

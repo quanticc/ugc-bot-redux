@@ -62,6 +62,7 @@ public class LeagueProperties {
 
     @Data
     public static class Discord {
+        private boolean autologin;
         private String email;
         private String password;
         private List<String> invites = new ArrayList<>();
