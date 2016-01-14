@@ -9,7 +9,6 @@ import com.rometools.fetcher.impl.FeedFetcherCache;
 import com.rometools.fetcher.impl.HttpURLFeedFetcher;
 import com.rometools.rome.io.FeedException;
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.domain.Task;
 import com.ugcleague.ops.event.NewGameVersionAvailable;
 import com.ugcleague.ops.repository.TaskRepository;
 import org.slf4j.Logger;
@@ -73,10 +72,10 @@ public class UpdatesFeedService {
     public void refreshUpdatesFeed() {
         ZonedDateTime now = ZonedDateTime.now();
         log.debug("==== Retrieving latest updates feed ====");
-        if (!taskRepository.findByName("refreshUpdatesFeed").map(Task::getEnabled).orElse(false)) {
-            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-            return;
-        }
+//        if (!taskRepository.findByName("refreshUpdatesFeed").map(Task::getEnabled).orElse(false)) {
+//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
+//            return;
+//        }
         try {
             feedFetcher.retrieveFeed(url);
         } catch (IllegalArgumentException | IOException | FeedException | FetcherException e) {

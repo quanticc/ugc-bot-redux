@@ -3,7 +3,6 @@ package com.ugcleague.ops.service;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.domain.Task;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateFailedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
@@ -107,10 +106,10 @@ public class GameServerService {
         // TODO: switch to a better logic since this task depends on expire status refresh
         ZonedDateTime now = ZonedDateTime.now();
         log.debug("==== Refreshing RCON server passwords ====");
-        if (!taskRepository.findByName("refreshRconPasswords").map(Task::getEnabled).orElse(false)) {
-            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-            return;
-        }
+//        if (!taskRepository.findByName("refreshRconPasswords").map(Task::getEnabled).orElse(false)) {
+//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
+//            return;
+//        }
         // refreshing passwords of expired servers since they auto restart and change password
         long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
             .map(gameServerRepository::save).count();
@@ -146,16 +145,21 @@ public class GameServerService {
         log.debug("==== Refreshing server status ====");
         long refreshed = -1;
         long updating = -1;
-        if (taskRepository.findByName("refreshServerStatus").map(Task::getEnabled).orElse(false)) {
-            refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
-                .map(gameServerRepository::save).count();
-        }
+//        if (taskRepository.findByName("refreshServerStatus").map(Task::getEnabled).orElse(false)) {
+//            refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
+//                .map(gameServerRepository::save).count();
+//        }
+        refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
+            .map(gameServerRepository::save).count();
         int latestVersion = steamCondenserService.getLatestVersion();
-        if (taskRepository.findByName("updateGameServers").map(Task::getEnabled).orElse(false)) {
-            updating = gameServerRepository
-                .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
-                .map(this::performGameUpdate).map(gameServerRepository::save).count();
-        }
+//        if (taskRepository.findByName("updateGameServers").map(Task::getEnabled).orElse(false)) {
+//            updating = gameServerRepository
+//                .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
+//                .map(this::performGameUpdate).map(gameServerRepository::save).count();
+//        }
+        updating = gameServerRepository
+            .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
+            .map(this::performGameUpdate).map(gameServerRepository::save).count();
         ZonedDateTime next = now.plusMinutes(5);
         if (updating < 0) {
             log.debug("Update checks skipped. Next attempt at {}", next);

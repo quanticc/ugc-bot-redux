@@ -1,7 +1,6 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.domain.Task;
 import com.ugcleague.ops.repository.GameServerRepository;
 import com.ugcleague.ops.repository.TaskRepository;
 import org.slf4j.Logger;
@@ -50,10 +49,10 @@ public class ExpireStatusService {
     public void refreshExpireDates() {
         ZonedDateTime now = ZonedDateTime.now();
         log.debug("==== Refreshing expire dates of ALL servers ====");
-        if (!taskRepository.findByName("refreshExpireDates").map(Task::getEnabled).orElse(false)) {
-            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-            return;
-        }
+//        if (!taskRepository.findByName("refreshExpireDates").map(Task::getEnabled).orElse(false)) {
+//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
+//            return;
+//        }
         Map<String, Integer> map = getExpireSeconds();
         long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
             .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
