@@ -51,12 +51,12 @@ class task {
         changed.addAll(
             taskRepository.save(
                 taskRepository.findAll(set).stream()
-                    .peek({ t -> t.setEnabled(true) }).collect(Collectors.toList())
+                    .peek({ t -> t.setEnabled(enable) }).collect(Collectors.toList())
             )
         )
         for (String name : names) {
             taskRepository.findByName(name).ifPresent({ task ->
-                task.setEnabled(true)
+                task.setEnabled(enable)
                 taskRepository.save(task)
                 changed.add(task)
             })
