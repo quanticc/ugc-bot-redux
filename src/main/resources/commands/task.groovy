@@ -1,26 +1,22 @@
 package commands
 
 import com.ugcleague.ops.domain.Task
-import com.ugcleague.ops.groovy.Repositories
-import com.ugcleague.ops.groovy.Services
 import com.ugcleague.ops.repository.TaskRepository
 import org.crsh.cli.Command
 import org.crsh.cli.Option
 import org.crsh.cli.Usage
 import org.crsh.command.InvocationContext
+import org.springframework.beans.factory.BeanFactory
 
 import java.util.stream.Collectors
 
 @Usage("[UGC] Scheduled tasks")
 class task {
 
-    Services services = new Services()
-    Repositories repositories = new Repositories()
-
     @Usage("list all tasks")
     @Command
     def list(InvocationContext context) {
-        return repositories.task(context).findAll()
+        return repository(context).findAll()
     }
 
     @Usage("enable tasks")
@@ -33,7 +29,7 @@ class task {
         @Option(names = ["n", "name"])
             List<String> names,
         InvocationContext context) {
-        return findEnableAndSave(ids, names, repositories.task(context), true)
+        return findEnableAndSave(ids, names, repository(context), true)
     }
 
     @Usage("disable tasks")
@@ -46,7 +42,7 @@ class task {
         @Option(names = ["n", "name"])
             List<String> names,
         InvocationContext context) {
-        return findEnableAndSave(ids, names, repositories.task(context), false)
+        return findEnableAndSave(ids, names, repository(context), false)
     }
 
     static def findEnableAndSave(List<Integer> ids, List<String> names, TaskRepository taskRepository, boolean enable) {
@@ -66,6 +62,16 @@ class task {
             })
         }
         return changed
+    }
+
+    // utilities
+
+    BeanFactory beanFactory(InvocationContext context) {
+        return context.attributes['spring.beanfactory'] as BeanFactory
+    }
+
+    TaskRepository repository(InvocationContext context) {
+        return beanFactory(context).getBean(TaskRepository.class)
     }
 }
 

@@ -52,23 +52,14 @@ public class DiscordService {
     @PostConstruct
     private void configure() {
         if (leagueProperties.getDiscord().isAutologin()) {
-            CompletableFuture.runAsync(() -> sleep(10000)).thenRun(this::tryLogin);
-        }
-    }
-
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void tryLogin() {
-        try {
-            login();
-        } catch (DiscordInstantiationException e) {
-            e.printStackTrace();
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Thread.sleep(10000); // wait a bit before firing
+                    login();
+                } catch (InterruptedException | DiscordInstantiationException e) {
+                    log.warn("Could not autologin discord bot", e);
+                }
+            });
         }
     }
 

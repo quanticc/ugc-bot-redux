@@ -78,7 +78,7 @@ public class GameServerService {
     }
 
     private void refreshServerDetails(String address, Map<String, String> data) {
-        GameServer server = gameServerRepository.findByAddress(address).orElseGet(() -> newGameServer());
+        GameServer server = gameServerRepository.findByAddress(address).orElseGet(this::newGameServer);
         server.setAddress(address);
         server.setName(data.get("name"));
         server.setSubId(data.get("SUBID"));
