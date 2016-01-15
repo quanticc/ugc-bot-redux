@@ -27,18 +27,6 @@
             <id>github-asbachb-releases</id>
             <url>https://raw.github.com/asbachb/mvn-repo/master/releases</url>
         </repository>
-        <repository>
-            <id>me.itsghost</id>
-            <url>http://itsghost.me/maven/</url>
-        </repository>
-        <repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>bintray-austinv11-maven</id>
-            <name>bintray</name>
-            <url>http://dl.bintray.com/austinv11/maven</url>
-        </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>
