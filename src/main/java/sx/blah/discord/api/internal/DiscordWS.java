@@ -190,9 +190,8 @@ public class DiscordWS extends WebSocketClient {
 
                     for (ReadyEventResponse.ReadStateResponse readState : event.read_state) {
                         Channel channel = client.getChannelByID(readState.id);
-                        if (channel != null) {
+                        if (channel != null)
                             channel.setLastReadMessageID(readState.last_message_id);
-                        }
                     }
 
                     Discord4J.LOGGER.debug("Logged in as {} (ID {}).", client.ourUser.getName(), client.ourUser.getID());
