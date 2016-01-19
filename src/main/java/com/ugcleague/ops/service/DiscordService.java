@@ -11,14 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.api.ClientBuilder;
-import sx.blah.discord.api.DiscordInstantiationException;
+import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
+import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.MessageBuilder;
-import sx.blah.discord.util.Presences;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
@@ -28,10 +28,11 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +44,8 @@ public class DiscordService {
     private IDiscordClient client;
 
     private Instant lastFailedBroadcast = Instant.EPOCH;
+    private Map<String, LocalDateTime> lastMessage = new ConcurrentHashMap<>();
+    private List<String> muted = new ArrayList<>();
 
     @Autowired
     public DiscordService(LeagueProperties leagueProperties) {
@@ -56,14 +59,14 @@ public class DiscordService {
                 try {
                     Thread.sleep(10000); // wait a bit before firing
                     login();
-                } catch (InterruptedException | DiscordInstantiationException e) {
+                } catch (InterruptedException | DiscordException e) {
                     log.warn("Could not autologin discord bot", e);
                 }
             });
         }
     }
 
-    public void login() throws DiscordInstantiationException {
+    public void login() throws DiscordException {
         String email = leagueProperties.getDiscord().getEmail();
         String password = leagueProperties.getDiscord().getPassword();
         client = new ClientBuilder().withLogin(email, password).login();
@@ -71,12 +74,12 @@ public class DiscordService {
             @Override
             public void handle(ReadyEvent readyEvent) {
                 log.info("*** Discord bot armed ***");
-                List<Guild> guildList = client.getGuilds();
-                for (Guild guild : guildList) {
+                List<IGuild> guildList = client.getGuilds();
+                for (IGuild guild : guildList) {
                     log.info("{}", DiscordService.toString(guild));
                 }
                 for (String inviteCode : leagueProperties.getDiscord().getInvites()) {
-                    Invite invite = client.getInviteForCode(inviteCode);
+                    Invite invite = (Invite) client.getInviteForCode(inviteCode);
                     try {
                         Invite.InviteResponse response = invite.details();
                         log.info("Accepting invite to {} ({}) @ {} ({})",
@@ -91,9 +94,10 @@ public class DiscordService {
         client.getDispatcher().registerListener(new IListener<MessageReceivedEvent>() {
             @Override
             public void handle(MessageReceivedEvent messageReceivedEvent) {
-                Message m = messageReceivedEvent.getMessage();
+                IMessage m = messageReceivedEvent.getMessage();
+                LeagueProperties.Discord discord = leagueProperties.getDiscord();
                 if (m.getContent().startsWith(".clear")) {
-                    Channel c = client.getChannelByID(m.getChannel().getID());
+                    IChannel c = client.getChannelByID(m.getChannel().getID());
                     if (null != c) {
                         c.getMessages().stream().filter(message -> message.getAuthor().getID()
                             .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
@@ -117,27 +121,62 @@ public class DiscordService {
                     }
                 } else if (m.getContent().startsWith(".pm")) {
                     try {
-                        PrivateChannel channel = client.getOrCreatePMChannel(m.getAuthor());
+                        IPrivateChannel channel = client.getOrCreatePMChannel(m.getAuthor());
                         new MessageBuilder(client).withChannel(channel).withContent(randomMessage()).build();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+                } else if (m.getContent().equals(".mute")) {
+                    muted.add(m.getAuthor().getID());
+                } else if (m.getContent().equals(".unmute")) {
+                    muted.remove(m.getAuthor().getID());
                 } else if (m.getContent().startsWith(".game")) {
                     if (isMaster(m.getAuthor())) {
                         String game = m.getContent().length() > 6 ? m.getContent().substring(6) : null;
                         client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
                             Optional.ofNullable(game));
                     }
+                } else if (discord.getSupportChannels().contains(m.getChannel().getID())) {
+                    // exclude myself and admins+
+                    if (!m.getAuthor().getID().equals(client.getOurUser().getID())) {
+                        Set<IRole> roles = new HashSet<>();
+                        for (String gid : discord.getSupportGuilds()) {
+                            roles.addAll(m.getAuthor().getRolesForGuild(gid));
+                        }
+                        if (roles.stream().noneMatch(r -> discord.getSubscriberRoles().contains(r.getName().toLowerCase()))) {
+                            LocalDateTime now = m.getTimestamp();
+                            LocalDateTime last = lastMessage.computeIfAbsent(m.getAuthor().getID(), k -> LocalDateTime.MIN);
+                            lastMessage.put(m.getAuthor().getID(), now);
+                            if (last.isBefore(now.minusHours(1))) {
+                                // ping subscribers
+                                for (String id : discord.getSupportSubscriptions()) {
+                                    IUser user = client.getUserByID(id);
+                                    if (user != null && !muted.contains(user.getID())) {
+                                        try {
+                                            IPrivateChannel pch = client.getOrCreatePMChannel(user);
+                                            new MessageBuilder(client).withChannel(pch).withContent(buildPingMessage(m)).build();
+                                        } catch (Exception e) {
+                                            log.warn("Could not open PM channel with {}: {}", user, e.toString());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
+    }
+
+    private String buildPingMessage(IMessage m) {
+        return String.format(":bell: Hey! %s is asking for support: %s", m.getAuthor().mention(), m.getContent());
     }
 
     public boolean isMaster(String id) {
         return leagueProperties.getDiscord().getMasters().contains(id);
     }
 
-    public boolean isMaster(User user) {
+    public boolean isMaster(IUser user) {
         return isMaster(user.getID());
     }
 
@@ -174,11 +213,11 @@ public class DiscordService {
         return result;
     }
 
-    public static String toString(Guild guild) {
+    public static String toString(IGuild guild) {
         String id = guild.getID();
         String name = guild.getName();
-        User owner = guild.getOwner();
-        List<Channel> channels = guild.getChannels();
+        IUser owner = guild.getOwner();
+        List<IChannel> channels = guild.getChannels();
         return "Guild ["
             + "id='" + id
             + "', name='" + name
@@ -187,7 +226,7 @@ public class DiscordService {
             + "]]";
     }
 
-    public static String toString(Channel channel) {
+    public static String toString(IChannel channel) {
         String id = channel.getID();
         String name = channel.getName();
         String topic = channel.getTopic();
@@ -198,7 +237,7 @@ public class DiscordService {
             + "']";
     }
 
-    public static String toString(User user) {
+    public static String toString(IUser user) {
         String id = user.getID();
         String name = user.getName();
         Presences status = user.getPresence();

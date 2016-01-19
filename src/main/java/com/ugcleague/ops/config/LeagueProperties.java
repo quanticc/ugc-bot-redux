@@ -67,5 +67,9 @@ public class LeagueProperties {
         private String password;
         private List<String> invites = new ArrayList<>();
         private List<String> masters = new ArrayList<>();
+        private List<String> supportGuilds = new ArrayList<>();
+        private List<String> supportChannels = new ArrayList<>();
+        private List<String> supportSubscriptions = new ArrayList<>();
+        private List<String> subscriberRoles = new ArrayList<>();
     }
 }

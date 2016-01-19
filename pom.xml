@@ -74,6 +74,7 @@
         <quartz.version>2.2.2</quartz.version>
         <tika-parsers.version>1.11</tika-parsers.version>
         <jodd-core.version>3.6.6</jodd-core.version>
+        <discord4j.version>2.1.1</discord4j.version>
     </properties>
 
     <dependencyManagement>
@@ -323,11 +324,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!--<dependency>
+        <dependency>
             <groupId>sx.blah</groupId>
             <artifactId>Discord4J</artifactId>
-            <version>2.0.2</version>
-        </dependency>-->
+            <version>${discord4j.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
