@@ -168,8 +168,6 @@ public class DiscordService {
                                     }
                                 }
                             }
-                        } else {
-                            log.debug("Not pinging since {} has special roles: {}", m.getAuthor(), roles);
                         }
                     }
                 }
