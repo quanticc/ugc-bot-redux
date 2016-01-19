@@ -5,12 +5,12 @@ package sx.blah.discord.handle;
  *
  * @param <T> The event type to handle.
  */
-public interface IListener <T extends Event> {
-	
-	/**
-	 * Called when the event is sent.
-	 *
-	 * @param event The event object.
-	 */
-	void handle(T event);
+public interface IListener<T extends Event> {
+
+    /**
+     * Called when the event is sent.
+     *
+     * @param event The event object.
+     */
+    void handle(T event);
 }

@@ -27,30 +27,30 @@ import org.slf4j.LoggerFactory;
  */
 public class Discord4J {
 
-	/**
-	 * The name of the project
-	 */
-	public static String NAME = "Discord4J";
-	/**
-	 * The version of the api
-	 */
-	public static String VERSION = "2.1.1";
-	/**
-	 * The api's description
-	 */
-	public static String DESCRIPTION = "Description";
-	/**
-	 * The github repo for the api
-	 */
-	public static String URL = "URL";
+    /**
+     * The name of the project
+     */
+    public static String NAME = "Discord4J";
+    /**
+     * The version of the api
+     */
+    public static String VERSION = "2.1.1";
+    /**
+     * The api's description
+     */
+    public static String DESCRIPTION = "Description";
+    /**
+     * The github repo for the api
+     */
+    public static String URL = "URL";
 
-	/**
-	 * SLF4J Instance
-	 */
-	public static final Logger LOGGER = LoggerFactory.getLogger(Discord4J.class);
+    /**
+     * SLF4J Instance
+     */
+    public static final Logger LOGGER = LoggerFactory.getLogger(Discord4J.class);
 
-	//Dynamically getting various information from maven
-	static {
+    //Dynamically getting various information from maven
+    static {
 //		InputStream stream = Discord4J.class.getClassLoader().getResourceAsStream("app.properties");
 //		Properties properties = new Properties();
 //		try {
@@ -64,7 +64,7 @@ public class Discord4J {
 //		DESCRIPTION = properties.getProperty("application.description");
 //		URL = properties.getProperty("application.url");
 
-		LOGGER.info("{} v{}", NAME, VERSION);
-		LOGGER.info("{}", DESCRIPTION);
-	}
+        LOGGER.info("{} v{}", NAME, VERSION);
+        LOGGER.info("{}", DESCRIPTION);
+    }
 }

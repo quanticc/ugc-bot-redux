@@ -27,30 +27,30 @@ import sx.blah.discord.handle.obj.IMessage;
  * This event is dispatched when a message the bot receives includes an invite link.
  */
 public class InviteReceivedEvent extends Event {
-	
-	private final IInvite invite;
-	private final IMessage message;
-	
-	public InviteReceivedEvent(IInvite invite, IMessage message) {
-		this.invite = invite;
-		this.message = message;
-	}
-	
-	/**
-	 * Gets the invite received.
-	 *
-	 * @return The invite.
-	 */
-	public IInvite getInvite() {
-		return invite;
-	}
-	
-	/**
-	 * Gets the message which contains the invite.
-	 *
-	 * @return The message.
-	 */
-	public IMessage getMessage() {
-		return message;
-	}
+
+    private final IInvite invite;
+    private final IMessage message;
+
+    public InviteReceivedEvent(IInvite invite, IMessage message) {
+        this.invite = invite;
+        this.message = message;
+    }
+
+    /**
+     * Gets the invite received.
+     *
+     * @return The invite.
+     */
+    public IInvite getInvite() {
+        return invite;
+    }
+
+    /**
+     * Gets the message which contains the invite.
+     *
+     * @return The message.
+     */
+    public IMessage getMessage() {
+        return message;
+    }
 }

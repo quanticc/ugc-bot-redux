@@ -25,5 +25,5 @@ import sx.blah.discord.handle.Event;
  * This event is dispatched when the bot is ready to interact with the api.
  */
 public class ReadyEvent extends Event {
-	
+
 }
