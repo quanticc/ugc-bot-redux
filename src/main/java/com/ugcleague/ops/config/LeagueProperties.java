@@ -71,5 +71,6 @@ public class LeagueProperties {
         private List<String> supportChannels = new ArrayList<>();
         private List<String> supportSubscriptions = new ArrayList<>();
         private List<String> subscriberRoles = new ArrayList<>();
+        private String debugChannelId = "";
     }
 }

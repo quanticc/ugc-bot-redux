@@ -332,11 +332,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <dependency>
+        <!--<dependency>
             <groupId>sx.blah</groupId>
             <artifactId>Discord4J</artifactId>
             <version>${discord4j.version}</version>
-        </dependency>
+        </dependency>-->
     </dependencies>
 
     <build>

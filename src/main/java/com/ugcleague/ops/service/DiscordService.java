@@ -67,13 +67,15 @@ public class DiscordService {
     }
 
     public void login() throws DiscordException {
-        String email = leagueProperties.getDiscord().getEmail();
-        String password = leagueProperties.getDiscord().getPassword();
+        LeagueProperties.Discord discord = leagueProperties.getDiscord();
+        String email = discord.getEmail();
+        String password = discord.getPassword();
         client = new ClientBuilder().withLogin(email, password).login();
         client.getDispatcher().registerListener(new IListener<ReadyEvent>() {
             @Override
             public void handle(ReadyEvent readyEvent) {
                 log.info("*** Discord bot armed ***");
+                log.info("Support channels: {}", discord.getSupportChannels());
                 List<IGuild> guildList = client.getGuilds();
                 for (IGuild guild : guildList) {
                     log.info("{}", DiscordService.toString(guild));
@@ -95,7 +97,6 @@ public class DiscordService {
             @Override
             public void handle(MessageReceivedEvent messageReceivedEvent) {
                 IMessage m = messageReceivedEvent.getMessage();
-                LeagueProperties.Discord discord = leagueProperties.getDiscord();
                 if (m.getContent().startsWith(".clear")) {
                     IChannel c = client.getChannelByID(m.getChannel().getID());
                     if (null != c) {
@@ -130,6 +131,12 @@ public class DiscordService {
                     muted.add(m.getAuthor().getID());
                 } else if (m.getContent().equals(".unmute")) {
                     muted.remove(m.getAuthor().getID());
+                } else if (m.getContent().equals(".sub")) {
+                    String id = m.getAuthor().getID();
+                    discord.getSupportSubscriptions().add(id);
+                } else if (m.getContent().equals(".unsub")) {
+                    String id = m.getAuthor().getID();
+                    discord.getSupportSubscriptions().remove(id);
                 } else if (m.getContent().startsWith(".game")) {
                     if (isMaster(m.getAuthor())) {
                         String game = m.getContent().length() > 6 ? m.getContent().substring(6) : null;
@@ -161,6 +168,8 @@ public class DiscordService {
                                     }
                                 }
                             }
+                        } else {
+                            log.debug("Not pinging since {} has special roles: {}", m.getAuthor(), roles);
                         }
                     }
                 }
@@ -169,7 +178,7 @@ public class DiscordService {
     }
 
     private String buildPingMessage(IMessage m) {
-        return String.format(":bell: Hey! %s is asking for support: %s", m.getAuthor().mention(), m.getContent());
+        return String.format(":bell: Hey! %s is asking for support @ %s: %s", m.getAuthor().mention(), m.getChannel().mention(), m.getContent());
     }
 
     public boolean isMaster(String id) {
