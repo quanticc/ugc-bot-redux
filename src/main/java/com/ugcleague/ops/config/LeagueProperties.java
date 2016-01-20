@@ -67,10 +67,14 @@ public class LeagueProperties {
         private String password;
         private List<String> invites = new ArrayList<>();
         private List<String> masters = new ArrayList<>();
-        private List<String> supportGuilds = new ArrayList<>();
-        private List<String> supportChannels = new ArrayList<>();
-        private List<String> supportSubscriptions = new ArrayList<>();
-        private List<String> subscriberRoles = new ArrayList<>();
-        private String debugChannelId = "";
+        private String debugChannel = "";
+        private Support support = new Support();
+
+        @Data
+        public static class Support {
+            private List<String> guilds = new ArrayList<>();
+            private List<String> channels = new ArrayList<>();
+            private List<String> roles = new ArrayList<>();
+        }
     }
 }

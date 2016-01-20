@@ -1,13 +1,11 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.event.GameUpdateCompletedEvent;
-import com.ugcleague.ops.event.GameUpdateFailedEvent;
-import com.ugcleague.ops.event.GameUpdateStartedEvent;
-import com.ugcleague.ops.event.NewGameVersionAvailable;
+import com.ugcleague.ops.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.api.ClientBuilder;
@@ -28,11 +26,10 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,15 +38,16 @@ public class DiscordService {
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
 
     private final LeagueProperties leagueProperties;
+    private final ApplicationEventPublisher publisher;
+
     private IDiscordClient client;
 
     private Instant lastFailedBroadcast = Instant.EPOCH;
-    private Map<String, LocalDateTime> lastMessage = new ConcurrentHashMap<>();
-    private List<String> muted = new ArrayList<>();
 
     @Autowired
-    public DiscordService(LeagueProperties leagueProperties) {
+    public DiscordService(LeagueProperties leagueProperties, ApplicationEventPublisher publisher) {
         this.leagueProperties = leagueProperties;
+        this.publisher = publisher;
     }
 
     @PostConstruct
@@ -75,7 +73,6 @@ public class DiscordService {
             @Override
             public void handle(ReadyEvent readyEvent) {
                 log.info("*** Discord bot armed ***");
-                log.info("Support channels: {}", discord.getSupportChannels());
                 List<IGuild> guildList = client.getGuilds();
                 for (IGuild guild : guildList) {
                     log.info("{}", DiscordService.toString(guild));
@@ -91,6 +88,7 @@ public class DiscordService {
                         log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
                     }
                 }
+                publisher.publishEvent(new DiscordReadyEvent(this));
             }
         });
         client.getDispatcher().registerListener(new IListener<MessageReceivedEvent>() {
@@ -127,56 +125,15 @@ public class DiscordService {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                } else if (m.getContent().equals(".mute")) {
-                    muted.add(m.getAuthor().getID());
-                } else if (m.getContent().equals(".unmute")) {
-                    muted.remove(m.getAuthor().getID());
-                } else if (m.getContent().equals(".sub")) {
-                    String id = m.getAuthor().getID();
-                    discord.getSupportSubscriptions().add(id);
-                } else if (m.getContent().equals(".unsub")) {
-                    String id = m.getAuthor().getID();
-                    discord.getSupportSubscriptions().remove(id);
                 } else if (m.getContent().startsWith(".game")) {
                     if (isMaster(m.getAuthor())) {
                         String game = m.getContent().length() > 6 ? m.getContent().substring(6) : null;
                         client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
                             Optional.ofNullable(game));
                     }
-                } else if (discord.getSupportChannels().contains(m.getChannel().getID())) {
-                    // exclude myself and admins+
-                    if (!m.getAuthor().getID().equals(client.getOurUser().getID())) {
-                        Set<IRole> roles = new HashSet<>();
-                        for (String gid : discord.getSupportGuilds()) {
-                            roles.addAll(m.getAuthor().getRolesForGuild(gid));
-                        }
-                        if (roles.stream().noneMatch(r -> discord.getSubscriberRoles().contains(r.getName().toLowerCase()))) {
-                            LocalDateTime now = m.getTimestamp();
-                            LocalDateTime last = lastMessage.computeIfAbsent(m.getAuthor().getID(), k -> LocalDateTime.MIN);
-                            lastMessage.put(m.getAuthor().getID(), now);
-                            if (last.isBefore(now.minusHours(1))) {
-                                // ping subscribers
-                                for (String id : discord.getSupportSubscriptions()) {
-                                    IUser user = client.getUserByID(id);
-                                    if (user != null && !muted.contains(user.getID())) {
-                                        try {
-                                            IPrivateChannel pch = client.getOrCreatePMChannel(user);
-                                            new MessageBuilder(client).withChannel(pch).withContent(buildPingMessage(m)).build();
-                                        } catch (Exception e) {
-                                            log.warn("Could not open PM channel with {}: {}", user, e.toString());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         });
-    }
-
-    private String buildPingMessage(IMessage m) {
-        return String.format(":bell: Hey! %s is asking for support @ %s: %s", m.getAuthor().mention(), m.getChannel().mention(), m.getContent());
     }
 
     public boolean isMaster(String id) {
@@ -297,5 +254,28 @@ public class DiscordService {
                 lastFailedBroadcast = Instant.now();
             }
         }
+    }
+
+    public void subscribe(IListener<?> listener) {
+        client.getDispatcher().registerListener(listener);
+    }
+
+    public void unsubscribe(IListener<?> listener) {
+        client.getDispatcher().unregisterListener(listener);
+    }
+
+    public MessageBuilder message() {
+        return new MessageBuilder(client);
+    }
+
+    public MessageBuilder privateMessage(String userId) throws Exception {
+        IUser user = client.getUserByID(userId);
+        IPrivateChannel pch = client.getOrCreatePMChannel(user);
+        return new MessageBuilder(client).withChannel(pch);
+    }
+
+    public MessageBuilder privateMessage(IUser user) throws Exception {
+        IPrivateChannel pch = client.getOrCreatePMChannel(user);
+        return new MessageBuilder(client).withChannel(pch);
     }
 }
