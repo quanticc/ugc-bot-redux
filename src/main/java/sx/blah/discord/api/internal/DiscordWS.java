@@ -27,7 +27,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.InflaterInputStream;
 
 public class DiscordWS extends WebSocketClient {
@@ -35,6 +39,9 @@ public class DiscordWS extends WebSocketClient {
     private DiscordClientImpl client;
     private static final HashMap<String, String> headers = new HashMap<>();
     public AtomicBoolean isConnected = new AtomicBoolean(true);
+    private ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private long started = 0;
+    private AtomicLong beats = new AtomicLong(0);
     /**
      * The amount of users a guild must have to be considered "large"
      */
@@ -73,17 +80,26 @@ public class DiscordWS extends WebSocketClient {
     }
 
     private void startKeepalive() {
-        new Thread(() -> {
-            // Keep alive
-            while (this.isConnected.get()) {
-                long l;
-                if ((l = (System.currentTimeMillis() - client.timer)) >= client.heartbeat) {
-                    Discord4J.LOGGER.debug("Sending keep alive... ({}). Took {} ms.", System.currentTimeMillis(), l);
+        started = client.timer;
+        // FIXME: check if accurate enough
+        Runnable keepAlive = () -> {
+            try {
+                // Keep alive
+                if (this.isConnected.get()) {
+                    long ad = System.currentTimeMillis();
+                    long l = ad - client.timer;
+                    long ed = started + beats.incrementAndGet() * client.heartbeat;
+                    Discord4J.LOGGER.debug("Sending keep alive... ({}). Took {} ms and drifting {} ms.", ad, l, ad - ed);
                     send(DiscordUtils.GSON.toJson(new KeepAliveRequest()));
                     client.timer = System.currentTimeMillis();
                 }
+            } catch (Throwable t) {
+                Discord4J.LOGGER.error("Yikes! We lost the keep-alive pace", t);
             }
-        }).start();
+        };
+        executorService.scheduleAtFixedRate(keepAlive,
+            client.timer + client.heartbeat - System.currentTimeMillis(),
+            client.heartbeat, TimeUnit.MILLISECONDS);
     }
 
     /**
