@@ -27,8 +27,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -88,7 +90,7 @@ public class DiscordService {
                         log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
                     }
                 }
-                publisher.publishEvent(new DiscordReadyEvent(this));
+                publisher.publishEvent(new DiscordReadyEvent(DiscordService.this));
             }
         });
         client.getDispatcher().registerListener(new IListener<MessageReceivedEvent>() {
@@ -277,5 +279,15 @@ public class DiscordService {
     public MessageBuilder privateMessage(IUser user) throws Exception {
         IPrivateChannel pch = client.getOrCreatePMChannel(user);
         return new MessageBuilder(client).withChannel(pch);
+    }
+
+    public boolean hasSupportRole(IUser user) {
+        Set<IRole> roleSet = new HashSet<>();
+        LeagueProperties.Discord.Support support = leagueProperties.getDiscord().getSupport();
+        for (String gid : support.getGuilds()) {
+            roleSet.addAll(user.getRolesForGuild(gid));
+        }
+        return roleSet.stream()
+            .anyMatch(r -> support.getRoles().contains(r.getName().toLowerCase()));
     }
 }

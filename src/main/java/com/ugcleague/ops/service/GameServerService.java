@@ -318,6 +318,37 @@ public class GameServerService {
         return insecure;
     }
 
+    public List<GameServer> findServers(String k) {
+        String key = k.trim().toLowerCase();
+        return gameServerRepository.findAll().stream()
+            .filter(s -> containsName(s, key) || isShortName(s, key) || hasAddressLike(s, key))
+            .collect(Collectors.toList());
+    }
+
+    private boolean containsName(GameServer server, String key) {
+        return server.getName().trim().toLowerCase().contains(key);
+    }
+
+    private boolean isShortName(GameServer server, String key) {
+        return key.equals(toShortName(server));
+    }
+
+    public String toShortName(GameServer server) {
+        return server.getName().trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
+    }
+
+    private boolean hasAddressLike(GameServer server, String key) {
+        return server.getAddress().startsWith(key);
+    }
+
+    public List<GameServer> findAll() {
+        return gameServerRepository.findAll();
+    }
+
+    public List<GameServer> findAllEagerly() {
+        return gameServerRepository.findAllWithEagerRelationships();
+    }
+
     @Data
     public static class UpdateResult {
         private final AtomicInteger failCount = new AtomicInteger(0);

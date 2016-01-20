@@ -16,11 +16,9 @@ import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -74,7 +72,7 @@ public class SupportPingService {
                         support.getChannels().remove(chId);
                     }
                 } else if (!isOwnUser(m.getAuthor())
-                    && !hasSupportRole(m.getAuthor())
+                    && !discordService.hasSupportRole(m.getAuthor())
                     && isSupportChannel(m.getChannel())) {
                     // publish messages from non-admins and excluding bot's own messages
                     publishSupportEvent(m);
@@ -108,15 +106,6 @@ public class SupportPingService {
         return support.getChannels().contains(channel.getID());
     }
 
-    private boolean hasSupportRole(IUser user) {
-        Set<IRole> roleSet = new HashSet<>();
-        for (String gid : support.getGuilds()) {
-            roleSet.addAll(user.getRolesForGuild(gid));
-        }
-        return roleSet.stream()
-            .anyMatch(r -> support.getRoles().contains(r.getName().toLowerCase()));
-    }
-
     private boolean isMasterUser(IUser user) {
         return properties.getDiscord().getMasters().contains(user.getID());
     }
@@ -126,7 +115,7 @@ public class SupportPingService {
     }
 
     private void subscribeUser(IUser user) {
-        if (hasSupportRole(user)) {
+        if (discordService.hasSupportRole(user)) {
             Publisher publisher = getPublisher();
             Subscriber subscriber = subscriberRepository.findByUserId(user.getID()).orElseGet(() -> newSubscriber(user));
             Set<Subscriber> subs = publisher.getSubscribers();
