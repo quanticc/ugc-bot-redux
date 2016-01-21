@@ -139,7 +139,7 @@ public class GameServerService {
         return server;
     }
 
-    @Scheduled(initialDelay = 30000, fixedRate = 300000)
+    @Scheduled(initialDelay = 30000, fixedRate = 150000)
     public void updateGameServers() {
         ZonedDateTime now = ZonedDateTime.now();
         log.debug("==== Refreshing server status ====");
