@@ -234,13 +234,13 @@ public class GameServerService {
         if (server.getPlayers() > 0) {
             log.info("Server update for {} {} is on hold. Players connected: {}", server.getName(), server.getAddress(),
                 server.getPlayers());
-            if (result.getLastAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
-                try {
-                    rcon(server, "Game update on hold until all players leave the server");
-                    result.getLastAnnounce().set(Instant.now());
-                } catch (SteamCondenserException | TimeoutException ignored) {
-                }
-            }
+//            if (result.getLastAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
+//                try {
+//                    rcon(server, "Game update on hold until all players leave the server");
+//                    result.getLastAnnounce().set(Instant.now());
+//                } catch (SteamCondenserException | TimeoutException ignored) {
+//                }
+//            }
         } else if (server.getPing() < 0) {
             // timed out servers might be down due to a large update
             log.info("Server update for {} {} is on hold. It appears to be offline", server.getName(), server.getAddress());

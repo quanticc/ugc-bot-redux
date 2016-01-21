@@ -218,13 +218,13 @@ public class DiscordService {
 
     @EventListener
     public void newGameVersionAvailable(NewGameVersionAvailable event) {
-        if (client != null && client.isReady()) {
-            // don't broadcast update if it's too old (>10 mins)
-            if (event.getInstant().isAfter(Instant.now().minusSeconds(60 * 10))) {
-                String formatted = String.format("Preparing to update game servers to v%s", event.getVersion());
-                broadcast(formatted);
-            }
-        }
+//        if (client != null && client.isReady()) {
+//            // don't broadcast update if it's too old (>10 mins)
+//            if (event.getInstant().isAfter(Instant.now().minusSeconds(60 * 10))) {
+//                String formatted = String.format("Preparing to update game servers to v%s", event.getVersion());
+//                broadcast(formatted);
+//            }
+//        }
     }
 
     public void gameUpdateStarted(GameUpdateStartedEvent event) {
@@ -238,7 +238,11 @@ public class DiscordService {
     public void gameUpdateCompleted(GameUpdateCompletedEvent event) {
         if (client != null && client.isReady()) {
             if (event.getVersion() > 0) {
-                broadcast(":ok_hand: TF2 game servers updated to v" + event.getVersion());
+                try {
+                    broadcast(":ok_hand: TF2 game servers updated to v" + event.getVersion());
+                } catch (Throwable t) {
+                    log.error("Broadcast failed");
+                }
             }
             client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
                 Optional.empty());
@@ -252,7 +256,7 @@ public class DiscordService {
                 .map(s -> String.format("_%s_", s.getName()))
                 .collect(Collectors.joining(", "));
             if (lastFailedBroadcast.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-                broadcast("TF2 servers pending update: " + list);
+                //broadcast("TF2 servers pending update: " + list);
                 lastFailedBroadcast = Instant.now();
             }
         }
