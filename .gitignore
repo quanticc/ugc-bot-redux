@@ -27,7 +27,6 @@ liquibase.properties
 *.pydevproject
 .project
 .metadata
-/bin/**
 /tmp/**
 /tmp/**/*
 *.tmp
@@ -112,14 +111,8 @@ Desktop.ini
 /deploy/**
 
 ######################
-# Logs
-######################
-*.log
-
-######################
 # Others
 ######################
-*.class
 *.*~
 *~
 .merge_file*

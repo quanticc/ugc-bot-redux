@@ -25,6 +25,7 @@ import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.DiscordEndpoints;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.EventDispatcher;
 import sx.blah.discord.handle.impl.obj.User;
 import sx.blah.discord.handle.obj.*;
@@ -186,7 +187,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public IMessage sendMessage(String content, String channelID) throws IOException {
+    public IMessage sendMessage(String content, String channelID) throws IOException, MissingPermissionsException {
         IChannel channel = getChannelByID(channelID);
         if (channel == null) {
             Discord4J.LOGGER.error("Channel id " + channelID + " doesn't exist!");
@@ -196,7 +197,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public IMessage editMessage(String content, String messageID, String channelID) {
+    public IMessage editMessage(String content, String messageID, String channelID) throws MissingPermissionsException {
         IChannel channel = getChannelByID(channelID);
         if (channel == null) {
             Discord4J.LOGGER.error("Channel id " + channelID + " doesn't exist!");
@@ -213,7 +214,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public void deleteMessage(String messageID, String channelID) throws IOException {
+    public void deleteMessage(String messageID, String channelID) throws IOException, MissingPermissionsException {
         IChannel channel = getChannelByID(channelID);
         if (channel == null) {
             Discord4J.LOGGER.error("Channel id " + channelID + " doesn't exist!");
@@ -248,10 +249,8 @@ public final class DiscordClientImpl implements IDiscordClient {
                 new BasicNameValuePair("content-type", "application/json; charset=UTF-8")), AccountInfoChangeResponse.class);
 
             if (!this.token.equals(response.token)) {
-                Discord4J.LOGGER.debug("Token changed, reopening the websocket.");
+                Discord4J.LOGGER.debug("Token changed, updating it.");
                 this.token = response.token;
-                ((DiscordWS) this.ws).disconnect();
-                this.ws = new DiscordWS(this, new URI(obtainGateway(this.token)));
             }
         } catch (HTTP403Exception e) {
             Discord4J.LOGGER.error("Received 403 error attempting to change account details; is your login correct?");
@@ -403,7 +402,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public IInvite createInvite(int maxAge, int maxUses, boolean temporary, boolean useXkcdPass, String channelID) {
+    public IInvite createInvite(int maxAge, int maxUses, boolean temporary, boolean useXkcdPass, String channelID) throws MissingPermissionsException {
         IChannel channel = getChannelByID(channelID);
         if (channel == null) {
             Discord4J.LOGGER.error("Channel id " + channelID + " doesn't exist!");
@@ -432,7 +431,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public IChannel createChannel(IGuild guild, String name) throws DiscordException, HTTP403Exception {
+    public IChannel createChannel(IGuild guild, String name) throws DiscordException, HTTP403Exception, MissingPermissionsException {
         return guild.createChannel(name);
     }
 

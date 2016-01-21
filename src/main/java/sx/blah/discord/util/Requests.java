@@ -99,7 +99,7 @@ public enum Requests {
             if (responseCode == 404) {
                 LOGGER.error("Received 404 error, please notify the developer and include the URL ({})", url);
             } else if (responseCode == 403) {
-                //throw new HTTP403Exception("Unable to make request to "+url);
+                throw new HTTP403Exception("Unable to make request to " + url);
             } else if (responseCode == 204) { //There is a no content response when deleting messages
                 return null;
             }

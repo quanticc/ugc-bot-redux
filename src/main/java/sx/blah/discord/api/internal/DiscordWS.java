@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.InflaterInputStream;
 
 public class DiscordWS extends WebSocketClient {
@@ -40,8 +39,7 @@ public class DiscordWS extends WebSocketClient {
     private static final HashMap<String, String> headers = new HashMap<>();
     public AtomicBoolean isConnected = new AtomicBoolean(true);
     private ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    private long started = 0;
-    private AtomicLong beats = new AtomicLong(0);
+
     /**
      * The amount of users a guild must have to be considered "large"
      */
@@ -80,21 +78,12 @@ public class DiscordWS extends WebSocketClient {
     }
 
     private void startKeepalive() {
-        started = client.timer;
-        // FIXME: check if accurate enough
         Runnable keepAlive = () -> {
-            try {
-                // Keep alive
-                if (this.isConnected.get()) {
-                    long ad = System.currentTimeMillis();
-                    long l = ad - client.timer;
-                    long ed = started + beats.incrementAndGet() * client.heartbeat;
-                    Discord4J.LOGGER.debug("Sending keep alive... ({}). Took {} ms and drifting {} ms.", ad, l, ad - ed);
-                    send(DiscordUtils.GSON.toJson(new KeepAliveRequest()));
-                    client.timer = System.currentTimeMillis();
-                }
-            } catch (Throwable t) {
-                Discord4J.LOGGER.error("Yikes! We lost the keep-alive pace", t);
+            if (this.isConnected.get()) {
+                long l = System.currentTimeMillis() - client.timer;
+                Discord4J.LOGGER.debug("Sending keep alive... ({}). Took {} ms.", System.currentTimeMillis(), l);
+                send(DiscordUtils.GSON.toJson(new KeepAliveRequest()));
+                client.timer = System.currentTimeMillis();
             }
         };
         executorService.scheduleAtFixedRate(keepAlive,
@@ -259,6 +248,10 @@ public class DiscordWS extends WebSocketClient {
         client.heartbeat = event.heartbeat_interval;
         Discord4J.LOGGER.debug("Received heartbeat interval of {}.", client.heartbeat);
 
+        startKeepalive();
+
+        client.isReady = true;
+
         // I hope you like loops.
         for (GuildResponse guildResponse : event.guilds) {
             if (guildResponse.unavailable) { //Guild can't be reached, so we ignore it
@@ -266,7 +259,9 @@ public class DiscordWS extends WebSocketClient {
                 continue;
             }
 
-            client.guildList.add(DiscordUtils.getGuildFromJSON(client, guildResponse));
+            IGuild guild = DiscordUtils.getGuildFromJSON(client, guildResponse);
+            if (guild != null)
+                client.guildList.add(guild);
         }
 
         for (PrivateChannelResponse privateChannelResponse : event.private_channels) {
@@ -282,9 +277,6 @@ public class DiscordWS extends WebSocketClient {
 
         Discord4J.LOGGER.debug("Logged in as {} (ID {}).", client.ourUser.getName(), client.ourUser.getID());
 
-        startKeepalive();
-
-        client.isReady = true;
         client.dispatcher.dispatch(new ReadyEvent());
     }
 
@@ -303,6 +295,10 @@ public class DiscordWS extends WebSocketClient {
 
                 if (event.content.contains("discord.gg/")) {
                     String inviteCode = event.content.split("discord\\.gg/")[1].split(" ")[0];
+                    Discord4J.LOGGER.debug("Received invite code \"{}\"", inviteCode);
+                    client.dispatcher.dispatch(new InviteReceivedEvent(client.getInviteForCode(inviteCode), message));
+                } else if (event.content.contains("discordapp.com/invite/")) {
+                    String inviteCode = event.content.split("discordapp\\.com/invite/")[1].split(" ")[0];
                     Discord4J.LOGGER.debug("Received invite code \"{}\"", inviteCode);
                     client.dispatcher.dispatch(new InviteReceivedEvent(client.getInviteForCode(inviteCode), message));
                 }
@@ -433,13 +429,13 @@ public class DiscordWS extends WebSocketClient {
             User user = (User) guild.getUserByID(event.user.id);
             if (user != null) {
                 if (!user.getPresence().equals(presences)) {
-                    client.dispatcher.dispatch(new PresenceUpdateEvent(guild, user, user.getPresence(), presences));
                     user.setPresence(presences);
+                    client.dispatcher.dispatch(new PresenceUpdateEvent(guild, user, user.getPresence(), presences));
                     Discord4J.LOGGER.debug("User \"{}\" changed presence to {}", user.getName(), user.getPresence());
                 }
                 if (!user.getGame().equals(Optional.ofNullable(gameName))) {
-                    client.dispatcher.dispatch(new GameChangeEvent(guild, user, user.getGame(), Optional.ofNullable(gameName)));
                     user.setGame(Optional.ofNullable(gameName));
+                    client.dispatcher.dispatch(new GameChangeEvent(guild, user, user.getGame(), Optional.ofNullable(gameName)));
                     Discord4J.LOGGER.debug("User \"{}\" changed game to {}.", user.getName(), gameName);
                 }
             }

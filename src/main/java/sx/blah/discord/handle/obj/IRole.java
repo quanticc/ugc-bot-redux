@@ -1,5 +1,6 @@
 package sx.blah.discord.handle.obj;
 
+import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.util.HTTP403Exception;
 
 import java.awt.*;
@@ -75,13 +76,15 @@ public interface IRole {
      * @param name        The new name for the role.
      * @param permissions The new permissions for the role.
      * @throws HTTP403Exception
+     * @throws MissingPermissionsException
      */
-    void edit(Optional<Color> color, Optional<Boolean> hoist, Optional<String> name, Optional<EnumSet<Permissions>> permissions) throws HTTP403Exception;
+    void edit(Optional<Color> color, Optional<Boolean> hoist, Optional<String> name, Optional<EnumSet<Permissions>> permissions) throws HTTP403Exception, MissingPermissionsException;
 
     /**
      * Attempts to delete this role.
      *
      * @throws HTTP403Exception
+     * @throws MissingPermissionsException
      */
-    void delete() throws HTTP403Exception;
+    void delete() throws HTTP403Exception, MissingPermissionsException;
 }

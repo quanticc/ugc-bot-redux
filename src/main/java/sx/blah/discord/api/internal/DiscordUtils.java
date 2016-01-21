@@ -7,6 +7,7 @@ import org.apache.http.message.BasicNameValuePair;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.DiscordEndpoints;
 import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.impl.obj.*;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.json.generic.PermissionOverwrite;
@@ -19,10 +20,7 @@ import sx.blah.discord.util.Requests;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,7 +41,7 @@ public class DiscordUtils {
     /**
      * Used to find urls in order to not escape them
      */
-    private static final Pattern urlPattern = Pattern.compile(
+    public static final Pattern URL_PATTERN = Pattern.compile(
         "(?:^|[\\W])((ht|f)tp(s?):\\/\\/|www\\.)"
             + "(([\\w\\-]+\\.){1,}?([\\w\\-.~]+\\/?)*"
             + "[\\p{Alnum}.,%_=?&#\\-+()\\[\\]\\*$~@!:/{};']*)",
@@ -56,15 +54,21 @@ public class DiscordUtils {
      * @param channel The channel to get messages from.
      * @throws IOException
      */
+    //TODO: maybe move?
     public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP403Exception {
+        try {
+            if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
+                checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
+        } catch (MissingPermissionsException e) {
+            Discord4J.LOGGER.warn("Error getting messages for channel " + channel.getName() + ": {}", e.getErrorMessage());
+            return;
+        }
         String response = Requests.GET.makeRequest(DiscordEndpoints.CHANNELS + channel.getID() + "/messages?limit=50",
             new BasicNameValuePair("authorization", client.getToken()));
         MessageResponse[] messages = GSON.fromJson(response, MessageResponse[].class);
 
         for (MessageResponse message : messages) {
-            channel.addMessage(new Message(client, message.id,
-                message.content, client.getUserByID(message.author.id), channel,
-                convertFromTimestamp(message.timestamp), message.mention_everyone, getMentionsFromJSON(client, message), getAttachmentsFromJSON(message)));
+            channel.addMessage(getMessageFromJSON(client, channel, message));
         }
     }
 
@@ -115,7 +119,7 @@ public class DiscordUtils {
     public static String escapeString(String string) {
         //All this weird regex stuff is to prevent any urls from being escaped and therefore breaking them
         List<String> urls = new ArrayList<>();
-        Matcher matcher = urlPattern.matcher(string);
+        Matcher matcher = URL_PATTERN.matcher(string);
         while (matcher.find()) {
             int matchStart = matcher.start(1);
             int matchEnd = matcher.end();
@@ -320,7 +324,7 @@ public class DiscordUtils {
             message.setTimestamp(convertFromTimestamp(json.edited_timestamp == null ? json.timestamp : json.edited_timestamp));
             return message;
         } else
-            return new Message(client, json.id, json.content, client.getUserByID(json.author.id),
+            return new Message(client, json.id, json.content, getUserFromJSON(client, json.author),
                 channel, convertFromTimestamp(json.timestamp), json.mention_everyone, getMentionsFromJSON(client, json),
                 getAttachmentsFromJSON(json));
     }
@@ -370,16 +374,6 @@ public class DiscordUtils {
         } else {
             channel = new Channel(client, json.name, json.id, guild, json.topic, json.position);
 
-            try {
-                DiscordUtils.getChannelMessages(client, channel);
-            } catch (HTTP403Exception e) {
-                Discord4J.LOGGER.error("No permission for channel \"{}\" in guild \"{}\". Are you logged in properly?", json.name, guild.getName());
-                e.printStackTrace();
-            } catch (Exception e) {
-                Discord4J.LOGGER.error("Unable to get messages for channel \"{}\" in guild \"{}\" (Cause: {}).", json.name, guild.getName(), e.getClass().getSimpleName());
-                e.printStackTrace();
-            }
-
             for (PermissionOverwrite overrides : json.permission_overwrites) {
                 IChannel.PermissionOverride override = new IChannel.PermissionOverride(
                     Permissions.getAllPermissionsForNumber(overrides.allow),
@@ -391,6 +385,15 @@ public class DiscordUtils {
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
                 }
+            }
+
+            try {
+                DiscordUtils.getChannelMessages(client, channel);
+            } catch (HTTP403Exception e) {
+                Discord4J.LOGGER.error("No permission for channel \"{}\" in guild \"{}\". Are you logged in properly?", json.name, guild.getName());
+            } catch (Exception e) {
+                Discord4J.LOGGER.error("Unable to get messages for channel \"{}\" in guild \"{}\" (Cause: {}).", json.name, guild.getName(), e.getClass().getSimpleName());
+                e.printStackTrace();
             }
         }
 
@@ -490,5 +493,67 @@ public class DiscordUtils {
         }
 
         return channel;
+    }
+
+    /**
+     * Checks a set of permissions provided by a channel against required permissions.
+     *
+     * @param client   The client.
+     * @param channel  The channel.
+     * @param required The permissions required.
+     * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
+     */
+    public static void checkPermissions(IDiscordClient client, IChannel channel, EnumSet<Permissions> required) throws MissingPermissionsException {
+        EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
+        List<IRole> roles = client.getOurUser().getRolesForGuild(channel.getGuild().getID());
+        for (IRole role : roles) {
+            contained.addAll(role.getPermissions());
+            if (channel.getRoleOverrides().containsKey(role.getID())) {
+                IChannel.PermissionOverride override = channel.getRoleOverrides().get(role.getID());
+                contained.addAll(override.allow());
+                contained.removeAll(override.deny());
+            }
+        }
+        if (channel.getUserOverrides().containsKey(client.getOurUser().getID())) {
+            IChannel.PermissionOverride override = channel.getUserOverrides().get(client.getOurUser().getID());
+            contained.addAll(override.allow());
+            contained.removeAll(override.deny());
+        }
+        checkPermissions(contained, required);
+    }
+
+    /**
+     * Checks a set of permissions provided by a guild against required permissions.
+     *
+     * @param client   The client.
+     * @param guild    The guild.
+     * @param required The permissions required.
+     * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
+     */
+    public static void checkPermissions(IDiscordClient client, IGuild guild, EnumSet<Permissions> required) throws MissingPermissionsException {
+        EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
+        List<IRole> roles = client.getOurUser().getRolesForGuild(guild.getID());
+        for (IRole role : roles) {
+            contained.addAll(role.getPermissions());
+        }
+        checkPermissions(contained, required);
+    }
+
+    /**
+     * Checks a set of permissions against required permissions.
+     *
+     * @param contained The permissions contained.
+     * @param required  The permissions required.
+     * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
+     */
+    public static void checkPermissions(EnumSet<Permissions> contained, EnumSet<Permissions> required) throws MissingPermissionsException {
+        EnumSet<Permissions> missing = EnumSet.noneOf(Permissions.class);
+
+        for (Permissions requiredPermission : required) {
+            if (!contained.contains(requiredPermission))
+                missing.add(requiredPermission);
+        }
+        if (missing.size() > 0)
+            throw new MissingPermissionsException(missing);
     }
 }

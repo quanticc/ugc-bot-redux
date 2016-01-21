@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
@@ -107,6 +108,8 @@ public class DiscordService {
                                 client.deleteMessage(message.getID(), message.getChannel().getID());
                             } catch (IOException e) {
                                 log.error("Couldn't delete message {} ({}).", message.getID(), e.getMessage());
+                            } catch (MissingPermissionsException e) {
+                                log.warn("No permission to perform action: {}", e.toString());
                             }
                         });
                     }
@@ -117,7 +120,9 @@ public class DiscordService {
                             client.changeAccountInfo(s, "", "", IDiscordClient.Image.forUser(client.getOurUser()));
                             m.reply("is this better?");
                         } catch (IOException | URISyntaxException e) {
-                            e.printStackTrace();
+                            log.warn("Could not change name: {}", e.toString());
+                        } catch (MissingPermissionsException e) {
+                            log.warn("No permission to perform action: {}", e.toString());
                         }
                     }
                 } else if (m.getContent().startsWith(".pm")) {
@@ -150,13 +155,25 @@ public class DiscordService {
         client.getGuilds().stream()
             .flatMap(g -> g.getChannels().stream())
             .filter(ch -> ch.getName().matches(channelNameRegex))
-            .forEach(channel -> channel.sendMessage(message));
+            .forEach(channel -> {
+                try {
+                    channel.sendMessage(message);
+                } catch (MissingPermissionsException e) {
+                    log.warn("No permission to perform action: {}", e.toString());
+                }
+            });
     }
 
     public void broadcast(String message) {
         client.getGuilds().stream()
             .flatMap(g -> g.getChannels().stream())
-            .forEach(ch -> ch.sendMessage(message));
+            .forEach(ch -> {
+                try {
+                    ch.sendMessage(message);
+                } catch (MissingPermissionsException e) {
+                    log.warn("No permission to perform action: {}", e.toString());
+                }
+            });
     }
 
     public IDiscordClient getClient() {
