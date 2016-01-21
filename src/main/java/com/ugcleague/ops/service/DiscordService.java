@@ -228,25 +228,25 @@ public class DiscordService {
     }
 
     public void gameUpdateStarted(GameUpdateStartedEvent event) {
-        if (client != null && client.isReady()) {
-            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
-                Optional.of("Updating servers..."));
-        }
+//        if (client != null && client.isReady()) {
+//            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
+//                Optional.of("Updating servers..."));
+//        }
     }
 
     @EventListener
     public void gameUpdateCompleted(GameUpdateCompletedEvent event) {
-        if (client != null && client.isReady()) {
-            if (event.getVersion() > 0) {
-                try {
-                    broadcast(":ok_hand: TF2 game servers updated to v" + event.getVersion());
-                } catch (Throwable t) {
-                    log.error("Broadcast failed");
-                }
-            }
-            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
-                Optional.empty());
-        }
+//        if (client != null && client.isReady()) {
+//            if (event.getVersion() > 0) {
+//                try {
+//                    broadcast(":ok_hand: TF2 game servers updated to v" + event.getVersion());
+//                } catch (Throwable t) {
+//                    log.error("Broadcast failed");
+//                }
+//            }
+//            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
+//                Optional.empty());
+//        }
     }
 
     @EventListener
