@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,10 +66,10 @@ public class UpdatesFeedService {
             log.warn("Feed URL is not valid", e);
         }
         feedFetcher.addFetcherEventListener(new FetcherListenerImpl());
-        taskService.registerTask("refreshUpdatesFeed", 20000, 600000, this::refreshUpdatesFeed);
+        //taskService.registerTask("refreshUpdatesFeed", 20000, 600000, this::refreshUpdatesFeed);
     }
 
-    //@Scheduled(initialDelay = 20000, fixedRate = 600000)
+    @Scheduled(initialDelay = 20000, fixedRate = 600000)
     public void refreshUpdatesFeed() {
         String task = "refreshUpdatesFeed";
         log.debug("==== Retrieving latest updates feed ====");

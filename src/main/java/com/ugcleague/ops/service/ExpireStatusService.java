@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
@@ -43,16 +44,16 @@ public class ExpireStatusService {
 
     @PostConstruct
     private void configure() {
-        taskService.registerTask("refreshExpireDates", 50000, 600000, this::refreshExpireDates);
+        //taskService.registerTask("refreshExpireDates", 50000, 600000, this::refreshExpireDates);
     }
 
     /**
      * Retrieves the latest result of the GameServers claim page.
      */
-    //@Scheduled(initialDelay = 50000, fixedRate = 600000)
+    @Scheduled(initialDelay = 50000, fixedRate = 600000)
     public void refreshExpireDates() {
         String task = "refreshExpireDates";
-        taskService.scheduleNext(task);
+        //taskService.scheduleNext(task);
         log.debug("==== Refreshing expire dates of ALL servers ====");
         if (taskService.isEnabled(task)) {
             ZonedDateTime now = ZonedDateTime.now();

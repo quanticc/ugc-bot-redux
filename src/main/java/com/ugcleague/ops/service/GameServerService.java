@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.remoting.RemoteAccessException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,8 +64,8 @@ public class GameServerService {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
         }
-        taskService.registerTask("refreshRconPasswords", 60000, 600000, this::refreshRconPasswords);
-        taskService.registerTask("updateGameServers", 30000, 150000, this::updateGameServers);
+        //taskService.registerTask("refreshRconPasswords", 60000, 600000, this::refreshRconPasswords);
+        //taskService.registerTask("updateGameServers", 30000, 150000, this::updateGameServers);
     }
 
     public void refreshServerDetails() {
@@ -99,12 +100,12 @@ public class GameServerService {
         return server;
     }
 
-    //@Scheduled(initialDelay = 60000, fixedRate = 600000)
+    @Scheduled(initialDelay = 60000, fixedRate = 600000)
     public void refreshRconPasswords() {
         String task = "refreshRconPasswords";
         // TODO: switch to a better logic since this task depends on expire status refresh
         log.debug("==== Refreshing RCON server passwords ====");
-        taskService.scheduleNext(task);
+        //taskService.scheduleNext(task);
         if (taskService.isEnabled(task)) {
             ZonedDateTime now = ZonedDateTime.now();
             // refreshing passwords of expired servers since they auto restart and change password
@@ -137,11 +138,11 @@ public class GameServerService {
         return server;
     }
 
-    //@Scheduled(initialDelay = 30000, fixedRate = 150000)
+    @Scheduled(initialDelay = 30000, fixedRate = 150000)
     public void updateGameServers() {
         String task = "refreshRconPasswords";
         log.debug("==== Refreshing server status ====");
-        taskService.scheduleNext(task);
+        //taskService.scheduleNext(task);
         long refreshed = -1;
         long updating = -1;
         int latestVersion = steamCondenserService.getLatestVersion();
