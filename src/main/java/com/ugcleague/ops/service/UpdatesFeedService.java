@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 
 @Service
+@Transactional
 public class UpdatesFeedService {
 
     private static final Logger log = LoggerFactory.getLogger(UpdatesFeedService.class);

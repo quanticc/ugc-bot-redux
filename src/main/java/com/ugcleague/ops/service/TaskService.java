@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
+@Transactional
 public class TaskService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
@@ -30,7 +32,7 @@ public class TaskService {
     public TaskService(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
         ThreadFactory threadFactory = new TaskThreadFactory();
-        executorService = Executors.newScheduledThreadPool((int) Math.max(2, taskRepository.count() / 2 + 1), threadFactory);
+        executorService = Executors.newScheduledThreadPool(8, threadFactory);
     }
 
     public boolean isEnabled(String taskName) {
