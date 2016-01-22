@@ -9,5 +9,5 @@ ugc-bot-prod-mysql:
   - MYSQL_DATABASE=ugc_league
   ports:
   - "3306:3306"
-  command: mysqld --lower_case_table_names=1
+  command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4
 
