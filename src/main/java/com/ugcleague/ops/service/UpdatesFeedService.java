@@ -73,7 +73,7 @@ public class UpdatesFeedService {
     public void refreshUpdatesFeed() {
         String task = "refreshUpdatesFeed";
         log.debug("==== Retrieving latest updates feed ====");
-        taskService.scheduleNext(task);
+        //taskService.scheduleNext(task);
         if (taskService.isEnabled(task)) {
             try {
                 feedFetcher.retrieveFeed(url);
