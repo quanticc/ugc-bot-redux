@@ -47,16 +47,8 @@ public class TaskService {
 
     public void registerTask(String taskName, long initialDelay, long fixedRate, Runnable runnable) {
         Task task = taskRepository.findByName(taskName).orElseGet(() -> newTask(taskName, fixedRate));
-        if (task.getFixedRate() == null) {
-            task.setEnabled(true);
-            task.setFixedRate(fixedRate);
-        }
-        if (task.getFixedRate() < 0) {
-            task.setEnabled(false);
-        } else if (task.getFixedRate() == 0) {
-            task.setEnabled(true);
-            task.setFixedRate(fixedRate);
-        }
+        task.setEnabled(true);
+        task.setFixedRate(fixedRate);
         tasks.put(task.getName(), runnable);
         taskRepository.save(task);
         executorService.schedule(runnable, initialDelay, TimeUnit.MILLISECONDS);
