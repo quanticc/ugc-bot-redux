@@ -4,20 +4,19 @@ import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
-import com.ugcleague.ops.event.GameUpdateFailedEvent;
+import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
 import com.ugcleague.ops.repository.FlagRepository;
 import com.ugcleague.ops.repository.GameServerRepository;
-import com.ugcleague.ops.repository.TaskRepository;
 import com.ugcleague.ops.service.util.SourceServer;
-import lombok.Data;
+import com.ugcleague.ops.service.util.UpdateResult;
+import com.ugcleague.ops.service.util.UpdateResultMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.remoting.RemoteAccessException;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +28,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,28 +40,31 @@ public class GameServerService {
     private final AdminPanelService adminPanelService;
     private final SteamCondenserService steamCondenserService;
     private final GameServerRepository gameServerRepository;
-    private final TaskRepository taskRepository;
     private final FlagRepository flagRepository;
     private final ApplicationEventPublisher publisher;
-    private final ConcurrentMap<GameServer, UpdateResult> updateResultMap = new ConcurrentHashMap<>();
+    private final TaskService taskService;
+
+    private final UpdateResultMap updateResultMap = new UpdateResultMap();
 
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
-                             AdminPanelService adminPanelService, TaskRepository taskRepository,
-                             FlagRepository flagRepository, ApplicationEventPublisher publisher) {
+                             AdminPanelService adminPanelService, FlagRepository flagRepository,
+                             ApplicationEventPublisher publisher, TaskService taskService) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
-        this.taskRepository = taskRepository;
         this.flagRepository = flagRepository;
         this.publisher = publisher;
+        this.taskService = taskService;
     }
 
     @PostConstruct
-    public void initServerDetails() {
+    private void configure() {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
         }
+        taskService.registerTask("refreshRconPasswords", 60000, 600000, this::refreshRconPasswords);
+        taskService.registerTask("updateGameServers", 30000, 150000, this::updateGameServers);
     }
 
     public void refreshServerDetails() {
@@ -101,19 +99,19 @@ public class GameServerService {
         return server;
     }
 
-    @Scheduled(initialDelay = 60000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 60000, fixedRate = 600000)
     public void refreshRconPasswords() {
+        String task = "refreshRconPasswords";
         // TODO: switch to a better logic since this task depends on expire status refresh
-        ZonedDateTime now = ZonedDateTime.now();
         log.debug("==== Refreshing RCON server passwords ====");
-//        if (!taskRepository.findByName("refreshRconPasswords").map(Task::getEnabled).orElse(false)) {
-//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-//            return;
-//        }
-        // refreshing passwords of expired servers since they auto restart and change password
-        long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
-            .map(gameServerRepository::save).count();
-        log.info("{} servers updated their RCON passwords. Next check at {}", count, now.plusMinutes(10));
+        taskService.scheduleNext(task);
+        if (taskService.isEnabled(task)) {
+            ZonedDateTime now = ZonedDateTime.now();
+            // refreshing passwords of expired servers since they auto restart and change password
+            long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
+                .map(gameServerRepository::save).count();
+            log.info("{} servers updated their RCON passwords", count);
+        }
     }
 
     /**
@@ -139,53 +137,43 @@ public class GameServerService {
         return server;
     }
 
-    @Scheduled(initialDelay = 30000, fixedRate = 150000)
+    //@Scheduled(initialDelay = 30000, fixedRate = 150000)
     public void updateGameServers() {
-        ZonedDateTime now = ZonedDateTime.now();
+        String task = "refreshRconPasswords";
         log.debug("==== Refreshing server status ====");
+        taskService.scheduleNext(task);
         long refreshed = -1;
         long updating = -1;
-//        if (taskRepository.findByName("refreshServerStatus").map(Task::getEnabled).orElse(false)) {
-//            refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
-//                .map(gameServerRepository::save).count();
-//        }
-        refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
-            .map(gameServerRepository::save).count();
         int latestVersion = steamCondenserService.getLatestVersion();
-//        if (taskRepository.findByName("updateGameServers").map(Task::getEnabled).orElse(false)) {
-//            updating = gameServerRepository
-//                .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
-//                .map(this::performGameUpdate).map(gameServerRepository::save).count();
-//        }
-        updating = gameServerRepository
-            .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
-            .map(this::performGameUpdate).map(gameServerRepository::save).count();
-        ZonedDateTime next = now.plusMinutes(5);
+        if (taskService.isEnabled(task)) {
+            ZonedDateTime now = ZonedDateTime.now();
+            refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
+                .map(gameServerRepository::save).count();
+            updating = gameServerRepository
+                .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
+                .map(this::performGameUpdate).map(gameServerRepository::save).count();
+        }
         if (updating < 0) {
-            log.debug("Update checks skipped. Next attempt at {}", next);
+            log.debug("Update checks skipped");
         } else if (updating == 0) {
-            log.debug("All servers up-to-date. Next check at {}", next);
+            log.debug("All servers up-to-date");
             if (!updateResultMap.isEmpty()) {
                 // all servers are up to date, report and then clear the progress map
-                publisher.publishEvent(new GameUpdateCompletedEvent(this).toVersion(latestVersion));
+                publisher.publishEvent(new GameUpdateCompletedEvent(updateResultMap.duplicate()).toVersion(latestVersion));
                 updateResultMap.clear();
             }
         } else {
-            log.info("Performing game update on {} servers. Next check at {}", updating, next);
-            List<GameServer> failed = updateResultMap.entrySet().stream()
-                .filter(e -> e.getValue().getFailCount().get() > 3)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
+            log.info("Performing game update on {} servers", updating);
+            List<GameServer> failed = updateResultMap.getSlowUpdates(10);
             if (!failed.isEmpty()) {
-                // there are servers holding out the update - inform and reset counter
-                publisher.publishEvent(new GameUpdateFailedEvent(this).causedBy(failed));
-                updateResultMap.forEach((k, v) -> v.getFailCount().set(0));
+                // there are servers holding out the update
+                publisher.publishEvent(new GameUpdateDelayedEvent(updateResultMap).causedBy(failed));
             }
         }
         if (refreshed < 0) {
-            log.debug("Status refresh skipped. Next attempt at {}", next);
+            log.debug("Status refresh skipped");
         } else {
-            log.debug("{} servers had their status refreshed. Next check at {}", refreshed, next);
+            log.debug("{} servers had their status refreshed", refreshed);
         }
     }
 
@@ -193,7 +181,7 @@ public class GameServerService {
         if (server == null) {
             return null;
         }
-        log.debug("Refreshing server status: {}", server.getName());
+        //log.debug("Refreshing server status: {}", server.getName());
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
@@ -228,23 +216,24 @@ public class GameServerService {
             server.setPlayers(steamCondenserService.players(source));
         }
         if (updateResultMap.isEmpty()) {
-            publisher.publishEvent(new GameUpdateStartedEvent(this));
+            publisher.publishEvent(new GameUpdateStartedEvent(updateResultMap));
         }
         UpdateResult result = updateResultMap.computeIfAbsent(server, k -> new UpdateResult());
         if (server.getPlayers() > 0) {
             log.info("Server update for {} {} is on hold. Players connected: {}", server.getName(), server.getAddress(),
                 server.getPlayers());
-//            if (result.getLastAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
-//                try {
-//                    rcon(server, "Game update on hold until all players leave the server");
-//                    result.getLastAnnounce().set(Instant.now());
-//                } catch (SteamCondenserException | TimeoutException ignored) {
-//                }
-//            }
+            if (result.getLastRconAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
+                try {
+                    rcon(server, "Game update on hold until all players leave the server");
+                    result.getLastRconAnnounce().set(Instant.now());
+                } catch (SteamCondenserException | TimeoutException ignored) {
+                }
+            }
+            result.getAttempts().incrementAndGet();
         } else if (server.getPing() < 0) {
             // timed out servers might be down due to a large update
             log.info("Server update for {} {} is on hold. It appears to be offline", server.getName(), server.getAddress());
-            result.getFailCount().incrementAndGet();
+            result.getAttempts().incrementAndGet();
         } else {
             try {
                 adminPanelService.upgrade(server.getSubId());
@@ -347,12 +336,6 @@ public class GameServerService {
 
     public List<GameServer> findAllEagerly() {
         return gameServerRepository.findAllWithEagerRelationships();
-    }
-
-    @Data
-    public static class UpdateResult {
-        private final AtomicInteger failCount = new AtomicInteger(0);
-        private final AtomicReference<Instant> lastAnnounce = new AtomicReference<>(Instant.EPOCH);
     }
 
 }

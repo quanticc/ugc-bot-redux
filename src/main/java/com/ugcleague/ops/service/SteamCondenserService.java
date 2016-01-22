@@ -182,7 +182,7 @@ public class SteamCondenserService {
     }
 
     public SourceServer getSourceServer(String address) {
-        return sourceServers.computeIfAbsent(address, k -> createSourceServer(k));
+        return sourceServers.computeIfAbsent(address, this::createSourceServer);
     }
 
     private SourceServer createSourceServer(String address) {
@@ -212,6 +212,16 @@ public class SteamCondenserService {
         return result.getInt("required_version");
     }
 
+    public Integer queryLatestVersion() {
+        // and don't cache it
+        try {
+            return loadLatestVersion();
+        } catch (JSONException | SteamCondenserException e) {
+            log.warn("Could not get latest version number: {}", e.toString());
+        }
+        return cachedLatestVersion; // fallback.
+    }
+
     public Integer getLatestVersion() {
         if (invalid) {
             try {
@@ -219,7 +229,7 @@ public class SteamCondenserService {
                 if (cachedLatestVersion < version) {
                     cachedLatestVersion = version;
                     invalid = false;
-                    log.info("New latest version: {}", cachedLatestVersion);
+                    log.info("TF2 server minimum required version: {}", cachedLatestVersion);
                 }
             } catch (JSONException | SteamCondenserException e) {
                 log.warn("Could not get latest version number: {}", e.toString());

@@ -9,13 +9,11 @@ import com.rometools.fetcher.impl.FeedFetcherCache;
 import com.rometools.fetcher.impl.HttpURLFeedFetcher;
 import com.rometools.rome.io.FeedException;
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.event.NewGameVersionAvailable;
-import com.ugcleague.ops.repository.TaskRepository;
+import com.ugcleague.ops.event.FeedUpdatedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -25,7 +23,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 
 @Service
 public class UpdatesFeedService {
@@ -33,20 +30,20 @@ public class UpdatesFeedService {
     private static final Logger log = LoggerFactory.getLogger(UpdatesFeedService.class);
 
     private final SteamCondenserService condenserService;
-    private final TaskRepository taskRepository;
     private final LeagueProperties leagueProperties;
     private final ApplicationEventPublisher publisher;
+    private final TaskService taskService;
 
     private FeedFetcher feedFetcher;
     private URL url;
 
     @Autowired
-    public UpdatesFeedService(SteamCondenserService condenserService, TaskRepository taskRepository,
-                              LeagueProperties leagueProperties, ApplicationEventPublisher publisher) {
+    public UpdatesFeedService(SteamCondenserService condenserService, LeagueProperties leagueProperties,
+                              ApplicationEventPublisher publisher, TaskService taskService) {
         this.condenserService = condenserService;
-        this.taskRepository = taskRepository;
         this.leagueProperties = leagueProperties;
         this.publisher = publisher;
+        this.taskService = taskService;
     }
 
     @PostConstruct
@@ -66,22 +63,21 @@ public class UpdatesFeedService {
             log.warn("Feed URL is not valid", e);
         }
         feedFetcher.addFetcherEventListener(new FetcherListenerImpl());
+        taskService.registerTask("refreshUpdatesFeed", 20000, 600000, this::refreshUpdatesFeed);
     }
 
-    @Scheduled(initialDelay = 5000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 20000, fixedRate = 600000)
     public void refreshUpdatesFeed() {
-        ZonedDateTime now = ZonedDateTime.now();
+        String task = "refreshUpdatesFeed";
         log.debug("==== Retrieving latest updates feed ====");
-//        if (!taskRepository.findByName("refreshUpdatesFeed").map(Task::getEnabled).orElse(false)) {
-//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-//            return;
-//        }
-        try {
-            feedFetcher.retrieveFeed(url);
-        } catch (IllegalArgumentException | IOException | FeedException | FetcherException e) {
-            log.warn("Could not fetch latest updates feed: {}", e.toString());
+        taskService.scheduleNext(task);
+        if (taskService.isEnabled(task)) {
+            try {
+                feedFetcher.retrieveFeed(url);
+            } catch (IllegalArgumentException | IOException | FeedException | FetcherException e) {
+                log.warn("Could not fetch latest updates feed: {}", e.toString());
+            }
         }
-        log.debug("Next updates feed check at {}", now.plusSeconds(600).toString());
     }
 
     private class FetcherListenerImpl implements FetcherListener {
@@ -93,9 +89,10 @@ public class UpdatesFeedService {
             } else if (FetcherEvent.EVENT_TYPE_FEED_RETRIEVED.equals(eventType)) {
                 Instant lastPublishedDate = event.getFeed().getPublishedDate().toInstant();
                 log.debug("[hlds_announce] Feed retrieved. Published at {}", lastPublishedDate);
-                condenserService.invalidateLatestVersion();
-                int version = condenserService.getLatestVersion();
-                publisher.publishEvent(new NewGameVersionAvailable(this).instant(lastPublishedDate).version(version));
+                // news post might not be related to TF2!! always check before dispatching event
+                if (condenserService.getLatestVersion() < condenserService.queryLatestVersion()) {
+                    publisher.publishEvent(new FeedUpdatedEvent(event.getFeed()));
+                }
             } else if (FetcherEvent.EVENT_TYPE_FEED_UNCHANGED.equals(eventType)) {
                 log.debug("[hlds_announce] Feed unchanged");
             }

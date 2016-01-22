@@ -66,7 +66,7 @@ public class Application {
         SpringApplication app = new SpringApplication(Application.class);
         SimpleCommandLinePropertySource source = new SimpleCommandLinePropertySource(args);
         addDefaultProfile(app, source);
-        Environment env = app.run(args).getEnvironment();
+        app.run(args).getEnvironment();
     }
 
     /**

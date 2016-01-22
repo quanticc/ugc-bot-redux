@@ -1,12 +1,11 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.event.*;
+import com.ugcleague.ops.event.DiscordReadyEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.DiscordException;
@@ -27,7 +26,6 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -231,54 +229,6 @@ public class DiscordService {
             + "']";
     }
 
-    // forwarded events
-
-    @EventListener
-    public void newGameVersionAvailable(NewGameVersionAvailable event) {
-//        if (client != null && client.isReady()) {
-//            // don't broadcast update if it's too old (>10 mins)
-//            if (event.getInstant().isAfter(Instant.now().minusSeconds(60 * 10))) {
-//                String formatted = String.format("Preparing to update game servers to v%s", event.getVersion());
-//                broadcast(formatted);
-//            }
-//        }
-    }
-
-    public void gameUpdateStarted(GameUpdateStartedEvent event) {
-//        if (client != null && client.isReady()) {
-//            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
-//                Optional.of("Updating servers..."));
-//        }
-    }
-
-    @EventListener
-    public void gameUpdateCompleted(GameUpdateCompletedEvent event) {
-//        if (client != null && client.isReady()) {
-//            if (event.getVersion() > 0) {
-//                try {
-//                    broadcast(":ok_hand: TF2 game servers updated to v" + event.getVersion());
-//                } catch (Throwable t) {
-//                    log.error("Broadcast failed");
-//                }
-//            }
-//            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE),
-//                Optional.empty());
-//        }
-    }
-
-    @EventListener
-    public void gameUpdateFailed(GameUpdateFailedEvent event) {
-        if (client != null && client.isReady()) {
-            String list = event.getServers().stream()
-                .map(s -> String.format("_%s_", s.getName()))
-                .collect(Collectors.joining(", "));
-            if (lastFailedBroadcast.isBefore(Instant.now().minus(12, ChronoUnit.HOURS))) {
-                //broadcast("TF2 servers pending update: " + list);
-                lastFailedBroadcast = Instant.now();
-            }
-        }
-    }
-
     public void subscribe(IListener<?> listener) {
         client.getDispatcher().registerListener(listener);
     }
@@ -289,6 +239,15 @@ public class DiscordService {
 
     public MessageBuilder message() {
         return new MessageBuilder(client);
+    }
+
+    public MessageBuilder channelMessage(String channelId) throws DiscordException {
+        IChannel channel = client.getChannelByID(channelId);
+        if (channel != null) {
+            return message().withChannel(channel);
+        } else {
+            throw new DiscordException("Channel '" + channelId + "' does not exists");
+        }
     }
 
     public MessageBuilder privateMessage(String userId) throws Exception {

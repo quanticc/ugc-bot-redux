@@ -2,18 +2,17 @@ package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.domain.GameServer;
 import com.ugcleague.ops.repository.GameServerRepository;
-import com.ugcleague.ops.repository.TaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Map;
@@ -30,33 +29,38 @@ public class ExpireStatusService {
     private final ParameterizedTypeReference<Map<String, Integer>> type = new ParameterizedTypeReference<Map<String, Integer>>() {
     };
     private final GameServerRepository gameServerRepository;
-    private final TaskRepository taskRepository;
+    private final TaskService taskService;
 
     @Autowired
-    public ExpireStatusService(GameServerRepository gameServerRepository, TaskRepository taskRepository) {
+    public ExpireStatusService(GameServerRepository gameServerRepository, TaskService taskService) {
         this.gameServerRepository = gameServerRepository;
-        this.taskRepository = taskRepository;
+        this.taskService = taskService;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("User-Agent", "Mozilla");
         this.entity = new HttpEntity<>(null, headers);
     }
 
+    @PostConstruct
+    private void configure() {
+        taskService.registerTask("refreshExpireDates", 50000, 600000, this::refreshExpireDates);
+    }
+
     /**
      * Retrieves the latest result of the GameServers claim page.
      */
-    @Scheduled(initialDelay = 50000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 50000, fixedRate = 600000)
     public void refreshExpireDates() {
-        ZonedDateTime now = ZonedDateTime.now();
+        String task = "refreshExpireDates";
+        taskService.scheduleNext(task);
         log.debug("==== Refreshing expire dates of ALL servers ====");
-//        if (!taskRepository.findByName("refreshExpireDates").map(Task::getEnabled).orElse(false)) {
-//            log.debug("Skipping task. Next attempt at {}", now.plusMinutes(10));
-//            return;
-//        }
-        Map<String, Integer> map = getExpireSeconds();
-        long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
-            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
-        log.info("{} expire dates refreshed. Next check at {}", count, now.plusMinutes(10));
+        if (taskService.isEnabled(task)) {
+            ZonedDateTime now = ZonedDateTime.now();
+            Map<String, Integer> map = getExpireSeconds();
+            long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
+                .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
+            log.info("{} expire dates refreshed", count);
+        }
     }
 
     private GameServer refreshExpireDate(GameServer server, ZonedDateTime now, Integer seconds) {

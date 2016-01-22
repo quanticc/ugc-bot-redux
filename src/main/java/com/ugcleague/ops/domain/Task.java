@@ -31,6 +31,9 @@ public class Task implements Serializable {
     @Column(name = "enabled", nullable = false)
     private Boolean enabled;
 
+    @Column(name = "fixed_rate")
+    private Long fixedRate;
+
     public Long getId() {
         return id;
     }
@@ -63,6 +66,14 @@ public class Task implements Serializable {
         this.enabled = enabled;
     }
 
+    public Long getFixedRate() {
+        return fixedRate;
+    }
+
+    public void setFixedRate(Long fixedRate) {
+        this.fixedRate = fixedRate;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -82,7 +93,12 @@ public class Task implements Serializable {
 
     @Override
     public String toString() {
-        return "Task{" + "id=" + id + ", name='" + name + "'" + ", description='" + description + "'" + ", enabled='" + enabled
-            + "'" + '}';
+        return "Task{" +
+            "id=" + id +
+            ", name='" + name + '\'' +
+            ", description='" + description + '\'' +
+            ", enabled=" + enabled +
+            ", fixedRate=" + fixedRate +
+            '}';
     }
 }

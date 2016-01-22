@@ -99,7 +99,7 @@ public class SupportPingService {
     }
 
     private String buildPingMessage(IMessage m) {
-        return String.format("Hey! %s is asking for support @ %s: %s", m.getAuthor().mention(), m.getChannel().mention(), m.getContent());
+        return String.format("Hey! %s is looking for help at %s: %s", m.getAuthor().mention(), m.getChannel().mention(), m.getContent());
     }
 
     private boolean isSupportChannel(IChannel channel) {
@@ -177,7 +177,7 @@ public class SupportPingService {
     private Subscriber newSubscriber(IUser user) {
         Subscriber subscriber = new Subscriber();
         subscriber.setUserId(user.getID());
-        subscriber.setName(user.getName());
+        subscriber.setName("user:" + user.getName());
         return subscriber;
     }
 }

@@ -1,5 +1,6 @@
 package com.ugcleague.ops.event;
 
+import com.ugcleague.ops.service.util.UpdateResultMap;
 import org.springframework.context.ApplicationEvent;
 
 public class GameUpdateCompletedEvent extends ApplicationEvent {
@@ -11,7 +12,7 @@ public class GameUpdateCompletedEvent extends ApplicationEvent {
      *
      * @param source the object on which the event initially occurred (never {@code null})
      */
-    public GameUpdateCompletedEvent(Object source) {
+    public GameUpdateCompletedEvent(UpdateResultMap source) {
         super(source);
     }
 
@@ -22,5 +23,10 @@ public class GameUpdateCompletedEvent extends ApplicationEvent {
 
     public int getVersion() {
         return version;
+    }
+
+    @Override
+    public UpdateResultMap getSource() {
+        return (UpdateResultMap) super.getSource();
     }
 }

@@ -20,4 +20,6 @@
              relativeToChangelogFile="false"/>
     <include file="classpath:config/liquibase/changelog/20160119205200_added_entity_Publisher.xml"
              relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160122160700_edited_entity_Task.xml"
+             relativeToChangelogFile="false"/>
 </databaseChangeLog>
