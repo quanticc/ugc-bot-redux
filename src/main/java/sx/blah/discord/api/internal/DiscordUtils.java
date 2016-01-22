@@ -504,6 +504,10 @@ public class DiscordUtils {
      * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
      */
     public static void checkPermissions(IDiscordClient client, IChannel channel, EnumSet<Permissions> required) throws MissingPermissionsException {
+        if (channel instanceof PrivateChannel) {
+            Discord4J.LOGGER.debug("Trying to check permissions of a private channel, skipping check!");
+            return;
+        }
         EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
         List<IRole> roles = client.getOurUser().getRolesForGuild(channel.getGuild().getID());
         for (IRole role : roles) {
