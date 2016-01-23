@@ -34,7 +34,7 @@ public class Discord4J {
     /**
      * The version of the api
      */
-    public static String VERSION = "2.1.1";
+    public static String VERSION = "2.1.3";
     /**
      * The api's description
      */

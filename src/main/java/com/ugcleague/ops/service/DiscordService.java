@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.DiscordException;
@@ -16,6 +18,7 @@ import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
+import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.MessageBuilder;
 
 import javax.annotation.PostConstruct;
@@ -23,7 +26,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.Instant;
 import java.util.HashSet;
@@ -102,12 +104,15 @@ public class DiscordService {
                         c.getMessages().stream().filter(message -> message.getAuthor().getID()
                             .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
                             try {
+                                // TODO: wrap in retryable
                                 log.debug("Attempting deletion of message {} by \"{}\" ({})", message.getID(), message.getAuthor().getName(), message.getContent());
                                 client.deleteMessage(message.getID(), message.getChannel().getID());
                             } catch (IOException e) {
                                 log.error("Couldn't delete message {} ({}).", message.getID(), e.getMessage());
                             } catch (MissingPermissionsException e) {
                                 log.warn("No permission to perform action: {}", e.toString());
+                            } catch (HTTP429Exception e) {
+                                log.warn("Too many requests. Slow down!", e);
                             }
                         });
                     }
@@ -115,12 +120,15 @@ public class DiscordService {
                     if (isMaster(m.getAuthor())) {
                         String s = m.getContent().split(" ", 2)[1];
                         try {
+                            // TODO: wrap in retryable
                             client.changeAccountInfo(s, "", "", IDiscordClient.Image.forUser(client.getOurUser()));
                             m.reply("is this better?");
-                        } catch (IOException | URISyntaxException e) {
+                        } catch (IOException e) {
                             log.warn("Could not change name: {}", e.toString());
                         } catch (MissingPermissionsException e) {
                             log.warn("No permission to perform action: {}", e.toString());
+                        } catch (HTTP429Exception e) {
+                            log.warn("Too many requests. Slow down!", e);
                         }
                     }
                 } else if (m.getContent().startsWith(".pm")) {
@@ -155,11 +163,18 @@ public class DiscordService {
             .filter(ch -> ch.getName().matches(channelNameRegex))
             .forEach(channel -> {
                 try {
-                    channel.sendMessage(message);
+                    trySendMessage(channel, message);
                 } catch (MissingPermissionsException e) {
                     log.warn("No permission to perform action: {}", e.toString());
+                } catch (HTTP429Exception e) {
+                    log.warn("Too many requests. Slow down!", e);
                 }
             });
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+    private void trySendMessage(IChannel channel, String message) throws MissingPermissionsException, HTTP429Exception {
+        channel.sendMessage(message);
     }
 
     public void broadcast(String message) {
@@ -167,9 +182,11 @@ public class DiscordService {
             .flatMap(g -> g.getChannels().stream())
             .forEach(ch -> {
                 try {
-                    ch.sendMessage(message);
+                    trySendMessage(ch, message);
                 } catch (MissingPermissionsException e) {
                     log.warn("No permission to perform action: {}", e.toString());
+                }catch (HTTP429Exception e) {
+                    log.warn("Too many requests. Slow down!", e);
                 }
             });
     }

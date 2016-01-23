@@ -4,6 +4,7 @@ import sx.blah.discord.api.internal.DiscordUtils;
 import sx.blah.discord.json.responses.MetricResponse;
 import sx.blah.discord.json.responses.StatusResponse;
 import sx.blah.discord.util.HTTP403Exception;
+import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Requests;
 
 import java.time.LocalDateTime;
@@ -18,8 +19,9 @@ public class DiscordStatus {
      *
      * @return The mean response time (in milliseconds).
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    public static double getAPIResponseTimeForDay() throws HTTP403Exception {
+    public static double getAPIResponseTimeForDay() throws HTTP403Exception, HTTP429Exception {
         MetricResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
             String.format(DiscordEndpoints.METRICS, "day")), MetricResponse.class);
         return response.summary.mean;
@@ -30,8 +32,9 @@ public class DiscordStatus {
      *
      * @return The mean response time (in milliseconds).
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    public static double getAPIResponseTimeForWeek() throws HTTP403Exception {
+    public static double getAPIResponseTimeForWeek() throws HTTP403Exception, HTTP429Exception {
         MetricResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
             String.format(DiscordEndpoints.METRICS, "week")), MetricResponse.class);
         return response.summary.mean;
@@ -42,8 +45,9 @@ public class DiscordStatus {
      *
      * @return The mean response time (in milliseconds).
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    public static double getAPIResponseTimeForMonth() throws HTTP403Exception {
+    public static double getAPIResponseTimeForMonth() throws HTTP403Exception, HTTP429Exception {
         MetricResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
             String.format(DiscordEndpoints.METRICS, "month")), MetricResponse.class);
         return response.summary.mean;
@@ -54,8 +58,9 @@ public class DiscordStatus {
      *
      * @return The maintenance statuses.
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    public static Maintenance[] getActiveMaintenances() throws HTTP403Exception {
+    public static Maintenance[] getActiveMaintenances() throws HTTP403Exception, HTTP429Exception {
         StatusResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
             String.format(DiscordEndpoints.STATUS, "active")), StatusResponse.class);
         Maintenance[] maintenances = new Maintenance[response.scheduled_maintenances.length];
@@ -74,8 +79,9 @@ public class DiscordStatus {
      *
      * @return The maintenance statuses.
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    public static Maintenance[] getUpcomingMaintenances() throws HTTP403Exception {
+    public static Maintenance[] getUpcomingMaintenances() throws HTTP403Exception, HTTP429Exception {
         StatusResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
             String.format(DiscordEndpoints.STATUS, "upcoming")), StatusResponse.class);
         Maintenance[] maintenances = new Maintenance[response.scheduled_maintenances.length];

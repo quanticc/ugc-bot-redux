@@ -7,9 +7,9 @@ import sx.blah.discord.handle.EventDispatcher;
 import sx.blah.discord.handle.impl.obj.*;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.HTTP403Exception;
+import sx.blah.discord.util.HTTP429Exception;
 
 import java.io.*;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
@@ -45,8 +45,9 @@ public interface IDiscordClient {
      * Logs out the client.
      *
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    void logout() throws HTTP403Exception;
+    void logout() throws HTTP403Exception, HTTP429Exception;
 
     /**
      * Sends a message to the desired channel.
@@ -58,7 +59,7 @@ public interface IDiscordClient {
      * @deprecated Use {@link Channel#sendMessage(String)}
      */
     @Deprecated
-    IMessage sendMessage(String content, String channelID) throws IOException, MissingPermissionsException;
+    IMessage sendMessage(String content, String channelID) throws IOException, MissingPermissionsException, HTTP429Exception;
 
     /**
      * Edits a message. NOTE: Discord only supports editing YOUR OWN messages!
@@ -70,7 +71,7 @@ public interface IDiscordClient {
      * @deprecated Use {@link Message#edit(String)}
      */
     @Deprecated
-    IMessage editMessage(String content, String messageID, String channelID) throws MissingPermissionsException;
+    IMessage editMessage(String content, String messageID, String channelID) throws MissingPermissionsException, HTTP429Exception;
 
     /**
      * Deletes a message.
@@ -81,10 +82,9 @@ public interface IDiscordClient {
      * @deprecated Use {@link Message#delete()}
      */
     @Deprecated
-    void deleteMessage(String messageID, String channelID) throws IOException, MissingPermissionsException;
+    void deleteMessage(String messageID, String channelID) throws IOException, MissingPermissionsException, HTTP429Exception;
 
     /**
-     * FIXME: Fix this because it's fucking stupid.
      * Allows you to change the info on your bot.
      * Any fields you don't want to change should be left as an empty string ("") or null.
      *
@@ -92,8 +92,22 @@ public interface IDiscordClient {
      * @param email    Email (if you want to change it)
      * @param password Password (if you want to change it).
      * @param avatar   Image data for the bot's avatar, {@link Image}
+     * @throws HTTP429Exception
+     * @deprecated Use {@link #changeAccountInfo(Optional, Optional, Optional, Optional)}
      */
-    void changeAccountInfo(String username, String email, String password, Image avatar) throws UnsupportedEncodingException, URISyntaxException;
+    @Deprecated
+    void changeAccountInfo(String username, String email, String password, Image avatar) throws HTTP429Exception;
+
+    /**
+     * Allows you to change the info on your bot.
+     *
+     * @param username Username (if you want to change it).
+     * @param email    Email (if you want to change it)
+     * @param password Password (if you want to change it).
+     * @param avatar   Image data for the bot's avatar, {@link Image}
+     * @throws HTTP429Exception
+     */
+    void changeAccountInfo(Optional<String> username, Optional<String> email, Optional<String> password, Optional<Image> avatar) throws HTTP429Exception;
 
     /**
      * Updates the bot's presence.
@@ -196,7 +210,7 @@ public interface IDiscordClient {
      * @deprecated Use {@link Channel#createInvite(int, int, boolean, boolean)}
      */
     @Deprecated
-    IInvite createInvite(int maxAge, int maxUses, boolean temporary, boolean useXkcdPass, String channelID) throws MissingPermissionsException;
+    IInvite createInvite(int maxAge, int maxUses, boolean temporary, boolean useXkcdPass, String channelID) throws MissingPermissionsException, HTTP429Exception;
 
     /**
      * Gets the invite for a code.
@@ -216,15 +230,16 @@ public interface IDiscordClient {
      * @deprecated Use {@link IGuild#createChannel(String)}
      */
     @Deprecated
-    IChannel createChannel(IGuild guild, String name) throws DiscordException, HTTP403Exception, MissingPermissionsException;
+    IChannel createChannel(IGuild guild, String name) throws DiscordException, HTTP403Exception, MissingPermissionsException, HTTP429Exception;
 
     /**
      * Gets the regions available for discord.
      *
      * @return The list of available regions.
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    List<IRegion> getRegions() throws HTTP403Exception;
+    List<IRegion> getRegions() throws HTTP403Exception, HTTP429Exception;
 
     /**
      * Gets the corresponding region for a given id.
@@ -242,8 +257,9 @@ public interface IDiscordClient {
      * @param icon     The icon for the guild.
      * @return The new guild's id.
      * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
-    IGuild createGuild(String name, Optional<String> regionID, Optional<Image> icon) throws HTTP403Exception;
+    IGuild createGuild(String name, Optional<String> regionID, Optional<Image> icon) throws HTTP403Exception, HTTP429Exception;
 
     /**
      * Represents an avatar image.

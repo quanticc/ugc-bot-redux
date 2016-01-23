@@ -15,6 +15,7 @@ import sx.blah.discord.json.generic.RoleResponse;
 import sx.blah.discord.json.requests.GuildMembersRequest;
 import sx.blah.discord.json.responses.*;
 import sx.blah.discord.util.HTTP403Exception;
+import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Requests;
 
 import java.io.IOException;
@@ -53,9 +54,11 @@ public class DiscordUtils {
      * @param client  The discord client to use
      * @param channel The channel to get messages from.
      * @throws IOException
+     * @throws HTTP403Exception
+     * @throws HTTP429Exception
      */
     //TODO: maybe move?
-    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP403Exception {
+    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP403Exception, HTTP429Exception {
         try {
             if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
                 checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
@@ -352,17 +355,19 @@ public class DiscordUtils {
                         roleOverrides.put(overrides.id, channel.getRoleOverrides().get(overrides.id));
                     } else {
                         roleOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllPermissionsForNumber(overrides.allow),
-                            Permissions.getAllPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowPermissionsForNumber(overrides.allow),
+                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
                     }
+                    Discord4J.LOGGER.debug("Role overrides for {}: {} -> {}", channel.getName(), overrides.id, roleOverrides.get(overrides.id));
                 } else if (overrides.type.equalsIgnoreCase("member")) {
                     if (channel.getUserOverrides().containsKey(overrides.id)) {
                         userOverrides.put(overrides.id, channel.getUserOverrides().get(overrides.id));
                     } else {
                         userOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllPermissionsForNumber(overrides.allow),
-                            Permissions.getAllPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowPermissionsForNumber(overrides.allow),
+                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
                     }
+                    Discord4J.LOGGER.debug("User overrides for {}: {} -> {}", channel.getName(), overrides.id, userOverrides.get(overrides.id));
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
                 }
@@ -376,8 +381,8 @@ public class DiscordUtils {
 
             for (PermissionOverwrite overrides : json.permission_overwrites) {
                 IChannel.PermissionOverride override = new IChannel.PermissionOverride(
-                    Permissions.getAllPermissionsForNumber(overrides.allow),
-                    Permissions.getAllPermissionsForNumber(overrides.deny));
+                    Permissions.getAllowPermissionsForNumber(overrides.allow),
+                    Permissions.getDenyPermissionsForNumber(overrides.deny));
                 if (overrides.type.equalsIgnoreCase("role")) {
                     channel.addRoleOverride(overrides.id, override);
                 } else if (overrides.type.equalsIgnoreCase("member")) {
@@ -385,6 +390,7 @@ public class DiscordUtils {
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
                 }
+                Discord4J.LOGGER.debug("Overriding permissions of type {}: {} <-- obtained from allow={} deny={}", overrides.type, override, overrides.allow, overrides.deny);
             }
 
             try {
@@ -456,16 +462,16 @@ public class DiscordUtils {
                         roleOverrides.put(overrides.id, channel.getRoleOverrides().get(overrides.id));
                     } else {
                         roleOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllPermissionsForNumber(overrides.allow),
-                            Permissions.getAllPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowPermissionsForNumber(overrides.allow),
+                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
                     }
                 } else if (overrides.type.equalsIgnoreCase("member")) {
                     if (channel.getUserOverrides().containsKey(overrides.id)) {
                         userOverrides.put(overrides.id, channel.getUserOverrides().get(overrides.id));
                     } else {
                         userOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllPermissionsForNumber(overrides.allow),
-                            Permissions.getAllPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowPermissionsForNumber(overrides.allow),
+                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
                     }
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
@@ -480,8 +486,8 @@ public class DiscordUtils {
 
             for (PermissionOverwrite overrides : json.permission_overwrites) {
                 IChannel.PermissionOverride override = new IChannel.PermissionOverride(
-                    Permissions.getAllPermissionsForNumber(overrides.allow),
-                    Permissions.getAllPermissionsForNumber(overrides.deny));
+                    Permissions.getAllowPermissionsForNumber(overrides.allow),
+                    Permissions.getDenyPermissionsForNumber(overrides.deny));
                 if (overrides.type.equalsIgnoreCase("role")) {
                     channel.addRoleOverride(overrides.id, override);
                 } else if (overrides.type.equalsIgnoreCase("member")) {
@@ -504,26 +510,11 @@ public class DiscordUtils {
      * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
      */
     public static void checkPermissions(IDiscordClient client, IChannel channel, EnumSet<Permissions> required) throws MissingPermissionsException {
-        if (channel instanceof PrivateChannel) {
-            Discord4J.LOGGER.debug("Trying to check permissions of a private channel, skipping check!");
-            return;
+        try {
+            EnumSet<Permissions> contained = channel.getModifiedPermissions(client.getOurUser());
+            checkPermissions(contained, required);
+        } catch (UnsupportedOperationException e) {
         }
-        EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
-        List<IRole> roles = client.getOurUser().getRolesForGuild(channel.getGuild().getID());
-        for (IRole role : roles) {
-            contained.addAll(role.getPermissions());
-            if (channel.getRoleOverrides().containsKey(role.getID())) {
-                IChannel.PermissionOverride override = channel.getRoleOverrides().get(role.getID());
-                contained.addAll(override.allow());
-                contained.removeAll(override.deny());
-            }
-        }
-        if (channel.getUserOverrides().containsKey(client.getOurUser().getID())) {
-            IChannel.PermissionOverride override = channel.getUserOverrides().get(client.getOurUser().getID());
-            contained.addAll(override.allow());
-            contained.removeAll(override.deny());
-        }
-        checkPermissions(contained, required);
     }
 
     /**
@@ -535,12 +526,15 @@ public class DiscordUtils {
      * @throws MissingPermissionsException This is thrown if the permissions required aren't present.
      */
     public static void checkPermissions(IDiscordClient client, IGuild guild, EnumSet<Permissions> required) throws MissingPermissionsException {
-        EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
-        List<IRole> roles = client.getOurUser().getRolesForGuild(guild.getID());
-        for (IRole role : roles) {
-            contained.addAll(role.getPermissions());
+        try {
+            EnumSet<Permissions> contained = EnumSet.noneOf(Permissions.class);
+            List<IRole> roles = client.getOurUser().getRolesForGuild(guild.getID());
+            for (IRole role : roles) {
+                contained.addAll(role.getPermissions());
+            }
+            checkPermissions(contained, required);
+        } catch (UnsupportedOperationException e) {
         }
-        checkPermissions(contained, required);
     }
 
     /**
