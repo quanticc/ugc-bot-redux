@@ -76,7 +76,7 @@ public class DiscordService {
                 log.info("*** Discord bot armed ***");
                 List<IGuild> guildList = client.getGuilds();
                 for (IGuild guild : guildList) {
-                    log.info("{}", DiscordService.toString(guild));
+                    log.info("{}", DiscordService.toString(guild, client.getOurUser()));
                 }
                 for (String inviteCode : leagueProperties.getDiscord().getInvites()) {
                     Invite invite = (Invite) client.getInviteForCode(inviteCode);
@@ -194,7 +194,7 @@ public class DiscordService {
         return result;
     }
 
-    public static String toString(IGuild guild) {
+    public static String toString(IGuild guild, IUser user) {
         String id = guild.getID();
         String name = guild.getName();
         IUser owner = guild.getOwner();
@@ -203,18 +203,20 @@ public class DiscordService {
             + "id='" + id
             + "', name='" + name
             + "', owner='" + toString(owner)
-            + ", channels=[" + channels.stream().map(DiscordService::toString).collect(Collectors.joining(", "))
+            + ", channels=[" + channels.stream().map(c -> toString(c, user)).collect(Collectors.joining(", "))
             + "]]";
     }
 
-    public static String toString(IChannel channel) {
+    public static String toString(IChannel channel, IUser user) {
         String id = channel.getID();
         String name = channel.getName();
         String topic = channel.getTopic();
+        String permissions = channel.getModifiedPermissions(user).toString();
         return "Channel ["
             + "id='" + id
             + "', name='" + name
             + "', topic='" + topic
+            + "', permissions=" + permissions
             + "']";
     }
 
