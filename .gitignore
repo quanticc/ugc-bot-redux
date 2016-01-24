@@ -10,6 +10,7 @@
 users.csv
 users.*.csv
 liquibase.properties
+release.sh
 
 ######################
 # Node
