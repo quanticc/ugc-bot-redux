@@ -18,6 +18,8 @@ import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
@@ -31,6 +33,7 @@ public class ServerQueryService {
     private static final Logger log = LoggerFactory.getLogger(ServerQueryService.class);
     private static final String nonOptDesc = "multiple search by ID, address or groups like chicago, dallas, etc. " +
         "Also support groups like claimed, unclaimed.";
+    private static final ZonedDateTime EPOCH = ZonedDateTime.ofInstant(Instant.ofEpochMilli(0L), ZoneId.systemDefault());
 
     private final GameServerService gameServerService;
     private final CommandService commandService;
@@ -125,7 +128,8 @@ public class ServerQueryService {
                 server = gameServerService.refreshServerStatus(server);
                 String srvId = gameServerService.toShortName(server);
                 String version = "v" + server.getVersion();
-                String claim = formatDuration(Duration.between(ZonedDateTime.now(), server.getExpireDate()));
+                String claim = server.getExpireCheckDate().isEqual(EPOCH) ? "non-claimable" :
+                    formatDuration(Duration.between(ZonedDateTime.now(), server.getExpireDate()));
                 String plyrs = server.getPing() > 0 ? server.getPlayers() + "/" + server.getMaxPlayers() : "**Down?**";
                 String map = server.getMapName();
                 int tvPort = server.getTvPort();
