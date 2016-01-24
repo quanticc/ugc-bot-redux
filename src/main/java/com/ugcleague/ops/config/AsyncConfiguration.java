@@ -33,7 +33,7 @@ public class AsyncConfiguration implements AsyncConfigurer {
         executor.setCorePoolSize(leagueProperties.getAsync().getCorePoolSize());
         executor.setMaxPoolSize(leagueProperties.getAsync().getMaxPoolSize());
         executor.setQueueCapacity(leagueProperties.getAsync().getQueueCapacity());
-        executor.setThreadNamePrefix("ugc-league-ops-Executor-");
+        executor.setThreadNamePrefix("task-executor-");
         return new ExceptionHandlingAsyncTaskExecutor(executor);
     }
 

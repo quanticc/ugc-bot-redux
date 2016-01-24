@@ -5,7 +5,7 @@
 
     <groupId>com.ugcleague.ops</groupId>
     <artifactId>ugc-bot-redux</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <name>ugc-bot-redux</name>
@@ -84,6 +84,7 @@
         <tika-parsers.version>1.11</tika-parsers.version>
         <jodd-core.version>3.6.6</jodd-core.version>
         <discord4j.version>2.1.1</discord4j.version>
+        <jopt-simple.version>4.9</jopt-simple.version>
     </properties>
 
     <dependencyManagement>
@@ -334,15 +335,16 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>uk.org.lidalia</groupId>
-            <artifactId>sysout-over-slf4j</artifactId>
-            <version>${sysout-over-slf4j.version}</version>
+            <groupId>net.sf.jopt-simple</groupId>
+            <artifactId>jopt-simple</artifactId>
+            <version>${jopt-simple.version}</version>
         </dependency>
         <!--<dependency>
             <groupId>sx.blah</groupId>
             <artifactId>Discord4J</artifactId>
             <version>${discord4j.version}</version>
         </dependency>-->
+
     </dependencies>
 
     <build>

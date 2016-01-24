@@ -1,14 +1,13 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.event.DiscordReadyEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
@@ -27,30 +26,25 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class DiscordService {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
 
     private final LeagueProperties leagueProperties;
-    private final ApplicationEventPublisher publisher;
 
     private IDiscordClient client;
-
-    private Instant lastFailedBroadcast = Instant.EPOCH;
+    private Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
 
     @Autowired
-    public DiscordService(LeagueProperties leagueProperties, ApplicationEventPublisher publisher) {
+    public DiscordService(LeagueProperties leagueProperties) {
         this.leagueProperties = leagueProperties;
-        this.publisher = publisher;
     }
 
     @PostConstruct
@@ -58,7 +52,7 @@ public class DiscordService {
         if (leagueProperties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
-                    Thread.sleep(10000); // wait a bit before firing
+                    Thread.sleep(5000); // wait a bit before firing
                     login();
                 } catch (InterruptedException | DiscordException e) {
                     log.warn("Could not autologin discord bot", e);
@@ -91,7 +85,10 @@ public class DiscordService {
                         log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
                     }
                 }
-                publisher.publishEvent(new DiscordReadyEvent(DiscordService.this));
+                // and then register all pending listeners
+                log.debug("Registering {} queued listeners", queuedListeners.size());
+                queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
+                queuedListeners.clear();
             }
         });
         client.getDispatcher().registerListener(new IListener<MessageReceivedEvent>() {
@@ -104,11 +101,8 @@ public class DiscordService {
                         c.getMessages().stream().filter(message -> message.getAuthor().getID()
                             .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
                             try {
-                                // TODO: wrap in retryable
                                 log.debug("Attempting deletion of message {} by \"{}\" ({})", message.getID(), message.getAuthor().getName(), message.getContent());
-                                client.deleteMessage(message.getID(), message.getChannel().getID());
-                            } catch (IOException e) {
-                                log.error("Couldn't delete message {} ({}).", message.getID(), e.getMessage());
+                                tryDelete(message);
                             } catch (MissingPermissionsException e) {
                                 log.warn("No permission to perform action: {}", e.toString());
                             } catch (HTTP429Exception e) {
@@ -121,7 +115,7 @@ public class DiscordService {
                         String s = m.getContent().split(" ", 2)[1];
                         try {
                             // TODO: wrap in retryable
-                            client.changeAccountInfo(s, "", "", IDiscordClient.Image.forUser(client.getOurUser()));
+                            client.changeAccountInfo(Optional.of(s), Optional.empty(), Optional.empty(), Optional.empty());
                             m.reply("is this better?");
                         } catch (IOException e) {
                             log.warn("Could not change name: {}", e.toString());
@@ -147,6 +141,11 @@ public class DiscordService {
                 }
             }
         });
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
+    private void tryDelete(IMessage message) throws MissingPermissionsException, HTTP429Exception {
+        message.delete();
     }
 
     public boolean isMaster(String id) {
@@ -185,7 +184,7 @@ public class DiscordService {
                     trySendMessage(ch, message);
                 } catch (MissingPermissionsException e) {
                     log.warn("No permission to perform action: {}", e.toString());
-                }catch (HTTP429Exception e) {
+                } catch (HTTP429Exception e) {
                     log.warn("Too many requests. Slow down!", e);
                 }
             });
@@ -249,7 +248,12 @@ public class DiscordService {
     }
 
     public void subscribe(IListener<?> listener) {
-        client.getDispatcher().registerListener(listener);
+        if (client != null && client.isReady()) {
+            client.getDispatcher().registerListener(listener);
+        } else {
+            // queue if the client is not ready yet
+            queuedListeners.add(listener);
+        }
     }
 
     public void unsubscribe(IListener<?> listener) {
@@ -267,6 +271,11 @@ public class DiscordService {
         } else {
             throw new DiscordException("Channel '" + channelId + "' does not exists");
         }
+    }
+
+    public MessageBuilder channelMessage(IChannel channel) {
+        Objects.requireNonNull(channel, "Channel must not be null");
+        return message().withChannel(channel);
     }
 
     public MessageBuilder privateMessage(String userId) throws Exception {

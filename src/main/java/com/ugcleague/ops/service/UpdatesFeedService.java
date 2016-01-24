@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,18 +35,16 @@ public class UpdatesFeedService {
     private final SteamCondenserService condenserService;
     private final LeagueProperties leagueProperties;
     private final ApplicationEventPublisher publisher;
-    private final TaskService taskService;
 
     private FeedFetcher feedFetcher;
     private URL url;
 
     @Autowired
     public UpdatesFeedService(SteamCondenserService condenserService, LeagueProperties leagueProperties,
-                              ApplicationEventPublisher publisher, TaskService taskService) {
+                              ApplicationEventPublisher publisher) {
         this.condenserService = condenserService;
         this.leagueProperties = leagueProperties;
         this.publisher = publisher;
-        this.taskService = taskService;
     }
 
     @PostConstruct
@@ -66,20 +64,16 @@ public class UpdatesFeedService {
             log.warn("Feed URL is not valid", e);
         }
         feedFetcher.addFetcherEventListener(new FetcherListenerImpl());
-        //taskService.registerTask("refreshUpdatesFeed", 20000, 600000, this::refreshUpdatesFeed);
     }
 
-    @Scheduled(initialDelay = 20000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 20000, fixedRate = 600000)
+    @Async
     public void refreshUpdatesFeed() {
-        String task = "refreshUpdatesFeed";
         log.debug("==== Retrieving latest updates feed ====");
-        //taskService.scheduleNext(task);
-        if (taskService.isEnabled(task)) {
-            try {
-                feedFetcher.retrieveFeed(url);
-            } catch (IllegalArgumentException | IOException | FeedException | FetcherException e) {
-                log.warn("Could not fetch latest updates feed: {}", e.toString());
-            }
+        try {
+            feedFetcher.retrieveFeed(url);
+        } catch (IllegalArgumentException | IOException | FeedException | FetcherException e) {
+            log.warn("Could not fetch latest updates feed: {}", e.toString());
         }
     }
 

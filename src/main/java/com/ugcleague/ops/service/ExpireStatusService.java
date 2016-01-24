@@ -7,13 +7,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.PostConstruct;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Map;
@@ -30,38 +29,28 @@ public class ExpireStatusService {
     private final ParameterizedTypeReference<Map<String, Integer>> type = new ParameterizedTypeReference<Map<String, Integer>>() {
     };
     private final GameServerRepository gameServerRepository;
-    private final TaskService taskService;
 
     @Autowired
-    public ExpireStatusService(GameServerRepository gameServerRepository, TaskService taskService) {
+    public ExpireStatusService(GameServerRepository gameServerRepository) {
         this.gameServerRepository = gameServerRepository;
-        this.taskService = taskService;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("User-Agent", "Mozilla");
         this.entity = new HttpEntity<>(null, headers);
     }
 
-    @PostConstruct
-    private void configure() {
-        //taskService.registerTask("refreshExpireDates", 50000, 600000, this::refreshExpireDates);
-    }
-
     /**
      * Retrieves the latest result of the GameServers claim page.
      */
-    @Scheduled(initialDelay = 50000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 50000, fixedRate = 600000)
+    @Async
     public void refreshExpireDates() {
-        String task = "refreshExpireDates";
-        //taskService.scheduleNext(task);
         log.debug("==== Refreshing expire dates of ALL servers ====");
-        if (taskService.isEnabled(task)) {
-            ZonedDateTime now = ZonedDateTime.now();
-            Map<String, Integer> map = getExpireSeconds();
-            long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
-                .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
-            log.info("{} expire dates refreshed", count);
-        }
+        ZonedDateTime now = ZonedDateTime.now();
+        Map<String, Integer> map = getExpireSeconds();
+        long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
+            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
+        log.info("{} expire dates refreshed", count);
     }
 
     private GameServer refreshExpireDate(GameServer server, ZonedDateTime now, Integer seconds) {

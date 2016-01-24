@@ -10,6 +10,7 @@ public class DateUtil {
 
     private static final LinkedHashMap<Long, Function<Duration, String>> past = new LinkedHashMap<>();
     private static final LinkedHashMap<Long, Function<Duration, String>> future = new LinkedHashMap<>();
+    private static final LinkedHashMap<Long, Function<Duration, String>> present = new LinkedHashMap<>();
 
     static {
         long minute = 60;
@@ -46,6 +47,20 @@ public class DateUtil {
         future.put(year, d -> d.toDays() / 30 + " months from now");
         future.put(year * 2, d -> "a year from now");
         future.put(Long.MAX_VALUE, d -> d.toDays() / 365 + " years from now");
+        present.put(2L, d -> "second");
+        present.put(minute, d -> d.get(ChronoUnit.SECONDS) + " seconds");
+        present.put(minute * 2, d -> "minute");
+        present.put(hour, d -> d.toMinutes() + " minutes");
+        present.put(hour * 2, d -> "hour");
+        present.put(day, d -> d.toHours() + " hours");
+        present.put(day * 2, d -> "day");
+        present.put(week, d -> d.toDays() + " days");
+        present.put(week * 2, d -> "week");
+        present.put(month, d -> d.toDays() / 7 + " weeks");
+        present.put(month * 2, d -> "month");
+        present.put(year, d -> d.toDays() / 30 + " months");
+        present.put(year * 2, d -> "year");
+        present.put(Long.MAX_VALUE, d -> d.toDays() / 365 + " years");
     }
 
     public static String formatRelative(Duration duration) {
@@ -53,6 +68,18 @@ public class DateUtil {
         long seconds = abs.getSeconds();
         Map<Long, Function<Duration, String>> map = duration.isNegative() ? past : future;
         return map.entrySet().stream()
+            .filter(e -> seconds < e.getKey())
+            .map(e -> e.getValue().apply(abs))
+            .findFirst().get();
+    }
+
+    public static String formatAbsolute(Duration duration) {
+        Duration abs = duration.abs();
+        long seconds = abs.getSeconds();
+        if (seconds == 0) {
+            return abs.toMillis() + " ms";
+        }
+        return present.entrySet().stream()
             .filter(e -> seconds < e.getKey())
             .map(e -> e.getValue().apply(abs))
             .findFirst().get();

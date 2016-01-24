@@ -3,14 +3,12 @@ package com.ugcleague.ops.service.discord;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.Publisher;
 import com.ugcleague.ops.domain.Subscriber;
-import com.ugcleague.ops.event.DiscordReadyEvent;
 import com.ugcleague.ops.repository.PublisherRepository;
 import com.ugcleague.ops.repository.SubscriberRepository;
 import com.ugcleague.ops.service.DiscordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.handle.IListener;
@@ -19,6 +17,7 @@ import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
+import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -49,8 +48,8 @@ public class SupportPingService {
         this.support = properties.getDiscord().getSupport();
     }
 
-    @EventListener
-    private void onReady(DiscordReadyEvent event) {
+    @PostConstruct
+    private void configure() {
         discordService.subscribe(new IListener<MessageReceivedEvent>() {
 
             @Override

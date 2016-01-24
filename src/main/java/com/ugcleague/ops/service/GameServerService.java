@@ -3,21 +3,20 @@ package com.ugcleague.ops.service;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.event.GameServerDeathEvent;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
 import com.ugcleague.ops.repository.FlagRepository;
 import com.ugcleague.ops.repository.GameServerRepository;
-import com.ugcleague.ops.service.util.SourceServer;
-import com.ugcleague.ops.service.util.UpdateResult;
-import com.ugcleague.ops.service.util.UpdateResultMap;
+import com.ugcleague.ops.service.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.remoting.RemoteAccessException;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +25,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,20 +43,19 @@ public class GameServerService {
     private final GameServerRepository gameServerRepository;
     private final FlagRepository flagRepository;
     private final ApplicationEventPublisher publisher;
-    private final TaskService taskService;
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
+    private final DeadServerMap deadServerMap = new DeadServerMap();
 
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
                              AdminPanelService adminPanelService, FlagRepository flagRepository,
-                             ApplicationEventPublisher publisher, TaskService taskService) {
+                             ApplicationEventPublisher publisher) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
         this.flagRepository = flagRepository;
         this.publisher = publisher;
-        this.taskService = taskService;
     }
 
     @PostConstruct
@@ -64,8 +63,6 @@ public class GameServerService {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
         }
-        //taskService.registerTask("refreshRconPasswords", 60000, 600000, this::refreshRconPasswords);
-        //taskService.registerTask("updateGameServers", 30000, 150000, this::updateGameServers);
     }
 
     public void refreshServerDetails() {
@@ -100,19 +97,15 @@ public class GameServerService {
         return server;
     }
 
-    @Scheduled(initialDelay = 60000, fixedRate = 600000)
+    //@Scheduled(initialDelay = 60000, fixedRate = 600000)
+    @Async
     public void refreshRconPasswords() {
-        String task = "refreshRconPasswords";
-        // TODO: switch to a better logic since this task depends on expire status refresh
         log.debug("==== Refreshing RCON server passwords ====");
-        //taskService.scheduleNext(task);
-        if (taskService.isEnabled(task)) {
-            ZonedDateTime now = ZonedDateTime.now();
-            // refreshing passwords of expired servers since they auto restart and change password
-            long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
-                .map(gameServerRepository::save).count();
-            log.info("{} servers updated their RCON passwords", count);
-        }
+        ZonedDateTime now = ZonedDateTime.now();
+        // refreshing passwords of expired servers since they auto restart and change password
+        long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
+            .map(gameServerRepository::save).count();
+        log.info("{} servers updated their RCON passwords", count);
     }
 
     /**
@@ -138,25 +131,18 @@ public class GameServerService {
         return server;
     }
 
-    @Scheduled(initialDelay = 30000, fixedRate = 150000)
+    //@Scheduled(initialDelay = 30000, fixedRate = 150000)
+    @Async
     public void updateGameServers() {
-        String task = "refreshRconPasswords";
         log.debug("==== Refreshing server status ====");
-        //taskService.scheduleNext(task);
-        long refreshed = -1;
-        long updating = -1;
         int latestVersion = steamCondenserService.getLatestVersion();
-        if (taskService.isEnabled(task)) {
-            ZonedDateTime now = ZonedDateTime.now();
-            refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
-                .map(gameServerRepository::save).count();
-            updating = gameServerRepository
-                .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
-                .map(this::performGameUpdate).map(gameServerRepository::save).count();
-        }
-        if (updating < 0) {
-            log.debug("Update checks skipped");
-        } else if (updating == 0) {
+        ZonedDateTime now = ZonedDateTime.now();
+        long refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
+            .map(gameServerRepository::save).count();
+        long updating = gameServerRepository
+            .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
+            .map(this::performGameUpdate).map(gameServerRepository::save).count();
+        if (updating == 0) {
             log.debug("All servers up-to-date");
             if (!updateResultMap.isEmpty()) {
                 // all servers are up to date, report and then clear the progress map
@@ -171,11 +157,7 @@ public class GameServerService {
                 publisher.publishEvent(new GameUpdateDelayedEvent(updateResultMap).causedBy(failed));
             }
         }
-        if (refreshed < 0) {
-            log.debug("Status refresh skipped");
-        } else {
-            log.debug("{} servers had their status refreshed", refreshed);
-        }
+        log.debug("{} servers had their status refreshed", refreshed);
     }
 
     public GameServer refreshServerStatus(GameServer server) {
@@ -195,9 +177,27 @@ public class GameServerService {
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
                 Optional.ofNullable(info.get("mapName")).map(Object::toString).ifPresent(server::setMapName);
                 server.setTvPort(Optional.ofNullable(info.get("tvPort")).map(this::safeParse).orElse(0));
+                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().set(0);
+            } else {
+                int failedPings = deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
+                if (failedPings >= 10) {
+                    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
+                }
             }
         }
         return server;
+    }
+
+    public Map<String, Object> refreshServerStatus(SourceServer source) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        int ping = steamCondenserService.ping(source);
+        map.put("ping", ping);
+        if (ping >= 0) {
+            map.put("players", steamCondenserService.players(source));
+            Map<String, Object> info = steamCondenserService.info(source);
+            map.putAll(info); // "maxPlayers", "gameVersion", "mapName", "tvPort"
+        }
+        return map;
     }
 
     private Integer safeParse(Object value) {
@@ -237,8 +237,11 @@ public class GameServerService {
             result.getAttempts().incrementAndGet();
         } else {
             try {
-                adminPanelService.upgrade(server.getSubId());
-                server.setLastGameUpdate(ZonedDateTime.now());
+                if (adminPanelService.upgrade(server.getSubId())) {
+                    // save status so it's signalled as "dead server" during restart
+                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+                    server.setLastGameUpdate(ZonedDateTime.now());
+                }
             } catch (IOException e) {
                 log.warn("Could not perform game update: {}", e.toString());
             }
@@ -311,8 +314,51 @@ public class GameServerService {
     public List<GameServer> findServers(String k) {
         String key = k.trim().toLowerCase();
         return gameServerRepository.findAll().stream()
-            .filter(s -> containsName(s, key) || isShortName(s, key) || hasAddressLike(s, key))
+            .filter(s -> isClaimedCase(s, key) || isUnclaimedCase(s, key)
+                || containsName(s, key) || isShortName(s, key) || hasAddressLike(s, key))
             .collect(Collectors.toList());
+    }
+
+    public List<GameServer> findServersMultiple(List<String> input) {
+        List<String> keys = input.stream().map(k -> k.trim().toLowerCase()).collect(Collectors.toList());
+        return gameServerRepository.findAll().stream()
+            .filter(s -> isClaimedCase(s, keys) || isUnclaimedCase(s, keys)
+                || containsName(s, keys) || isShortName(s, keys) || hasAddressLike(s, keys))
+            .collect(Collectors.toList());
+    }
+
+    private boolean isUnclaimedCase(GameServer s, List<String> keys) {
+        ZonedDateTime now = ZonedDateTime.now();
+        return keys.stream().anyMatch(k -> k.equals("unclaimed"))
+            && now.isAfter(s.getExpireDate());
+    }
+
+    private boolean isClaimedCase(GameServer s, List<String> keys) {
+        ZonedDateTime now = ZonedDateTime.now();
+        return keys.stream().anyMatch(k -> k.equals("claimed"))
+            && now.isBefore(s.getExpireDate());
+    }
+
+    private boolean isUnclaimedCase(GameServer s, String key) {
+        ZonedDateTime now = ZonedDateTime.now();
+        return key.equals("unclaimed") && now.isAfter(s.getExpireDate());
+    }
+
+    private boolean isClaimedCase(GameServer s, String key) {
+        ZonedDateTime now = ZonedDateTime.now();
+        return key.equals("claimed") && now.isBefore(s.getExpireDate());
+    }
+
+    private boolean containsName(GameServer server, List<String> keys) {
+        return keys.stream().anyMatch(k -> containsName(server, k));
+    }
+
+    private boolean isShortName(GameServer server, List<String> keys) {
+        return keys.stream().anyMatch(k -> isShortName(server, k));
+    }
+
+    private boolean hasAddressLike(GameServer server, List<String> keys) {
+        return keys.stream().anyMatch(k -> hasAddressLike(server, k));
     }
 
     private boolean containsName(GameServer server, String key) {
@@ -323,12 +369,12 @@ public class GameServerService {
         return key.equals(toShortName(server));
     }
 
-    public String toShortName(GameServer server) {
-        return server.getName().trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
-    }
-
     private boolean hasAddressLike(GameServer server, String key) {
         return server.getAddress().startsWith(key);
+    }
+
+    public String toShortName(GameServer server) {
+        return server.getName().trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
     }
 
     public List<GameServer> findAll() {
@@ -337,6 +383,29 @@ public class GameServerService {
 
     public List<GameServer> findAllEagerly() {
         return gameServerRepository.findAllWithEagerRelationships();
+    }
+
+    public int attemptRestart(GameServer server) {
+        server = refreshServerStatus(server);
+        int players = server.getPlayers();
+        if (players > 0) {
+            log.info("Not restarting server due to players present: {}", players);
+            return server.getPlayers();
+        } else {
+            try {
+                boolean success = adminPanelService.restart(server.getSubId());
+                if (success) {
+                    // save status so it's signalled as "dead server" during restart
+                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+                    return 0;
+                } else {
+                    return -1;
+                }
+            } catch (IOException e) {
+                log.warn("Could not restart server: {}", e.toString());
+                return -5;
+            }
+        }
     }
 
 }
