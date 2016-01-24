@@ -1,4 +1,4 @@
-package com.ugcleague.ops.service;
+package com.ugcleague.ops.service.discord;
 
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
@@ -8,6 +8,7 @@ import com.ugcleague.ops.domain.Subscriber;
 import com.ugcleague.ops.event.*;
 import com.ugcleague.ops.repository.PublisherRepository;
 import com.ugcleague.ops.repository.SubscriberRepository;
+import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.util.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

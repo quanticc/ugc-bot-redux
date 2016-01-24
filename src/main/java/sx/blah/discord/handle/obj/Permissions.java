@@ -21,7 +21,7 @@ public enum Permissions {
     BAN(2),
     /**
      * Allows the user to manage roles.
-     * NOTE: This supersedes any other permissions if true.
+     * NOTE: This supercedes any other permissions if true.
      */
     MANAGE_ROLES(3),
     /**
@@ -83,7 +83,7 @@ public enum Permissions {
     /**
      * Allows the user to globally mute users in a voice channel.
      */
-    VOICE_MUTE_MEMBERS(22),
+    VOICE_MUTE_MEMEBERS(22),
     /**
      * Allows the user to globally deafen users in a voice channel.
      */
@@ -100,7 +100,7 @@ public enum Permissions {
     /**
      * The bit offset in the permissions number
      */
-    public final int offset;
+    public int offset;
 
     Permissions(int offset) {
         this.offset = offset;
@@ -110,20 +110,50 @@ public enum Permissions {
      * Checks whether a provided "permissions number" contains this permission.
      *
      * @param permissionsNumber The raw permissions number.
-     * @param allow <code>true</code> to allow some permissions to supersede all others, <code>false</code> otherwise
-     * @return <code>true</code> if the user has this permission, <code>false</code> if otherwise.
+     * @param checkManageRoles  Set to true in order to have the MANAGE_ROLES permission supersede the provided permissions.
+     * @return True if the user has this permission, false if otherwise.
      */
-    public boolean hasPermission(int permissionsNumber, boolean allow) {
-        // simplify into a one-liner?
-        return (1 << offset & permissionsNumber) > 0
-            || allow && !this.equals(MANAGE_ROLES) && MANAGE_ROLES.hasPermission(permissionsNumber, true);
+    public boolean hasPermission(int permissionsNumber, boolean checkManageRoles) {
+        if ((1 << offset & permissionsNumber) > 0)
+            return true;
+        else if (!this.equals(MANAGE_ROLES) && checkManageRoles)
+            return MANAGE_ROLES.hasPermission(permissionsNumber);
+        return false;
     }
 
-    private static EnumSet<Permissions> getAllPermissionsForNumber(int permissionsNumber, boolean allow) {
+    /**
+     * Checks whether a provided "permissions number" contains this permission. Same as calling #hasPermission(number, true).
+     *
+     * @param permissionsNumber The raw permissions number.
+     * @return True if the user has this permission, false if otherwise.
+     */
+    public boolean hasPermission(int permissionsNumber) {
+        return hasPermission(permissionsNumber, true);
+    }
+
+    /**
+     * Generates a set of permissions represented by the given raw permissions number.
+     *
+     * @param permissionsNumber The raw permissions number.
+     * @return The set of permissions represented by the number.
+     * @deprecated See {@link #getAllowedPermissionsForNumber(int)} or {@link #getDeniedPermissionsForNumber(int)}.
+     */
+    @Deprecated
+    public static EnumSet<Permissions> getAllPermissionsForNumber(int permissionsNumber) {
+        return getAllowedPermissionsForNumber(permissionsNumber);
+    }
+
+    /**
+     * Generates a set of allowed permissions represented by the given raw permissions number.
+     *
+     * @param permissionsNumber The raw permissions number.
+     * @return The set of permissions represented by the number.
+     */
+    public static EnumSet<Permissions> getAllowedPermissionsForNumber(int permissionsNumber) {
         EnumSet<Permissions> permissionsSet = EnumSet.noneOf(Permissions.class);
 
         for (Permissions permission : EnumSet.allOf(Permissions.class)) {
-            if (permission.hasPermission(permissionsNumber, allow))
+            if (permission.hasPermission(permissionsNumber))
                 permissionsSet.add(permission);
         }
 
@@ -131,23 +161,20 @@ public enum Permissions {
     }
 
     /**
-     * Generates a set of allowed Permissions represented by the given raw permissions number.
+     * Generates a set of denied permissions represented by the given raw permissions number.
      *
      * @param permissionsNumber The raw permissions number.
-     * @return The set of permissions allowed by the number.
+     * @return The set of permissions represented by the number.
      */
-    public static EnumSet<Permissions> getAllowPermissionsForNumber(int permissionsNumber) {
-        return getAllPermissionsForNumber(permissionsNumber, true);
-    }
+    public static EnumSet<Permissions> getDeniedPermissionsForNumber(int permissionsNumber) {
+        EnumSet<Permissions> permissionsSet = EnumSet.noneOf(Permissions.class);
 
-    /**
-     * Generates a set of denied Permissions represented by the given raw permissions number.
-     *
-     * @param permissionsNumber The raw permissions number.
-     * @return The set of permissions denied by the number.
-     */
-    public static EnumSet<Permissions> getDenyPermissionsForNumber(int permissionsNumber) {
-        return getAllPermissionsForNumber(permissionsNumber, false);
+        for (Permissions permission : EnumSet.allOf(Permissions.class)) {
+            if (permission.hasPermission(permissionsNumber, false))
+                permissionsSet.add(permission);
+        }
+
+        return permissionsSet;
     }
 
     /**

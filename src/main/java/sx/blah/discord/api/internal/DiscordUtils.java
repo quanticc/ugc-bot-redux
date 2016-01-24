@@ -14,7 +14,6 @@ import sx.blah.discord.json.generic.PermissionOverwrite;
 import sx.blah.discord.json.generic.RoleResponse;
 import sx.blah.discord.json.requests.GuildMembersRequest;
 import sx.blah.discord.json.responses.*;
-import sx.blah.discord.util.HTTP403Exception;
 import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Requests;
 
@@ -54,11 +53,10 @@ public class DiscordUtils {
      * @param client  The discord client to use
      * @param channel The channel to get messages from.
      * @throws IOException
-     * @throws HTTP403Exception
      * @throws HTTP429Exception
      */
     //TODO: maybe move?
-    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP403Exception, HTTP429Exception {
+    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP429Exception {
         try {
             if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
                 checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
@@ -86,15 +84,6 @@ public class DiscordUtils {
             return LocalDateTime.now();
         }
         return LocalDateTime.parse(time.split("\\+")[0]).atZone(ZoneId.of("UTC+00:00")).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
-    }
-
-    /**
-     * Returns a user from raw JSON data.
-     */
-    public static IUser getUserFromJSON(IDiscordClient client, String user) {
-        UserResponse response = GSON.fromJson(user, UserResponse.class);
-
-        return getUserFromJSON(client, response);
     }
 
     /**
@@ -296,8 +285,6 @@ public class DiscordUtils {
             channel = new PrivateChannel(client, recipient, id);
             try {
                 DiscordUtils.getChannelMessages(client, channel);
-            } catch (HTTP403Exception e) {
-                Discord4J.LOGGER.error("No permission for the private channel for \"{}\". Are you logged in properly?", channel.getRecipient().getName());
             } catch (Exception e) {
                 Discord4J.LOGGER.error("Unable to get messages for the private channel for \"{}\" (Cause: {}).", channel.getRecipient().getName(), e.getClass().getSimpleName());
                 e.printStackTrace();
@@ -355,19 +342,17 @@ public class DiscordUtils {
                         roleOverrides.put(overrides.id, channel.getRoleOverrides().get(overrides.id));
                     } else {
                         roleOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllowPermissionsForNumber(overrides.allow),
-                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                            Permissions.getDeniedPermissionsForNumber(overrides.deny)));
                     }
-                    Discord4J.LOGGER.debug("Role overrides for {}: {} -> {}", channel.getName(), overrides.id, roleOverrides.get(overrides.id));
                 } else if (overrides.type.equalsIgnoreCase("member")) {
                     if (channel.getUserOverrides().containsKey(overrides.id)) {
                         userOverrides.put(overrides.id, channel.getUserOverrides().get(overrides.id));
                     } else {
                         userOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllowPermissionsForNumber(overrides.allow),
-                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                            Permissions.getDeniedPermissionsForNumber(overrides.deny)));
                     }
-                    Discord4J.LOGGER.debug("User overrides for {}: {} -> {}", channel.getName(), overrides.id, userOverrides.get(overrides.id));
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
                 }
@@ -381,8 +366,8 @@ public class DiscordUtils {
 
             for (PermissionOverwrite overrides : json.permission_overwrites) {
                 IChannel.PermissionOverride override = new IChannel.PermissionOverride(
-                    Permissions.getAllowPermissionsForNumber(overrides.allow),
-                    Permissions.getDenyPermissionsForNumber(overrides.deny));
+                    Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                    Permissions.getDeniedPermissionsForNumber(overrides.deny));
                 if (overrides.type.equalsIgnoreCase("role")) {
                     channel.addRoleOverride(overrides.id, override);
                 } else if (overrides.type.equalsIgnoreCase("member")) {
@@ -390,13 +375,10 @@ public class DiscordUtils {
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
                 }
-                Discord4J.LOGGER.debug("Overriding permissions of type {}: {} <-- obtained from allow={} deny={}", overrides.type, override, overrides.allow, overrides.deny);
             }
 
             try {
                 DiscordUtils.getChannelMessages(client, channel);
-            } catch (HTTP403Exception e) {
-                Discord4J.LOGGER.error("No permission for channel \"{}\" in guild \"{}\". Are you logged in properly?", json.name, guild.getName());
             } catch (Exception e) {
                 Discord4J.LOGGER.error("Unable to get messages for channel \"{}\" in guild \"{}\" (Cause: {}).", json.name, guild.getName(), e.getClass().getSimpleName());
                 e.printStackTrace();
@@ -462,16 +444,16 @@ public class DiscordUtils {
                         roleOverrides.put(overrides.id, channel.getRoleOverrides().get(overrides.id));
                     } else {
                         roleOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllowPermissionsForNumber(overrides.allow),
-                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                            Permissions.getDeniedPermissionsForNumber(overrides.deny)));
                     }
                 } else if (overrides.type.equalsIgnoreCase("member")) {
                     if (channel.getUserOverrides().containsKey(overrides.id)) {
                         userOverrides.put(overrides.id, channel.getUserOverrides().get(overrides.id));
                     } else {
                         userOverrides.put(overrides.id, new IChannel.PermissionOverride(
-                            Permissions.getAllowPermissionsForNumber(overrides.allow),
-                            Permissions.getDenyPermissionsForNumber(overrides.deny)));
+                            Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                            Permissions.getDeniedPermissionsForNumber(overrides.deny)));
                     }
                 } else {
                     Discord4J.LOGGER.warn("Unknown permissions overwrite type \"{}\"!", overrides.type);
@@ -486,8 +468,8 @@ public class DiscordUtils {
 
             for (PermissionOverwrite overrides : json.permission_overwrites) {
                 IChannel.PermissionOverride override = new IChannel.PermissionOverride(
-                    Permissions.getAllowPermissionsForNumber(overrides.allow),
-                    Permissions.getDenyPermissionsForNumber(overrides.deny));
+                    Permissions.getAllowedPermissionsForNumber(overrides.allow),
+                    Permissions.getDeniedPermissionsForNumber(overrides.deny));
                 if (overrides.type.equalsIgnoreCase("role")) {
                     channel.addRoleOverride(overrides.id, override);
                 } else if (overrides.type.equalsIgnoreCase("member")) {

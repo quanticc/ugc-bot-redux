@@ -1,4 +1,4 @@
-package com.ugcleague.ops.service;
+package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.Publisher;
@@ -6,6 +6,7 @@ import com.ugcleague.ops.domain.Subscriber;
 import com.ugcleague.ops.event.DiscordReadyEvent;
 import com.ugcleague.ops.repository.PublisherRepository;
 import com.ugcleague.ops.repository.SubscriberRepository;
+import com.ugcleague.ops.service.DiscordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

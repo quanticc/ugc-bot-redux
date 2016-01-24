@@ -10,7 +10,6 @@ import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.Permissions;
 import sx.blah.discord.json.generic.RoleResponse;
 import sx.blah.discord.json.requests.RoleEditRequest;
-import sx.blah.discord.util.HTTP403Exception;
 import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Requests;
 
@@ -63,7 +62,7 @@ public class Role implements IRole {
 
     public Role(int position, int permissions, String name, boolean managed, String id, boolean hoist, int color, IGuild guild) {
         this.position = position;
-        this.permissions = Permissions.getAllowPermissionsForNumber(permissions);
+        this.permissions = Permissions.getAllPermissionsForNumber(permissions);
         this.name = name;
         this.managed = managed;
         this.id = id;
@@ -97,7 +96,7 @@ public class Role implements IRole {
      * @param permissions The permissions number.
      */
     public void setPermissions(int permissions) {
-        this.permissions = Permissions.getAllowPermissionsForNumber(permissions);
+        this.permissions = Permissions.getAllPermissionsForNumber(permissions);
     }
 
     @Override
@@ -158,7 +157,7 @@ public class Role implements IRole {
     }
 
     @Override
-    public void edit(Optional<Color> color, Optional<Boolean> hoist, Optional<String> name, Optional<EnumSet<Permissions>> permissions) throws HTTP403Exception, MissingPermissionsException, HTTP429Exception {
+    public void edit(Optional<Color> color, Optional<Boolean> hoist, Optional<String> name, Optional<EnumSet<Permissions>> permissions) throws MissingPermissionsException, HTTP429Exception {
         DiscordUtils.checkPermissions(((Guild) guild).client, guild, EnumSet.of(Permissions.MANAGE_ROLES));
 
         try {
@@ -174,7 +173,7 @@ public class Role implements IRole {
     }
 
     @Override
-    public void delete() throws HTTP403Exception, MissingPermissionsException, HTTP429Exception {
+    public void delete() throws MissingPermissionsException, HTTP429Exception {
         DiscordUtils.checkPermissions(((Guild) guild).client, guild, EnumSet.of(Permissions.MANAGE_ROLES));
 
         Requests.DELETE.makeRequest(DiscordEndpoints.SERVERS + guild.getID() + "/roles/" + id,
