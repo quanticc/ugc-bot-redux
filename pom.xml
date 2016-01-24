@@ -5,7 +5,7 @@
 
     <groupId>com.ugcleague.ops</groupId>
     <artifactId>ugc-bot-redux</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>ugc-bot-redux</name>
@@ -17,6 +17,34 @@
         <version>1.3.1.RELEASE</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
+
+    <issueManagement>
+        <url>https://github.com/iabarca/ugc-bot-redux/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License (GPL), Version 3</name>
+            <url>http://www.gnu.org/licenses/gpl-3.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/iabarca/ugc-bot-redux</url>
+        <connection>scm:git:git://github.com/iabarca/ugc-bot-redux.git</connection>
+        <developerConnection>scm:git:git@github.com:iabarca/ugc-bot-redux.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <email>ivan.abarca@usach.cl</email>
+            <name>Ivan Abarca</name>
+            <url>https://github.com/iabarca</url>
+            <id>iabarca</id>
+        </developer>
+    </developers>
 
     <repositories>
         <repository>
@@ -394,6 +422,28 @@
                     <arguments>
                         <argument>--spring.profiles.active=dev</argument>
                     </arguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <verbose>true</verbose>
+                    <dateFormat>yyyy-MM-dd'T'HH:mm:ssZ</dateFormat>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties
+                    </generateGitPropertiesFilename>
                 </configuration>
             </plugin>
         </plugins>

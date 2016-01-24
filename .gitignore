@@ -4,6 +4,7 @@
 /src/main/webapp/dist
 /application*.yml
 /sync-repository/**
+/log/**
 /logs/**
 /feed/**
 users.csv
@@ -62,12 +63,6 @@ local.properties
 *.orig
 
 ######################
-# Maven
-######################
-/log/**
-/target/**
-
-######################
 # Gradle
 ######################
 .gradle/**
@@ -123,6 +118,15 @@ Desktop.ini
 !gradle/wrapper/gradle-wrapper.jar
 
 ######################
-# Maven Wrapper
+# Maven
 ######################
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
 !.mvn/wrapper/maven-wrapper.jar
