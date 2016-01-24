@@ -52,11 +52,13 @@ public class CommandService {
             public void handle(MessageReceivedEvent event) {
                 IMessage m = event.getMessage();
                 String content = m.getContent();
-                String args = content.contains(" ") ? content.split(" ", 2)[1] : null;
                 Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
                 if (match.isPresent()) {
                     Command command = match.get();
                     if (canExecute(m.getAuthor(), command)) {
+                        // cut away the "command" portion of the message
+                        String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
+                        args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
                         try {
                             log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
                                 command.getKey(), args);
@@ -79,7 +81,6 @@ public class CommandService {
                     } else {
                         log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
                             command.getKey(), command.getPermissionLevel());
-                        answerPrivately(m, ":no_entry: You're not allowed to use that command");
                     }
                 }
             }
