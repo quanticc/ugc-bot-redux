@@ -180,7 +180,7 @@ public class ServerQueryService {
             if (server != null && rcon != null) {
                 message.append("**Connect info**\n").append("steam://connect/")
                     .append(server.getAddress()).append("/").append(formatNullEmpty(server.getSvPassword()))
-                    .append("\n").append("`rcon_password ").append(rcon).append("`\n");
+                    .append("\n\n").append("`rcon_password ").append(rcon).append("`\n");
             }
             return message.toString();
         }
