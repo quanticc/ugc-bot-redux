@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -196,4 +197,19 @@ public class ServerFileService {
         return (bytes[0] == (byte) 0x56 && bytes[1] == (byte) 0x42 && bytes[2] == (byte) 0x53 && bytes[3] == (byte) 0x50);
     }
 
+    public List<ServerFile> findAll() {
+        return serverFileRepository.findAll();
+    }
+
+    public List<ServerFile> findByName(String name) {
+        return serverFileRepository.findByNameLike(name);
+    }
+
+    public Optional<ServerFile> findOne(Long id) {
+        return Optional.ofNullable(serverFileRepository.findOne(id));
+    }
+
+    public ServerFile save(ServerFile file) {
+        return serverFileRepository.save(file);
+    }
 }

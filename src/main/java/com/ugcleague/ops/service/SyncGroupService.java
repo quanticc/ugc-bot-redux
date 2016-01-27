@@ -3,6 +3,7 @@ package com.ugcleague.ops.service;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.GameServer;
 import com.ugcleague.ops.domain.SyncGroup;
+import com.ugcleague.ops.domain.enumeration.FileGroupType;
 import com.ugcleague.ops.repository.SyncGroupRepository;
 import com.ugcleague.ops.service.util.FtpClient;
 import org.slf4j.Logger;
@@ -72,4 +73,22 @@ public class SyncGroupService {
         return Optional.of(ftpClient);
     }
 
+    public Optional<SyncGroup> findByLocalDir(String name) {
+        return syncGroupRepository.findByLocalDir(name);
+    }
+
+    public SyncGroup getDefaultGroup() {
+        return syncGroupRepository.findByLocalDir("tf").orElseGet(() -> {
+            SyncGroup group = new SyncGroup();
+            group.setLocalDir("tf");
+            group.setRemoteDir("/orangebox/tf");
+            group.setKind(FileGroupType.GENERAL);
+            syncGroupRepository.save(group);
+            return group;
+        });
+    }
+
+    public SyncGroup save(SyncGroup group) {
+        return syncGroupRepository.save(group);
+    }
 }
