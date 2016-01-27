@@ -64,7 +64,7 @@ public class TaskService {
         nameSpec = parser.acceptsAll(asList("n", "name"), "name of the task").requiredUnless(listSpec)
             .withRequiredArg().describedAs("taskName");
         enableSpec = parser.acceptsAll(asList("e", "enable"), "enable or disable the task").withOptionalArg()
-            .ofType(Boolean.class).defaultsTo(true).describedAs("true|false");
+            .ofType(Boolean.class).defaultsTo(true);
         rateSpec = parser.acceptsAll(asList("r", "rate"), "fixed rate to set").requiredUnless(listSpec, enableSpec)
             .withRequiredArg().ofType(Long.class).describedAs("ms");
         commandService.register(CommandBuilder.startsWith(".task")

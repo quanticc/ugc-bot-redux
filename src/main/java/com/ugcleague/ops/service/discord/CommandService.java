@@ -1,13 +1,8 @@
 package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordService;
-import com.ugcleague.ops.service.discord.command.Command;
-import com.ugcleague.ops.service.discord.command.CommandBuilder;
-import com.ugcleague.ops.service.discord.command.CommandPermission;
-import joptsimple.BuiltinHelpFormatter;
-import joptsimple.OptionException;
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
+import com.ugcleague.ops.service.discord.command.*;
+import joptsimple.*;
 import org.apache.mina.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +16,11 @@ import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +32,9 @@ public class CommandService {
 
     private final DiscordService discordService;
     private final Set<Command> commandList = new ConcurrentHashSet<>();
+    private final Gatekeeper gatekeeper = new Gatekeeper();
+
+    private OptionSpec<String> helpNonOptionSpec;
 
     @Autowired
     public CommandService(DiscordService discordService) {
@@ -44,7 +45,8 @@ public class CommandService {
     private void configure() {
         OptionParser parser = new OptionParser();
         parser.posixlyCorrect(true);
-        commandList.add(CommandBuilder.equalsTo(".help").description("Show this help")
+        helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
+        commandList.add(CommandBuilder.combined(".help").description("Show this help")
             .command(this::showCommandList).permission(0).parser(parser).build());
         discordService.subscribe(new IListener<MessageReceivedEvent>() {
 
@@ -59,24 +61,38 @@ public class CommandService {
                         // cut away the "command" portion of the message
                         String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
                         args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
-                        try {
-                            log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
-                                command.getKey(), args);
-                            String response = command.execute(m, args);
-                            if (response != null && !response.isEmpty()) {
-                                if (command.getPermissionLevel() == 0) {
-                                    // level 0 commands are output to the public
-                                    answer(m, response);
-                                } else {
-                                    answerPrivately(m, response);
-                                }
+                        // add gatekeeper logic
+                        if (command.isQueued()) {
+                            CommandJob job = new CommandJob(command, m, args);
+                            String key = m.getAuthor().getID();
+                            if (gatekeeper.getQueuedJobCount(key) > 0) {
+                                answerPrivately(m, "**[Gatekeeper]** Please wait until your previous command finishes.");
                             } else {
-                                // if the response is null, print the help
+                                answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
+                                CompletableFuture<String> future = gatekeeper.queue(key, job);
+                                future.thenAccept(response -> answerPrivately(m, response));
+                            }
+                            // [Gatekeeper] Your command was queued and will begin shortly.
+                        } else {
+                            try {
+                                log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
+                                    command.getKey(), args);
+                                String response = command.execute(m, args);
+                                if (response != null && !response.isEmpty()) {
+                                    if (command.getPermissionLevel() == 0) {
+                                        // level 0 commands are output to the public
+                                        answer(m, response);
+                                    } else {
+                                        answerPrivately(m, response);
+                                    }
+                                } else {
+                                    // if the response is null, print the help
+                                    printHelp(m, command);
+                                }
+                            } catch (OptionException e) {
+                                log.warn("Invalid call: {}", e.toString());
                                 printHelp(m, command);
                             }
-                        } catch (OptionException e) {
-                            log.warn("Invalid call: {}", e.toString());
-                            printHelp(m, command);
                         }
                     } else {
                         log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
@@ -106,14 +122,46 @@ public class CommandService {
     }
 
     private String showCommandList(IMessage m, OptionSet o) {
-        return "*Available Commands*\n" + commandList.stream()
-            .filter(c -> canExecute(m.getAuthor(), c))
-            .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
-            .collect(Collectors.joining("\n"));
+        List<String> nonOptions = o.valuesOf(helpNonOptionSpec);
+        if (nonOptions.isEmpty()) {
+            return "*Available Commands*\n" + commandList.stream()
+                .filter(c -> canExecute(m.getAuthor(), c))
+                .sorted(Comparator.naturalOrder())
+                .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
+                .collect(Collectors.joining("\n"));
+        } else {
+            List<Command> requested = commandList.stream()
+                .filter(c -> isRequested(nonOptions, c.getKey().substring(1)))
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.toList());
+            StringBuilder builder = new StringBuilder();
+            for (Command command : requested) {
+                appendHelp(builder, command);
+            }
+            return builder.toString();
+        }
+    }
+
+    private boolean isRequested(List<String> nonOptions, String substring) {
+        return nonOptions.contains(substring);
     }
 
     public String padRight(String s, int n) {
         return String.format("%1$-" + n + "s", s);
+    }
+
+    public StringBuilder appendHelp(StringBuilder b, Command c) {
+        try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
+            c.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
+            c.getParser().printHelpOn(stream);
+            b.append("• Help for **")
+                .append(c.getKey()).append("**: ").append(c.getDescription()).append("\n")
+                .append(new String(stream.toByteArray(), "UTF-8")).append("\n");
+        } catch (Exception e) {
+            b.append("Could not show help for **").append(c.getKey().substring(1)).append("**\n");
+            log.warn("Could not show help: {}", e.toString());
+        }
+        return b;
     }
 
     /**
@@ -124,11 +172,11 @@ public class CommandService {
      */
     public void printHelp(IMessage m, Command c) {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-            c.getParser().formatHelpWith(new BuiltinHelpFormatter(80, 2));
+            c.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
             c.getParser().printHelpOn(stream);
-            discordService.privateMessage(m.getAuthor()).appendContent("Help for **")
-                .appendContent(c.getKey()).appendContent("**\n```\n")
-                .appendContent(new String(stream.toByteArray(), "UTF-8")).appendContent("\n```").send();
+            discordService.privateMessage(m.getAuthor()).appendContent("• Help for **")
+                .appendContent(c.getKey()).appendContent("**: ").appendContent(c.getDescription()).appendContent("\n")
+                .appendContent(new String(stream.toByteArray(), "UTF-8")).send();
         } catch (Exception e) {
             log.warn("Could not show help: {}", e.toString());
         }
@@ -144,10 +192,8 @@ public class CommandService {
 
     public void answer(IMessage message, String answer) {
         if (answer.length() > LENGTH_LIMIT) {
-            for (int i = 0; i < answer.length() / LENGTH_LIMIT; i++) {
-                int end = Math.min(answer.length(), (i + 1) * LENGTH_LIMIT);
-                answer(message, answer.substring(i * LENGTH_LIMIT, end));
-            }
+            SplitMessage s = new SplitMessage(answer);
+            s.split(LENGTH_LIMIT).forEach(str -> answer(message, str));
         } else {
             discordService.channelMessage(message.getChannel()).appendContent(answer).send();
         }
@@ -155,10 +201,8 @@ public class CommandService {
 
     public void answerPrivately(IMessage message, String answer) {
         if (answer.length() > LENGTH_LIMIT) {
-            for (int i = 0; i < answer.length() / LENGTH_LIMIT; i++) {
-                int end = Math.min(answer.length(), (i + 1) * LENGTH_LIMIT);
-                answerPrivately(message, answer.substring(i * LENGTH_LIMIT, end));
-            }
+            SplitMessage s = new SplitMessage(answer);
+            s.split(LENGTH_LIMIT).forEach(str -> answerPrivately(message, str));
         } else {
             try {
                 discordService.privateMessage(message.getAuthor()).appendContent(answer).send();

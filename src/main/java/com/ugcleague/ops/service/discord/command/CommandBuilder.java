@@ -18,12 +18,18 @@ public class CommandBuilder {
         return builder.key(key).matchType(MatchType.EQUALS);
     }
 
+    public static CommandBuilder combined(String key) {
+        CommandBuilder builder = new CommandBuilder();
+        return builder.key(key).matchType(MatchType.COMBINED);
+    }
+
     private MatchType matchType = MatchType.STARTS_WITH;
     private String key;
     private String description = "";
     private OptionParser parser = new OptionParser();
     private BiFunction<IMessage, OptionSet, String> command = (m, o) -> null;
     private int permissionLevel = CommandPermission.MASTER.getLevel(); // by default
+    private boolean queued = false;
 
     private CommandBuilder() {
 
@@ -70,7 +76,12 @@ public class CommandBuilder {
         return this;
     }
 
+    public CommandBuilder queued() {
+        this.queued = true;
+        return this;
+    }
+
     public Command build() {
-        return new Command(matchType, key, description, parser, command, permissionLevel);
+        return new Command(matchType, key, description, parser, command, permissionLevel, queued);
     }
 }

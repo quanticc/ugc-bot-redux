@@ -66,23 +66,23 @@ public class AnnouncerService {
     }
 
     private void initStartAnnounceCommand() {
-        // +announce (non-option: publishers)
+        // .announce start (non-option: publishers)
         OptionParser parser = new OptionParser();
         parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         startNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        commandService.register(CommandBuilder.startsWith("+announce")
+        commandService.register(CommandBuilder.startsWith(".announce start")
             .description("Enables multi-purpose announcements to this channel").permission("support")
             .parser(parser).command(this::executeStartAnnounceCommand).build());
     }
 
     private void initStopAnnounceCommand() {
-        // -announce (non-option: publishers)
+        // .announce stop (non-option: publishers)
         OptionParser parser = new OptionParser();
         parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         stopNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        commandService.register(CommandBuilder.startsWith("-announce")
+        commandService.register(CommandBuilder.startsWith(".announce stop")
             .description("Disables an already subscribed announcer from this channel").permission("support")
             .parser(parser).command(this::executeStopAnnounceCommand).build());
     }

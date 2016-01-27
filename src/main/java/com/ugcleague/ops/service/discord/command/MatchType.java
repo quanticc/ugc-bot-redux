@@ -1,5 +1,5 @@
 package com.ugcleague.ops.service.discord.command;
 
 public enum MatchType {
-    EQUALS, STARTS_WITH;
+    EQUALS, STARTS_WITH, COMBINED;
 }

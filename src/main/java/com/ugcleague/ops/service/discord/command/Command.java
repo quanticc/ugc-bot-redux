@@ -8,7 +8,7 @@ import sx.blah.discord.handle.obj.IMessage;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-public class Command {
+public class Command implements Comparable<Command> {
 
     private MatchType matchType;
     private String key;
@@ -16,8 +16,10 @@ public class Command {
     private OptionParser parser;
     private BiFunction<IMessage, OptionSet, String> command;
     private int permissionLevel;
+    private boolean queued;
 
-    public Command(MatchType matchType, String key, String description, OptionParser parser, BiFunction<IMessage, OptionSet, String> command, int permissionLevel) {
+    public Command(MatchType matchType, String key, String description, OptionParser parser,
+                   BiFunction<IMessage, OptionSet, String> command, int permissionLevel, boolean queued) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
@@ -30,6 +32,7 @@ public class Command {
         this.parser = parser;
         this.command = command;
         this.permissionLevel = permissionLevel;
+        this.queued = queued;
     }
 
     public MatchType getMatchType() {
@@ -80,8 +83,18 @@ public class Command {
         this.permissionLevel = permissionLevel;
     }
 
+    public boolean isQueued() {
+        return queued;
+    }
+
+    public void setQueued(boolean queued) {
+        this.queued = queued;
+    }
+
     public boolean matches(String message) {
         switch (matchType) {
+            case COMBINED:
+                return message.startsWith(key + " ") || message.equals(key);
             case STARTS_WITH:
                 return message.startsWith(key + " ");
             case EQUALS:
@@ -91,7 +104,11 @@ public class Command {
     }
 
     public String execute(IMessage message, String args) throws OptionException {
-        return command.apply(message, args != null ? parser.parse(args.split(" ")) : parser.parse());
+        if (parser.recognizedOptions().isEmpty()) {
+            return command.apply(message, null);
+        } else {
+            return command.apply(message, args != null ? parser.parse(args.split(" ")) : parser.parse());
+        }
     }
 
     @Override
@@ -116,6 +133,12 @@ public class Command {
             //", parser=" + parser +
             //", command=" + command +
             ", permissionLevel='" + permissionLevel + '\'' +
+            ", queued=" + queued +
             '}';
+    }
+
+    @Override
+    public int compareTo(Command o) {
+        return key.compareTo(o.key);
     }
 }
