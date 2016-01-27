@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.net.*;
 import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
@@ -77,9 +78,9 @@ public class ConsoleService {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ipCheckUrl.openStream()))) {
             String ip = reader.readLine();
             restartListener();
-            gameServerService.rcon(server, "logaddress_add " + ip + ":" + listenPort);
-            gameServerService.rcon(server, "logaddress_del " + ip + ":" + listenPort);
-            gameServerService.rcon(server, "logaddress_add " + ip + ":" + listenPort);
+            gameServerService.rcon(server, Optional.empty(), "logaddress_add " + ip + ":" + listenPort);
+            gameServerService.rcon(server, Optional.empty(), "logaddress_del " + ip + ":" + listenPort);
+            gameServerService.rcon(server, Optional.empty(), "logaddress_add " + ip + ":" + listenPort);
             eventPublisher.publishEvent(new ConsoleAttachedEvent(server));
         } catch (IOException e) {
             log.warn("Could not read from IP check service: {}", e.toString());
@@ -161,7 +162,7 @@ public class ConsoleService {
         URL ipCheckUrl = new URL("http://checkip.amazonaws.com");
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ipCheckUrl.openStream()))) {
             String ip = reader.readLine();
-            gameServerService.rcon(server, "logaddress_del " + ip + ":" + listenPort);
+            gameServerService.rcon(server, Optional.empty(), "logaddress_del " + ip + ":" + listenPort);
             eventPublisher.publishEvent(new ConsoleDetachedEvent(server));
         } catch (IOException e) {
             log.warn("Could not read from IP check service: {}", e.toString());

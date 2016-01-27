@@ -25,14 +25,15 @@ import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.util.DateUtil.formatElapsed;
 import static java.util.Arrays.asList;
 
 @Service
 public class ServerQueryService {
 
     private static final Logger log = LoggerFactory.getLogger(ServerQueryService.class);
-    private static final String nonOptDesc = "multiple search by ID, address or groups like chicago, dallas, etc. " +
-        "Also support groups like claimed, unclaimed.";
+    private static final String nonOptDesc = "multiple search by ID (chi1, dal5, mia3), address (68.115.23.245:27015) or" +
+        " region groups (chicago, dallas, amsterdam). Also supports GS groups like claimed, unclaimed.";
     private static final ZonedDateTime EPOCH = ZonedDateTime.ofInstant(Instant.ofEpochMilli(0L), ZoneId.systemDefault());
 
     private final GameServerService gameServerService;
@@ -42,6 +43,9 @@ public class ServerQueryService {
     private OptionSpec<String> connectNonOptionSpec;
     private OptionSpec<String> statusNonOptionSpec;
     private OptionSpec<String> restartNonOptionSpec;
+    private OptionSpec<String> rconNonOptionSpec;
+    private OptionSpec<String> rconCommandSpec;
+    private OptionSpec<String> rconPasswordSpec;
 
     @Autowired
     public ServerQueryService(GameServerService gameServerService, CommandService commandService) {
@@ -54,6 +58,7 @@ public class ServerQueryService {
         initConnectCommand();
         initStatusCommand();
         initRestartCommand();
+        initRconCommand();
     }
 
     private void initConnectCommand() {
@@ -79,8 +84,9 @@ public class ServerQueryService {
                 message.append("Servers matching **").append(nonOptions.stream().collect(Collectors.joining(", "))).append("**\n");
                 for (GameServer server : servers) {
                     String rconPassword = server.getRconPassword();
-                    message.append("**").append(server.getName()).append("**: steam://connect/")
-                        .append(server.getAddress()).append("/").append(formatNullEmpty(server.getSvPassword()));
+                    message.append("**").append(server.getName()).append("**: `")
+                        .append(formatConnectString(server.getAddress(), server.getSvPassword())).append("` or ")
+                        .append(formatSteamConnect(server.getAddress(), server.getSvPassword()));
                     if (rcon && rconPassword != null) {
                         message.append(" with `rcon_password ").append(rconPassword).append("`\n");
                     } else {
@@ -144,7 +150,7 @@ public class ServerQueryService {
                 String mapName = (String) map.getOrDefault("mapName", "?");
                 String tvPort = map.getOrDefault("tvPort", "?").toString();
                 String line = String.format("**%s**\t%s\t%s @ %s\t%s\n",
-                    server.getHostNames().get(0), map.getOrDefault("gameVersion", "vUnknown"),
+                    server.toString(), map.getOrDefault("gameVersion", "vUnknown"),
                     plyrs, mapName, tvPort.equals("?") ? "" : " with SourceTV at port " + tvPort);
                 message.append(line);
             }
@@ -178,9 +184,9 @@ public class ServerQueryService {
                 }
             }
             if (server != null && rcon != null) {
-                message.append("**Connect info**\n").append("steam://connect/")
-                    .append(server.getAddress()).append("/").append(formatNullEmpty(server.getSvPassword()))
-                    .append("\n\n").append("`rcon_password ").append(rcon).append("`\n");
+                message.append("**Connect info**\n`").append(formatConnectString(server.getAddress(), server.getSvPassword()))
+                    .append("` or ").append(formatSteamConnect(server.getAddress(), server.getSvPassword()))
+                    .append("\n`rcon_password ").append(rcon).append("`\n");
             }
             return message.toString();
         }
@@ -190,14 +196,28 @@ public class ServerQueryService {
     private String formatPlayer(SteamPlayer p) {
         if (p.isExtended()) {
             return "#" + p.getRealId() + " **\"" + p.getName() + "\"** " + p.getSteamId() +
-                ", IP: " + p.getIpAddress() + ", Time: " + formatHoursMinutes(p.getConnectTime());
+                " connected from " + p.getIpAddress() + " for " + formatElapsed(p.getConnectTime());
         } else {
-            return "#" + p.getId() + " **\"" + p.getName() + "\"**, Time: " + formatHoursMinutes(p.getConnectTime());
+            return "#" + p.getId() + " **\"" + p.getName() + "\"** connected for " + formatElapsed(p.getConnectTime());
         }
     }
 
-    private String formatNullEmpty(String str) {
-        return str == null ? "" : str.trim();
+    private String formatConnectString(String address, String password) {
+        address = address.trim();
+        String s = "connect " + address;
+        if (password != null && !password.trim().isEmpty()) {
+            s += ";password " + password;
+        }
+        return s;
+    }
+
+    private String formatSteamConnect(String address, String password) {
+        address = address.trim();
+        String s = "steam://connect/" + address + "/";
+        if (password != null && !password.trim().isEmpty()) {
+            s += password + "/";
+        }
+        return s;
     }
 
     private String padRight(String s, int n) {
@@ -209,15 +229,7 @@ public class ServerQueryService {
     }
 
     private String formatDuration(Duration duration) {
-        return (duration.isNegative() ? "claim expired " : "claim expires ") + DateUtil.formatRelative(duration);
-    }
-
-    private String formatHoursMinutes(float seconds) {
-        long totalSeconds = (long) seconds;
-        return String.format(
-            "%02d:%02d",
-            totalSeconds / 3600,
-            (totalSeconds % 3600) / 60);
+        return (duration.isNegative() ? "available since " : "claim expires ") + DateUtil.formatRelative(duration);
     }
 
     private void initRestartCommand() {
@@ -251,6 +263,78 @@ public class ServerQueryService {
                 }
             } else {
                 message.append("No servers meet the criteria");
+            }
+            return message.toString();
+        }
+        return null;
+    }
+
+    private void initRconCommand() {
+        // .rcon -c <command> [-p <password>] (non-option: search key)
+        OptionParser parser = new OptionParser();
+        parser.posixlyCorrect(true);
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        rconNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
+        rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
+        rconPasswordSpec = parser.acceptsAll(asList("p", "password"), "RCON password").withRequiredArg();
+        commandService.register(CommandBuilder.startsWith(".rcon")
+            .description("Send a command to a game server using RCON").permission("support")
+            .parser(parser).command(this::executeRconCommand).build());
+    }
+
+    private String executeRconCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(rconNonOptionSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            String command = o.valueOf(rconCommandSpec);
+            Set<GameServer> matched = new LinkedHashSet<>();
+            List<SourceServer> otherServers = new ArrayList<>();
+            List<GameServer> found = gameServerService.findServersMultiple(nonOptions);
+            if (found.size() > 0) {
+                matched.addAll(found);
+            } else {
+                for (String key : nonOptions) {
+                    SourceServer socket = gameServerService.getSourceServer(key);
+                    if (socket != null) {
+                        otherServers.add(socket);
+                    }
+                }
+            }
+            StringBuilder message = new StringBuilder();
+            for (GameServer server : matched) {
+                String password = o.has(rconPasswordSpec) ? o.valueOf(rconPasswordSpec) : server.getRconPassword();
+                try {
+                    message.append("**").append(gameServerService.toShortName(server)).append("**:");
+                    String result = gameServerService.rcon(server, Optional.of(password), command);
+                    if (command.trim().replace("\"", "").equals("status")) {
+                        message.append("```\n").append(result).append("\n```\n");
+                    } else {
+                        message.append(result).append("\n");
+                    }
+                } catch (TimeoutException e) {
+                    message.append("Server is not responding");
+                } catch (SteamCondenserException e) {
+                    message.append("Error: ").append(e.getMessage());
+                }
+            }
+            for (SourceServer server : otherServers) {
+                if (o.has(rconPasswordSpec)) {
+                    try {
+                        String password = o.valueOf(rconPasswordSpec);
+                        message.append("**").append(server.toString()).append("**:");
+                        String result = gameServerService.rcon(server, password, command);
+                        if (command.trim().replace("\"", "").equals("status")) {
+                            message.append("```\n").append(result).append("\n```\n");
+                        } else {
+                            message.append(result).append("\n");
+                        }
+                    } catch (TimeoutException e) {
+                        message.append("Server is not responding");
+                    } catch (SteamCondenserException e) {
+                        message.append("Error: ").append(e.getMessage());
+                    }
+                } else {
+                    log.info("Ignoring 'rcon {}' to server {} since no password was given", command, server.toString());
+                }
             }
             return message.toString();
         }

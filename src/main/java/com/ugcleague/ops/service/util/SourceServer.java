@@ -22,9 +22,13 @@ public class SourceServer extends com.github.koraktor.steamcondenser.steam.serve
         super(address);
     }
 
+    public String getConnectAddress() {
+        return this.ipAddress + ":" + this.port;
+    }
+
     @Override
     public String toString() {
-        return this.ipAddress + ":" + this.port;
+        return getConnectAddress();
     }
 
 }

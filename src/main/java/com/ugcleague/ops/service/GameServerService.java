@@ -109,7 +109,7 @@ public class GameServerService {
     }
 
     /**
-     * Crawl through of the remote server panel looking for the rcon_password of the given <code>server</code>.
+     * Crawl through the remote server panel looking for the rcon_password of the given <code>server</code>.
      *
      * @param server a GameServer
      * @return the updated GameServer, or <code>null</code> if the updated rcon_password could not be retrieved
@@ -225,7 +225,7 @@ public class GameServerService {
                 server.getPlayers());
             if (result.getLastRconAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
                 try {
-                    rcon(server, "Game update on hold until all players leave the server");
+                    rcon(server, Optional.empty(), "Game update on hold until all players leave the server");
                     result.getLastRconAnnounce().set(Instant.now());
                 } catch (SteamCondenserException | TimeoutException ignored) {
                 }
@@ -256,35 +256,62 @@ public class GameServerService {
 
     private String nonThrowingRcon(GameServer server, String command) {
         try {
-            return rcon(server, command);
+            return rcon(server, Optional.empty(), command);
         } catch (RemoteAccessException | SteamCondenserException | TimeoutException e) {
             log.warn("Could not execute RCON command", e);
         }
         return null;
     }
 
-    public String rcon(GameServer server, String command)
-        throws RemoteAccessException, SteamCondenserException, TimeoutException {
+    public String rcon(GameServer server, Optional<String> password, String command) throws TimeoutException, SteamCondenserException {
         // strip "rcon " if exists
+        final String cmd = cleanCommand(command);
+        // get the socket
+        SourceServer source = getSourceServer(server);
+        // 1. try with given password
+        // 2. if failed, try with cached pasword
+        // 3. if failed, get from web panel
+        return password.map(pw -> wrappedRcon(source, pw, cmd))
+            .orElseGet(() -> Optional.ofNullable(wrappedRcon(source, server.getRconPassword(), cmd))
+                .orElseGet(() -> Optional.ofNullable(wrappedRcon(source, refreshPasswordAndGet(server), cmd))
+                    .orElse("Could not execute command")));
+    }
+
+    public String rcon(SourceServer source, String password, String command) throws TimeoutException, SteamCondenserException {
+        // strip "rcon " if exists
+        final String cmd = cleanCommand(command);
+        // get the socket
+        return Optional.ofNullable(wrappedRcon(source, password, cmd))
+            .orElse("Could not execute command");
+    }
+
+    private String refreshPasswordAndGet(GameServer server) {
+        refreshRconPassword(server);
+        return server.getRconPassword();
+    }
+
+    private String wrappedRcon(SourceServer source, String password, String command) {
+        try {
+            return steamCondenserService.rcon(source, password, command);
+        } catch (RemoteAccessException | SteamCondenserException | TimeoutException e) {
+            return null;
+        }
+    }
+
+    private String cleanCommand(String command) {
         String prefix = "rcon ";
         if (command.startsWith(prefix)) {
             command = command.substring(prefix.length());
         }
-        if (command.isEmpty()) {
-            throw new IllegalArgumentException("Not a valid command");
-        }
-        SourceServer source = getSourceServer(server);
-        try {
-            return steamCondenserService.rcon(source, server.getRconPassword(), command);
-        } catch (RemoteAccessException e) {
-            // retrieve the latest rcon_password and retry
-            refreshRconPassword(server);
-            return steamCondenserService.rcon(source, server.getRconPassword(), command);
-        }
+        return command;
     }
 
     public SourceServer getSourceServer(GameServer server) {
         return steamCondenserService.getSourceServer(server.getAddress());
+    }
+
+    public SourceServer getSourceServer(String address) {
+        return steamCondenserService.getSourceServer(address);
     }
 
     public Map<String, String> getFTPConnectInfo(GameServer server) {
@@ -407,5 +434,4 @@ public class GameServerService {
             }
         }
     }
-
 }
