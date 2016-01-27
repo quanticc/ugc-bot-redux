@@ -48,6 +48,7 @@ public class CommandService {
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
         commandList.add(CommandBuilder.combined(".help").description("Show this help")
             .command(this::showCommandList).permission(0).parser(parser).build());
+        log.info("{} commands registered: {}", commandList.size(), commandList.toString());
         discordService.subscribe(new IListener<MessageReceivedEvent>() {
 
             @Override
@@ -78,17 +79,18 @@ public class CommandService {
                                 log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
                                     command.getKey(), args);
                                 String response = command.execute(m, args);
-                                if (response != null && !response.isEmpty()) {
+                                if (response == null) {
+                                    // if the response is null, print the help
+                                    printHelp(m, command);
+                                } else if (!response.isEmpty()) {
                                     if (command.getPermissionLevel() == 0) {
                                         // level 0 commands are output to the public
                                         answer(m, response);
                                     } else {
                                         answerPrivately(m, response);
                                     }
-                                } else {
-                                    // if the response is null, print the help
-                                    printHelp(m, command);
                                 }
+                                // ignore empty responses (no action)
                             } catch (OptionException e) {
                                 log.warn("Invalid call: {}", e.toString());
                                 printHelp(m, command);

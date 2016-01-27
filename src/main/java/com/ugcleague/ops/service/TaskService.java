@@ -58,7 +58,6 @@ public class TaskService {
     private void configure() {
         // .task -n <name> -r <rate> -e <true|false>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         listSpec = parser.acceptsAll(asList("l", "list"), "list registered tasks");
         helpSpec = parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         nameSpec = parser.acceptsAll(asList("n", "name"), "name of the task").requiredUnless(listSpec)
