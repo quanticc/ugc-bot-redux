@@ -168,7 +168,7 @@ public class SupportPingService {
     private Subscriber newSubscriber(IUser user) {
         Subscriber subscriber = new Subscriber();
         subscriber.setUserId(user.getID());
-        subscriber.setName("user:" + user.getName());
+        subscriber.setName(user.getName());
         return subscriber;
     }
 }
