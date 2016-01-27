@@ -2,9 +2,11 @@ package com.ugcleague.ops.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class DateUtil {
 
@@ -83,6 +85,36 @@ public class DateUtil {
             .filter(e -> seconds < e.getKey())
             .map(e -> e.getValue().apply(abs))
             .findFirst().get();
+    }
+
+    public static String formatHuman(Duration duration) {
+        Duration abs = duration.abs();
+        long totalSeconds = abs.getSeconds();
+        if (totalSeconds == 0) {
+            return abs.toMillis() + " milliseconds";
+        }
+        long d = totalSeconds / (3600 * 24);
+        long h = (totalSeconds % (3600 * 24)) / 3600;
+        long m = (totalSeconds % 3600) / 60;
+        long s = totalSeconds % 60;
+        String days = inflect(d, "day");
+        String hours = inflect(h, "hour");
+        String minutes = inflect(m, "minute");
+        String seconds = inflect(s, "second");
+        return Arrays.asList(days, hours, minutes, seconds).stream().collect(Collectors.joining(", "));
+    }
+
+    private static String inflect(long value, String singular) {
+        return (value == 1 ? "1 " + singular : (value > 1 ? value + " " + singular + "s" : ""));
+    }
+
+    public static String formatElapsed(double seconds) {
+        long totalSeconds = (long) seconds;
+        return String.format(
+            "%d:%02d:%02d",
+            totalSeconds / 3600,
+            (totalSeconds % 3600) / 60,
+            totalSeconds % 60);
     }
 
     private DateUtil() {

@@ -298,4 +298,8 @@ public class DiscordService {
         return roleSet.stream()
             .anyMatch(r -> support.getRoles().contains(r.getName().toLowerCase()));
     }
+
+    public IUser getMasterUser() {
+        return client.getUserByID(leagueProperties.getDiscord().getMasters().get(0));
+    }
 }
