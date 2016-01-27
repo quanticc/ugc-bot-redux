@@ -101,7 +101,8 @@ public class DateUtil {
         String hours = inflect(h, "hour");
         String minutes = inflect(m, "minute");
         String seconds = inflect(s, "second");
-        return Arrays.asList(days, hours, minutes, seconds).stream().collect(Collectors.joining(", "));
+        return Arrays.asList(days, hours, minutes, seconds).stream()
+            .filter(str -> !str.isEmpty()).collect(Collectors.joining(", "));
     }
 
     private static String inflect(long value, String singular) {
