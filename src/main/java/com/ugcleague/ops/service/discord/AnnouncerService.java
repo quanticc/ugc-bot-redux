@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
@@ -40,7 +41,6 @@ public class AnnouncerService {
     private static final Logger log = LoggerFactory.getLogger(AnnouncerService.class);
     private static final String nonOptDesc = "announcement publishers: updates, issues";
     private static final String SUPPORT = "support";
-    private static final String CHANNEL = "channel";
 
     private final DiscordService discordService;
     private final PublisherRepository publisherRepository;
@@ -119,16 +119,10 @@ public class AnnouncerService {
         String key = announcer.trim();
         if (!key.isEmpty() && !key.equals(SUPPORT)) {
             Publisher publisher = publisherRepository.findByName(key).orElseGet(() -> newPublisher(key));
-            Subscriber subscriber;
-            if (channel.isPrivate()) {
-                subscriber = subscriberRepository.findByUserId(author.getID())
-                    .orElseGet(() -> newUserSubscriber(author));
-            } else {
-                subscriber = subscriberRepository.findByUserIdAndName(channel.getID(), CHANNEL)
-                    .orElseGet(() -> newChannelSubscriber(channel));
-            }
+            Subscriber subscriber = subscriberRepository.findByUserId(channel.getID())
+                .orElseGet(() -> newChannelSubscriber(channel));
             Set<Subscriber> subs = publisher.getSubscribers();
-            if (subs.stream().anyMatch(s -> s.getUserId().equals(channel.getID()) && s.getName().equals(CHANNEL))) {
+            if (subs.stream().anyMatch(s -> s.getUserId().equals(channel.getID()))) {
                 return "That channel is already receiving announcements about **" + announcer + "**";
             } else {
                 subs.add(subscriber);
@@ -156,7 +150,7 @@ public class AnnouncerService {
     private String unsubscribeAnnouncer(IUser author, String announcer, IChannel channel) {
         String key = announcer.trim();
         if (!key.isEmpty() && !key.equals(SUPPORT)) {
-            Optional<Subscriber> o = subscriberRepository.findByUserIdAndName(channel.getID(), CHANNEL);
+            Optional<Subscriber> o = subscriberRepository.findByUserId(channel.getID());
             if (o.isPresent()) {
                 Subscriber sub = o.get();
                 Publisher publisher = publisherRepository.findByName(key).orElseGet(() -> newPublisher(key));
@@ -192,14 +186,7 @@ public class AnnouncerService {
     private Subscriber newChannelSubscriber(IChannel channel) {
         Subscriber subscriber = new Subscriber();
         subscriber.setUserId(channel.getID());
-        subscriber.setName(CHANNEL);
-        return subscriber;
-    }
-
-    private Subscriber newUserSubscriber(IUser user) {
-        Subscriber subscriber = new Subscriber();
-        subscriber.setUserId(user.getID());
-        subscriber.setName("user:" + user.getName());
+        subscriber.setName(channel.getName());
         return subscriber;
     }
 
@@ -245,7 +232,7 @@ public class AnnouncerService {
                 e.getKey().getName(), e.getKey().getAddress(),
                 DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
             .collect(Collectors.joining("\n"));
-        announce("issues", "Game Server Status:\n" + list);
+        announce("issues", "*Game Server Status*\n" + list);
     }
 
     private void announce(String publisherName, String message) {
@@ -253,15 +240,22 @@ public class AnnouncerService {
             Set<Subscriber> subs = pub.getSubscribers();
             subs.stream().forEach(sub -> {
                 try {
-                    if (sub.getName().equals(CHANNEL)) {
-                        discordService.channelMessage(sub.getUserId())
-                            .appendContent("<" + publisherName + "> ")
-                            .appendContent(message).send();
-                    } else {
-                        discordService.privateMessage(sub.getUserId())
-                            .appendContent("<" + publisherName + "> ")
-                            .appendContent(message).send();
-                    }
+                    IDiscordClient client = discordService.getClient();
+                    IChannel channel = Optional.ofNullable(client.getChannelByID(sub.getUserId()))
+                        .orElseGet(() -> Optional.ofNullable(client.getUserByID(sub.getUserId()))
+                            .map(user -> {
+                                try {
+                                    return client.getOrCreatePMChannel(user);
+                                } catch (Exception e) {
+                                    log.warn("Could not create PM channel with user {}: {}", user.getID(), e.toString());
+                                }
+                                return null;
+                            }).orElse(null));
+                    log.debug("Making an announcement from {} to {}", publisherName,
+                        (channel.isPrivate() ? sub.getName() : channel.getName()));
+                    discordService.channelMessage(channel)
+                        .appendContent("<" + publisherName + "> ")
+                        .appendContent(message).send();
                 } catch (Exception e) {
                     log.warn("Could not send message to '{}': {}", publisherName, e.toString());
                 }

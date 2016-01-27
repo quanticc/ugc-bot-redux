@@ -48,7 +48,6 @@ public class CommandService {
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
         commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
             .command(this::showCommandList).permission(0).parser(parser).build());
-        log.info("{} commands registered: {}", commandList.size(), commandList.toString());
         discordService.subscribe(new IListener<MessageReceivedEvent>() {
 
             @Override
@@ -185,10 +184,12 @@ public class CommandService {
     }
 
     public void register(Command command) {
+        log.info("Registering command: {}", command);
         commandList.add(command);
     }
 
     public void unregister(Command command) {
+        log.info("Removing command: {}", command);
         commandList.remove(command);
     }
 
