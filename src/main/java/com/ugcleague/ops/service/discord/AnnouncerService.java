@@ -28,6 +28,7 @@ import sx.blah.discord.util.MessageBuilder;
 import javax.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,6 +50,8 @@ public class AnnouncerService {
 
     private OptionSpec<String> startNonOptionSpec;
     private OptionSpec<String> stopNonOptionSpec;
+    private OptionSpec<String> testNonOptionSpec;
+    private OptionSpec<String> testMessageSpec;
 
     @Autowired
     public AnnouncerService(DiscordService discordService, PublisherRepository publisherRepository,
@@ -63,6 +66,19 @@ public class AnnouncerService {
     private void configure() {
         initStartAnnounceCommand();
         initStopAnnounceCommand();
+        initTestAnnounceCommand();
+    }
+
+    private void initTestAnnounceCommand() {
+        // .announce test -m "message" (non-option: publishers)
+        OptionParser parser = new OptionParser();
+        parser.posixlyCorrect(true);
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        testNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
+        testMessageSpec = parser.acceptsAll(asList("m", "message"), "message to publish").withRequiredArg();
+        commandService.register(CommandBuilder.startsWith(".announce test")
+            .description("Sends a test announcement").permission("master")
+            .parser(parser).command(this::executeTestAnnounceCommand).build());
     }
 
     private void initStartAnnounceCommand() {
@@ -85,6 +101,18 @@ public class AnnouncerService {
         commandService.register(CommandBuilder.startsWith(".announce stop")
             .description("Disables an already subscribed announcer from this channel").permission("support")
             .parser(parser).command(this::executeStopAnnounceCommand).build());
+    }
+
+    private String executeTestAnnounceCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(testNonOptionSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            String message = Optional.ofNullable(o.valueOf(testMessageSpec)).orElse("Test message");
+            for (String announcer : nonOptions) {
+                announce(announcer, message);
+            }
+            return "";
+        }
+        return null;
     }
 
     private String executeStartAnnounceCommand(IMessage m, OptionSet o) {
