@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class GameServerService {
 
     private static final Logger log = LoggerFactory.getLogger(GameServerService.class);
+    private static final String INSECURE_FLAG = "insecure";
 
     private final AdminPanelService adminPanelService;
     private final SteamCondenserService steamCondenserService;
@@ -325,12 +326,21 @@ public class GameServerService {
     }
 
     public boolean isSecure(GameServer server) {
-        return flagRepository.findByName("insecure").map(f -> server.getFlags().contains(f)).orElse(false);
+        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
+        return flagRepository.findByName(INSECURE_FLAG).map(f -> s.getFlags().contains(f)).orElse(false);
     }
 
-    public void addInsecureFlag(GameServer server) {
-        server.getFlags().add(flagRepository.findByName("insecure").orElseGet(this::createInsecureFlag));
-        gameServerRepository.save(server);
+    public GameServer addInsecureFlag(GameServer server) {
+        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
+        s.getFlags().add(flagRepository.findByName(INSECURE_FLAG).orElseGet(this::createInsecureFlag));
+        return gameServerRepository.save(server);
+    }
+
+    public GameServer removeInsecureFlag(GameServer server) {
+        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
+        Flag insecure = flagRepository.findByName(INSECURE_FLAG).orElseGet(this::createInsecureFlag);
+        s.getFlags().remove(insecure);
+        return gameServerRepository.save(server);
     }
 
     private Flag createInsecureFlag() {

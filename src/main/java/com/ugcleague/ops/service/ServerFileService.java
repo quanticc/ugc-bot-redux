@@ -212,4 +212,8 @@ public class ServerFileService {
     public ServerFile save(ServerFile file) {
         return serverFileRepository.save(file);
     }
+
+    public List<ServerFile> findAllEagerly() {
+        return serverFileRepository.findAllWithEagerRelationships();
+    }
 }

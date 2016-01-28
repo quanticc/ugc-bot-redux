@@ -4,7 +4,9 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @ConfigurationProperties(prefix = "league", ignoreUnknownFields = false)
@@ -70,6 +72,7 @@ public class LeagueProperties {
         private List<String> quitting = new ArrayList<>();
         private String debugChannel = "";
         private Support support = new Support();
+        private Map<String, String> channels = new LinkedHashMap<>();
 
         @Data
         public static class Support {

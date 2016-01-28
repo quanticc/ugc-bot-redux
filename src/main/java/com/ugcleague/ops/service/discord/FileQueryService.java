@@ -51,8 +51,8 @@ public class FileQueryService {
         initFileListCommand();
         initFileAddCommand();
         initFileInfoCommand();
-        initFileEditCommand();
-        initFileDeleteCommand();
+        initFileEditCommand(); // TODO
+        initFileDeleteCommand(); // TODO
         initFileRefreshCommand();
     }
 

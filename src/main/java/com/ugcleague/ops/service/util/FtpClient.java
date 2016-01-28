@@ -91,8 +91,10 @@ public class FtpClient {
             client.connect(credentials.get("ftp-hostname"));
             client.login(credentials.get("ftp-username"), credentials.get("ftp-password"));
             log.info("Connected to {} FTP server", server.getName());
-        } finally {
+        } catch (IllegalStateException | IOException | FTPIllegalReplyException | FTPException e) {
             client.disconnect(true);
+            // rethrow to trigger retrying
+            throw e;
         }
     }
 

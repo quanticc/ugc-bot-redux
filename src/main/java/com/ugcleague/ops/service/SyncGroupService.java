@@ -91,4 +91,12 @@ public class SyncGroupService {
     public SyncGroup save(SyncGroup group) {
         return syncGroupRepository.save(group);
     }
+
+    public List<SyncGroup> findAll() {
+        return syncGroupRepository.findAll();
+    }
+
+    public Optional<SyncGroup> findOne(long id) {
+        return Optional.ofNullable(syncGroupRepository.findOne(id));
+    }
 }

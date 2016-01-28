@@ -1,8 +1,12 @@
 package com.ugcleague.ops.service.discord;
 
+import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.*;
-import joptsimple.*;
+import joptsimple.OptionException;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 import org.apache.mina.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +34,7 @@ public class CommandService {
     private static final Logger log = LoggerFactory.getLogger(CommandService.class);
     private static final int LENGTH_LIMIT = 2000;
 
+    private final LeagueProperties leagueProperties;
     private final DiscordService discordService;
     private final Set<Command> commandList = new ConcurrentHashSet<>();
     private final Gatekeeper gatekeeper = new Gatekeeper();
@@ -37,7 +42,8 @@ public class CommandService {
     private OptionSpec<String> helpNonOptionSpec;
 
     @Autowired
-    public CommandService(DiscordService discordService) {
+    public CommandService(LeagueProperties leagueProperties, DiscordService discordService) {
+        this.leagueProperties = leagueProperties;
         this.discordService = discordService;
     }
 
@@ -70,25 +76,14 @@ public class CommandService {
                             } else {
                                 answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
                                 CompletableFuture<String> future = gatekeeper.queue(key, job);
-                                future.thenAccept(response -> answerPrivately(m, response));
+                                future.thenAccept(response -> handleResponse(m, command, response));
                             }
-                            // [Gatekeeper] Your command was queued and will begin shortly.
                         } else {
                             try {
                                 log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
                                     command.getKey(), args);
                                 String response = command.execute(m, args);
-                                if (response == null) {
-                                    // if the response is null, print the help
-                                    printHelp(m, command);
-                                } else if (!response.isEmpty()) {
-                                    if (command.getPermissionLevel() == 0) {
-                                        // level 0 commands are output to the public
-                                        answer(m, response);
-                                    } else {
-                                        answerPrivately(m, response);
-                                    }
-                                }
+                                handleResponse(m, command, response);
                                 // ignore empty responses (no action)
                             } catch (OptionException e) {
                                 log.warn("Invalid call: {}", e.toString());
@@ -102,6 +97,30 @@ public class CommandService {
                 }
             }
         });
+    }
+
+    private void handleResponse(IMessage m, Command command, String response) {
+        if (response == null) {
+            // if the response is null, print the help
+            printHelp(m, command);
+        } else if (!response.isEmpty()) {
+            int channelLevel = 0;
+//            String channelId = m.getChannel().getID();
+//            String props = leagueProperties.getDiscord().getChannels().get(channelId);
+//            if (props != null) {
+//                CommandPermission perm = CommandPermission.valueOf(props.toUpperCase());
+//                if (perm != null) {
+//                    channelLevel = perm.getLevel();
+//                } else {
+//                    log.warn("Channel {} has an invalid permission key: {}", channelId, props);
+//                }
+//            }
+            if (command.getPermissionLevel() <= channelLevel) {
+                answer(m, response);
+            } else {
+                answerPrivately(m, response);
+            }
+        }
     }
 
     private String format(IUser user) {

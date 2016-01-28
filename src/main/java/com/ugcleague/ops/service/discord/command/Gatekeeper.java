@@ -22,10 +22,12 @@ public class Gatekeeper {
         return requests.containsKey(key) ? requests.get(key).size() : 0;
     }
 
-    public CompletableFuture<String> queue(String key, CommandJob job) {
+    public CompletableFuture<String> queue(final String key, final CommandJob job) {
+        log.info("+++ Queueing command job to '{}': {}", key, job.getMessage().getContent());
         requests.computeIfAbsent(key, k -> new ArrayList<>()).add(job);
         return CompletableFuture.supplyAsync(job, dispatcher)
             .exceptionally(Throwable::getMessage).thenApply(s -> {
+                log.info("--- Removing command job from '{}': {}", key, job.getMessage().getContent());
                 requests.get(key).remove(job);
                 return s;
             });

@@ -47,6 +47,8 @@ public class ServerQueryService {
     private OptionSpec<String> rconNonOptionSpec;
     private OptionSpec<String> rconCommandSpec;
     private OptionSpec<String> rconPasswordSpec;
+    private OptionSpec<String> insecureNonOptionSpec;
+    private OptionSpec<Boolean> insecureValueSpec;
 
     @Autowired
     public ServerQueryService(GameServerService gameServerService, CommandService commandService) {
@@ -61,6 +63,7 @@ public class ServerQueryService {
         initRestartCommand();
         initRconCommand();
         initDeadCommand();
+        initInsecureCommand();
     }
 
     private void initConnectCommand() {
@@ -358,5 +361,42 @@ public class ServerQueryService {
                 DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
             .collect(Collectors.joining("\n"));
         return result.isEmpty() ? ":ok_hand: All game servers are OK" : "*Game servers with issues*\n" + result;
+    }
+
+    private void initInsecureCommand() {
+        // .server insecure -v <true|false> <non-options: search key>
+        OptionParser parser = new OptionParser();
+        parser.posixlyCorrect(true);
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        insecureNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
+        insecureValueSpec = parser.acceptsAll(asList("v", "value"), "value to set as the insecure state")
+            .withRequiredArg().required().ofType(Boolean.class);
+        commandService.register(CommandBuilder.startsWith(".server insecure")
+            .description("Sets or removes the insecure FTP mode on a GS server").permission("master")
+            .parser(parser).command(this::executeInsecureCommand).build());
+    }
+
+    private String executeInsecureCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(insecureNonOptionSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            boolean value = o.valueOf(insecureValueSpec);
+            StringBuilder response = new StringBuilder();
+            response.append("*Insecure flags updated*\n");
+            List<GameServer> found = gameServerService.findServersMultiple(nonOptions);
+            for (GameServer server : found) {
+                boolean previouslySecure = gameServerService.isSecure(server);
+                boolean secure = value ? gameServerService.isSecure(gameServerService.addInsecureFlag(server)) :
+                    gameServerService.isSecure(gameServerService.removeInsecureFlag(server));
+                if (previouslySecure != secure) {
+                    response.append("**").append(server.getShortName()).append("** ")
+                        .append(previouslySecure).append(" -> ").append(secure).append("\n");
+                } else {
+                    response.append("**").append(server.getShortName()).append("** ")
+                        .append(secure).append(" (no change)").append("\n");
+                }
+            }
+            return response.toString();
+        }
+        return null;
     }
 }

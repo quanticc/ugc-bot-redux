@@ -153,9 +153,9 @@ public class DiscordQueryService {
         RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
         long uptime = rb.getUptime();
         String version = gitProperties.getProperty("git.commit.id.describe", "0.2");
-        builder.append("Hello! I'm here to help with UGC support.\n")
-            .append(String.format("I was built by %s using the Discord4J library v%s.\n" +
-                    "I'm currently running v%s for %s.", master.mention(), "2.1.3", version,
+        builder.append("Hello! I'm here to help with **UGC support**.\n")
+            .append(String.format("I was built by %s using the **Discord4J** library `v%s`.\n" +
+                    "I'm currently running `v%s` for %s.", master.mention(), "2.1.3", version,
                 formatHuman(Duration.ofMillis(uptime))));
         return builder.toString();
     }
