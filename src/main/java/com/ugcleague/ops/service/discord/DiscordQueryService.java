@@ -2,6 +2,7 @@ package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.util.GitProperties;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -44,6 +45,7 @@ public class DiscordQueryService {
     private OptionSpec<String> profileNameSpec;
     private OptionSpec<String> profileAvatarSpec;
     private OptionSpec<String> profileGameSpec;
+    private GitProperties gitProperties;
 
     @Autowired
     public DiscordQueryService(CommandService commandService, DiscordService discordService) {
@@ -143,13 +145,18 @@ public class DiscordQueryService {
     }
 
     private String executeInfoCommand(IMessage m, OptionSet o) {
+        if (gitProperties == null) {
+            gitProperties = new GitProperties();
+        }
         StringBuilder builder = new StringBuilder();
         IUser master = discordService.getMasterUser();
         RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
         long uptime = rb.getUptime();
+        String version = gitProperties.getProperty("git.commit.id.describe", "0.2");
         builder.append("Hello! I'm here to help with UGC support.\n")
             .append(String.format("I was built by %s using the Discord4J library v%s.\n" +
-                "I'm currently running v%s for %s.", master.mention(), "2.1.3", "0.2.0", formatHuman(Duration.ofMillis(uptime))));
+                    "I'm currently running v%s for %s.", master.mention(), "2.1.3", version,
+                formatHuman(Duration.ofMillis(uptime))));
         return builder.toString();
     }
 }
