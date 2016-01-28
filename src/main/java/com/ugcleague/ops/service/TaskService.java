@@ -66,7 +66,7 @@ public class TaskService {
             .ofType(Boolean.class).defaultsTo(true);
         rateSpec = parser.acceptsAll(asList("r", "rate"), "fixed rate to set").requiredUnless(listSpec, enableSpec)
             .withRequiredArg().ofType(Long.class).describedAs("ms");
-        commandService.register(CommandBuilder.startsWith(".task")
+        commandService.register(CommandBuilder.startsWith(".beep task")
             .description("Configures bot scheduled tasks").permission("master")
             .parser(parser).command(this::executeTaskCommand).build());
     }

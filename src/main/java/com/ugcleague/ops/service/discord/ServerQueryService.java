@@ -74,7 +74,7 @@ public class ServerQueryService {
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         connectNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        commandService.register(CommandBuilder.startsWith(".connect")
+        commandService.register(CommandBuilder.startsWith(".server connect")
             .description("Shows URL to join UGC game servers").permission("support")
             .parser(parser).command(this::executeConnectCommand).build());
     }
@@ -243,7 +243,7 @@ public class ServerQueryService {
         parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        commandService.register(CommandBuilder.startsWith(".restart")
+        commandService.register(CommandBuilder.startsWith(".server restart")
             .description("Restart the given servers. Only empty ones will be restarted").permission("support")
             .parser(parser).command(this::executeRestartCommand).build());
     }
@@ -347,7 +347,7 @@ public class ServerQueryService {
     }
 
     private void initDeadCommand() {
-        commandService.register(CommandBuilder.equalsTo(".issues")
+        commandService.register(CommandBuilder.equalsTo(".server issues")
             .description("Display unresponsive UGC game servers").permission("support")
             .command(this::executeDeadCommand).build());
     }
