@@ -38,6 +38,7 @@ public class FileQueryService {
     private OptionSpec<String> addNameSpec;
     private OptionSpec<String> infoNonOptionSpec;
     private OptionSpec<String> refreshNonOptionSpec;
+    private OptionSpec<Boolean> addRequiredSpec;
 
     @Autowired
     public FileQueryService(CommandService commandService, ServerFileService serverFileService, SyncGroupService syncGroupService) {
@@ -72,13 +73,15 @@ public class FileQueryService {
     }
 
     private void initFileAddCommand() {
-        // .file add [--group <group_name>] [--name <name>] <non-option: url>
+        // .file add [--group <group_name>] [--name <name>] [--required [true|false]] <non-option: url>
         OptionParser parser = new OptionParser();
         parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         addNonOptionSpec = parser.nonOptions("URL with the location of the files").ofType(String.class);
         addGroupSpec = parser.acceptsAll(asList("g", "group"), "sync group name (see .sync list)").withRequiredArg();
         addNameSpec = parser.acceptsAll(asList("n", "name"), "identifying name").withRequiredArg();
+        addRequiredSpec = parser.acceptsAll(asList("r", "required"), "file required to be synced (when performing health checks)")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file add")
             .description("Adds remote files to the GS sync list").permission("support")
             .parser(parser).command(this::fileAdd).build());
@@ -101,6 +104,7 @@ public class FileQueryService {
                     ServerFile file = new ServerFile();
                     file.setName(multiple ? name.map(n -> n + "-" + i.getAndIncrement()).orElse("") : name.orElse(""));
                     file.setRemoteUrl(url);
+                    file.setRequired(o.valueOf(addRequiredSpec));
                     group.map(g -> syncGroupService.findByLocalDir(g).orElse(null)).orElse(syncGroupService.getDefaultGroup());
                     serverFileService.save(file);
                     response.append("Added: ").append(url).append("\n");

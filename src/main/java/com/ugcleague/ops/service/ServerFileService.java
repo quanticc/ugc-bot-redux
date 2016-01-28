@@ -131,6 +131,7 @@ public class ServerFileService {
             serverFileRepository.save(serverFile);
             Path destPath = storeFile(serverFile.getSyncGroup().getLocalDir(), output);
             log.info("Resource saved to: {}", destPath);
+            output.toFile().deleteOnExit();
         }
     }
 
