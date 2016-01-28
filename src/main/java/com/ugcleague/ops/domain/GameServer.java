@@ -251,4 +251,8 @@ public class GameServer implements Serializable {
             + statusCheckDate + "'" + ", expireCheckDate='" + expireCheckDate + "'" + ", lastRconDate='" + lastRconDate + "'"
             + ", lastGameUpdate='" + lastGameUpdate + "'" + '}';
     }
+
+    public String getShortName() {
+        return name.trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
+    }
 }

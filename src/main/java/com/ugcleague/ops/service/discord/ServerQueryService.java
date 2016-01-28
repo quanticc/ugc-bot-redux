@@ -5,6 +5,7 @@ import com.github.koraktor.steamcondenser.steam.SteamPlayer;
 import com.ugcleague.ops.domain.GameServer;
 import com.ugcleague.ops.service.GameServerService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.util.DeadServerMap;
 import com.ugcleague.ops.service.util.SourceServer;
 import com.ugcleague.ops.util.DateUtil;
 import joptsimple.OptionParser;
@@ -59,6 +60,7 @@ public class ServerQueryService {
         initStatusCommand();
         initRestartCommand();
         initRconCommand();
+        initDeadCommand();
     }
 
     private void initConnectCommand() {
@@ -339,5 +341,22 @@ public class ServerQueryService {
             return message.toString();
         }
         return null;
+    }
+
+    private void initDeadCommand() {
+        commandService.register(CommandBuilder.equalsTo(".issues")
+            .description("Display unresponsive UGC game servers").permission("support")
+            .command(this::executeDeadCommand).build());
+    }
+
+    private String executeDeadCommand(IMessage message, OptionSet optionSet) {
+        DeadServerMap map = gameServerService.getDeadServerMap();
+        String result = map.entrySet().stream()
+            .filter(e -> e.getValue().getAttempts().get() > 5)
+            .map(e -> String.format("• **%s** (%s) is unresponsive since %s",
+                e.getKey().getShortName(), e.getKey().getAddress(),
+                DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
+            .collect(Collectors.joining("\n"));
+        return result.isEmpty() ? ":ok_hand: All game servers are OK" : "*Game servers with issues*\n" + result;
     }
 }

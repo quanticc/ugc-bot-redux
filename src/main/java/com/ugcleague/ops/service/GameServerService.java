@@ -3,7 +3,6 @@ package com.ugcleague.ops.service;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.event.GameServerDeathEvent;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
@@ -180,12 +179,16 @@ public class GameServerService {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().set(0);
             } else {
                 int failedPings = deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-                if (failedPings >= 10) {
-                    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
-                }
+                //if (failedPings >= 1) {
+                //    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
+                //}
             }
         }
         return server;
+    }
+
+    public DeadServerMap getDeadServerMap() {
+        return deadServerMap;
     }
 
     public Map<String, Object> refreshServerStatus(SourceServer source) {
@@ -401,7 +404,7 @@ public class GameServerService {
     }
 
     public String toShortName(GameServer server) {
-        return server.getName().trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
+        return server.getShortName();
     }
 
     public List<GameServer> findAll() {

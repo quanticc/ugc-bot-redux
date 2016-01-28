@@ -256,8 +256,8 @@ public class AnnouncerService {
     @EventListener
     private void onServerDeath(GameServerDeathEvent event) {
         String list = event.getSource().entrySet().stream()
-            .map(e -> String.format("*%s* (%s) is unresponsive since %s",
-                e.getKey().getName(), e.getKey().getAddress(),
+            .map(e -> String.format("• **%s** (%s) is unresponsive since %s",
+                e.getKey().getShortName(), e.getKey().getAddress(),
                 DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
             .collect(Collectors.joining("\n"));
         announce("issues", "*Game Server Status*\n" + list);
@@ -279,11 +279,15 @@ public class AnnouncerService {
                                 }
                                 return null;
                             }).orElse(null));
-                    log.debug("Making an announcement from {} to {}", publisherName,
-                        (channel.isPrivate() ? sub.getName() : channel.getName()));
-                    discordService.channelMessage(channel)
-                        .appendContent("<" + publisherName + "> ")
-                        .appendContent(message).send();
+                    if (channel != null) {
+                        log.debug("Making an announcement from {} to {}", publisherName,
+                            (channel.isPrivate() ? sub.getName() : channel.getName()));
+                        discordService.channelMessage(channel)
+                            .appendContent("**<" + publisherName + ">** ")
+                            .appendContent(message).send();
+                    } else {
+                        log.warn("Could not find a channel with id {} to send our {} message", sub.getUserId(), publisherName);
+                    }
                 } catch (Exception e) {
                     log.warn("Could not send message to '{}': {}", publisherName, e.toString());
                 }
