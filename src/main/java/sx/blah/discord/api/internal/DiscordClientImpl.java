@@ -17,7 +17,6 @@ import sx.blah.discord.util.Requests;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,7 +53,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     /**
      * Local copy of all guilds/servers.
      */
-    protected final List<IGuild> guildList = Collections.synchronizedList(new ArrayList<>());
+    protected final List<IGuild> guildList = new ArrayList<>();
 
     /**
      * Private copy of the email you logged in with.
@@ -79,7 +78,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     /**
      * All of the private message channels that the bot is connected to.
      */
-    protected final List<IPrivateChannel> privateChannels = Collections.synchronizedList(new ArrayList<>());
+    protected final List<IPrivateChannel> privateChannels = new ArrayList<>();
 
     /**
      * Whether the api is logged in.
@@ -157,7 +156,7 @@ public final class DiscordClientImpl implements IDiscordClient {
         try {
             GatewayResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest("https://discordapp.com/api/gateway",
                 new BasicNameValuePair("authorization", token)), GatewayResponse.class);
-            gateway = response.url.replaceAll("wss", "ws");
+            gateway = response.url;//.replaceAll("wss", "ws");
         } catch (HTTP429Exception e) {
             e.printStackTrace();
         }

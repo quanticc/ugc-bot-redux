@@ -34,15 +34,15 @@ public class Discord4J {
     /**
      * The version of the api
      */
-    public static String VERSION = "2.1.3";
+    public static String VERSION = "2.2.1";
     /**
      * The api's description
      */
-    public static String DESCRIPTION = "Description";
+    public static String DESCRIPTION = "A Java binding for the unofficial Discord API, forked from https://github.com/nerd/Discord4J. Copyright (c) 2016, Licensed under GNU GPLv2";
     /**
      * The github repo for the api
      */
-    public static String URL = "URL";
+    public static String URL = "https://github.com/austinv11/Discord4J";
 
     /**
      * SLF4J Instance
