@@ -5,10 +5,16 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import sx.blah.discord.handle.obj.IMessage;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Command implements Comparable<Command> {
+
+    private static final Pattern PATTERN = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
 
     private MatchType matchType;
     private String key;
@@ -107,8 +113,17 @@ public class Command implements Comparable<Command> {
         if (parser.recognizedOptions().isEmpty()) {
             return command.apply(message, null);
         } else {
-            return command.apply(message, args != null ? parser.parse(args.split(" ")) : parser.parse());
+            return command.apply(message, args != null ? parser.parse(split(args)) : parser.parse());
         }
+    }
+
+    private String[] split(String args) {
+        Matcher matcher = PATTERN.matcher(args);
+        List<String> matches = new ArrayList<>();
+        while (matcher.find()) {
+            matches.add(matcher.group().replaceAll("\"|'", ""));
+        }
+        return matches.toArray(new String[matches.size()]);
     }
 
     @Override
