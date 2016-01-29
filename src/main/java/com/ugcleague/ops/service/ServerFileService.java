@@ -177,18 +177,19 @@ public class ServerFileService {
         Path srcPath = path;
         Path destDir = Paths.get(repositoryDir, storeKey);
         Files.createDirectories(destDir);
+        Path outputDir = path.resolveSibling("content");
         if (APPLICATION_ZIP.equals(type)) {
-            Path outputDir = path.resolveSibling("content");
             ZipUtil.unzip(path.toFile(), outputDir.toFile());
             srcPath = walkAndFindCommonPath(outputDir);
         } else if (APPLICATION_X_RAR_COMPRESSED.equals(type)) {
-            Path outputDir = path.resolveSibling("content");
             RarDecompressor.decompress(path.toFile(), outputDir.toFile());
             srcPath = walkAndFindCommonPath(outputDir);
         } else if (APPLICATION_X_BZIP2.equals(type)) {
             srcPath = BZip2Decompressor.decompress(path.toFile()).toPath();
+            FileUtils.copyFileToDirectory(srcPath.toFile(), outputDir.toFile());
+            srcPath = outputDir;
             if (!isValveMap(srcPath)) {
-                return storeFile(storeKey, srcPath);
+                log.warn("The file {} does not seem to be a Valve BSP map", srcPath);
             }
         }
         log.debug("Copying to repository: {} -> {}", srcPath, destDir);
