@@ -1,8 +1,7 @@
-package com.ugcleague.ops.service;
+package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.domain.Task;
 import com.ugcleague.ops.repository.TaskRepository;
-import com.ugcleague.ops.service.discord.CommandService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
