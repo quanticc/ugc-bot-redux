@@ -17,10 +17,12 @@ import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -69,13 +71,23 @@ public class SupportPingService {
             public void handle(MessageReceivedEvent event) {
                 IMessage m = event.getMessage();
                 if (!isOwnUser(m.getAuthor())
+                    && isSupportChannel(m.getChannel())
                     && !discordService.hasSupportRole(m.getAuthor())
-                    && isSupportChannel(m.getChannel())) {
+                    && !hasExcludedSupportRole(m.getAuthor())) {
                     // publish messages from non-admins and excluding bot's own messages
                     publishSupportEvent(m);
                 }
             }
         });
+    }
+
+    private boolean hasExcludedSupportRole(IUser user) {
+        Set<IRole> roleSet = new HashSet<>();
+        LeagueProperties.Discord.Support support = properties.getDiscord().getSupport();
+        for (String gid : support.getGuilds()) {
+            roleSet.addAll(user.getRolesForGuild(gid));
+        }
+        return roleSet.stream().anyMatch(r -> support.getExcludedRoles().contains(r.getID()));
     }
 
     private String executeSubCommand(IMessage message, OptionSet optionSet) {

@@ -79,6 +79,7 @@ public class LeagueProperties {
             private List<String> guilds = new ArrayList<>();
             private List<String> channels = new ArrayList<>();
             private List<String> roles = new ArrayList<>();
+            private List<String> excludedRoles = new ArrayList<>();
         }
     }
 }
