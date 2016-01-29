@@ -186,8 +186,6 @@ public class ServerFileService {
             srcPath = walkAndFindCommonPath(outputDir);
         } else if (APPLICATION_X_BZIP2.equals(type)) {
             srcPath = BZip2Decompressor.decompress(path.toFile()).toPath();
-            FileUtils.copyFileToDirectory(srcPath.toFile(), outputDir.toFile());
-            srcPath = outputDir;
             if (!isValveMap(srcPath)) {
                 log.warn("The file {} does not seem to be a Valve BSP map", srcPath);
             }
