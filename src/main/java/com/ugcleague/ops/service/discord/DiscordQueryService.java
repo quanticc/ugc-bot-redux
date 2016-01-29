@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.obj.IChannel;
@@ -152,10 +153,10 @@ public class DiscordQueryService {
         IUser master = discordService.getMasterUser();
         RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
         long uptime = rb.getUptime();
-        String version = gitProperties.getProperty("git.commit.id.describe", "0.2");
+        String version = gitProperties.getProperty("git.commit.id.describe", "0.x");
         builder.append("Hello! I'm here to help with **UGC support**.\n")
             .append(String.format("I was built by %s using the **Discord4J** library `v%s`.\n" +
-                    "I'm currently running `v%s` for %s.", master.mention(), "2.1.3", version,
+                    "Current version is `v%s`, with %s uptime.", master.mention(), Discord4J.VERSION, version,
                 formatHuman(Duration.ofMillis(uptime))));
         return builder.toString();
     }
