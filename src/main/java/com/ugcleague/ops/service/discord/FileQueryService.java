@@ -206,19 +206,24 @@ public class FileQueryService {
                 Optional<String> group = Optional.ofNullable(o.valueOf(editGroupSpec));
                 Optional<Boolean> required = Optional.ofNullable(o.valueOf(editRequiredSpec));
                 Optional<Boolean> clear = o.has(editClearSpec) ? Optional.ofNullable(o.valueOf(editClearSpec)) : Optional.empty();
+                boolean clearCache = clear.isPresent() && clear.get() != null && clear.get();
 
-                url.ifPresent(s -> {
+                if (url.isPresent()) {
                     try {
-                        new URL(s);
-                        file.setRemoteUrl(s);
+                        new URL(url.get());
+                        String prev = file.getRemoteUrl();
+                        file.setRemoteUrl(url.get());
+                        // if the url is changed, invalidate meta-data
+                        if (!file.getRemoteUrl().equals(prev)) {
+                            clearCache = true;
+                        }
                     } catch (MalformedURLException e) {
-                        response.append("Invalid URL: ").append(s).append(". Value won't be updated\n");
+                        response.append("Invalid URL: ").append(url.get()).append(". Value won't be updated\n");
                     }
-                });
+                }
                 name.ifPresent(file::setName);
                 group.map(d -> syncGroupService.findByLocalDir(d).orElse(null)).ifPresent(file::setSyncGroup);
                 required.ifPresent(file::setRequired);
-                boolean clearCache = clear.isPresent() && clear.get() != null && clear.get();
                 if (clearCache) {
                     file.seteTag(null);
                     file.setLastModified(null);
@@ -226,7 +231,7 @@ public class FileQueryService {
                 ServerFile updated = serverFileService.save(file);
                 response.append(String.format("Updated file id %d: Name='%s' Group='%s' Required=%s URL=%s%s\n",
                     updated.getId(), updated.getName(), updated.getSyncGroup().getLocalDir(),
-                    updated.getRequired(), updated.getRemoteUrl(), clearCache ? " and cleared cached meta-data" : ""));
+                    updated.getRequired(), updated.getRemoteUrl(), clearCache ? " and cleared meta-data" : ""));
                 return response.toString();
             }
         }
