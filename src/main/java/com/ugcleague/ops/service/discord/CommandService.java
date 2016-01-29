@@ -50,7 +50,6 @@ public class CommandService {
     @PostConstruct
     private void configure() {
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
         commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
             .command(this::showCommandList).permission(0).parser(parser).build());

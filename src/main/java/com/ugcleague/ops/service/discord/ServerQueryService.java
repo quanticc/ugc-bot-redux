@@ -69,7 +69,6 @@ public class ServerQueryService {
     private void initConnectCommand() {
         // .connect [-r] (non-option: search key)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         connectRconSpec = parser.acceptsAll(asList("r", "rcon"), "also display rcon_password")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
@@ -109,7 +108,6 @@ public class ServerQueryService {
     private void initStatusCommand() {
         // .status (non-option: search key)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         statusNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".status")
@@ -240,7 +238,6 @@ public class ServerQueryService {
     private void initRestartCommand() {
         // .restart (non-option: search key)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server restart")
@@ -277,7 +274,6 @@ public class ServerQueryService {
     private void initRconCommand() {
         // .rcon -c <command> [-p <password>] (non-option: search key)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         rconNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
@@ -366,7 +362,6 @@ public class ServerQueryService {
     private void initInsecureCommand() {
         // .server insecure -v <true|false> <non-options: search key>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         insecureNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         insecureValueSpec = parser.acceptsAll(asList("v", "value"), "value to set as the insecure state")

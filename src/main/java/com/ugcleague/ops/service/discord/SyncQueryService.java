@@ -85,7 +85,6 @@ public class SyncQueryService {
     private void initSyncAddCommand() {
         // .sync add --local <local_dir> --remote <remote_dir> [--type <general|maps|cfg>]
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         String types = Arrays.asList(FileGroupType.values()).stream()
             .map(FileGroupType::toString)
@@ -123,7 +122,6 @@ public class SyncQueryService {
     private void initSyncInfoCommand() {
         // .sync info --id <group_id>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or local name of the sync groups").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".sync info")
@@ -165,7 +163,6 @@ public class SyncQueryService {
     private void initSyncRefreshCommand() {
         // .sync refresh [--local [name1, name2, ...]] [--remote [server1, server2, ...]]
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         refreshLocalSpec = parser.acceptsAll(asList("l", "local"), "Comma-separated list of groups to sync locally")
             .withOptionalArg().withValuesSeparatedBy(",");

@@ -72,7 +72,6 @@ public class AnnouncerService {
     private void initTestAnnounceCommand() {
         // .announce test -m "message" (non-option: publishers)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         testNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         testMessageSpec = parser.acceptsAll(asList("m", "message"), "message to publish").withRequiredArg();
@@ -84,7 +83,6 @@ public class AnnouncerService {
     private void initStartAnnounceCommand() {
         // .announce start (non-option: publishers)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         startNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".announce start")
@@ -95,7 +93,6 @@ public class AnnouncerService {
     private void initStopAnnounceCommand() {
         // .announce stop (non-option: publishers)
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         stopNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".announce stop")

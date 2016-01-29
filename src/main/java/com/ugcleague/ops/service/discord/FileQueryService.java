@@ -39,6 +39,11 @@ public class FileQueryService {
     private OptionSpec<String> infoNonOptionSpec;
     private OptionSpec<String> refreshNonOptionSpec;
     private OptionSpec<Boolean> addRequiredSpec;
+    private OptionSpec<String> editUrlSpec;
+    private OptionSpec<String> editGroupSpec;
+    private OptionSpec<String> editIdSpec;
+    private OptionSpec<String> editNameSpec;
+    private OptionSpec<Boolean> editRequiredSpec;
 
     @Autowired
     public FileQueryService(CommandService commandService, ServerFileService serverFileService, SyncGroupService syncGroupService) {
@@ -75,7 +80,6 @@ public class FileQueryService {
     private void initFileAddCommand() {
         // .file add [--group <group_name>] [--name <name>] [--required [true|false]] <non-option: url>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         addNonOptionSpec = parser.nonOptions("URL with the location of the files").ofType(String.class);
         addGroupSpec = parser.acceptsAll(asList("g", "group"), "sync group name (see .sync list)").withRequiredArg();
@@ -105,7 +109,7 @@ public class FileQueryService {
                     file.setName(multiple ? name.map(n -> n + "-" + i.getAndIncrement()).orElse("") : name.orElse(""));
                     file.setRemoteUrl(url);
                     file.setRequired(o.valueOf(addRequiredSpec));
-                    group.map(g -> syncGroupService.findByLocalDir(g).orElse(null)).orElse(syncGroupService.getDefaultGroup());
+                    file.setSyncGroup(group.map(g -> syncGroupService.findByLocalDir(g).orElse(null)).orElse(syncGroupService.getDefaultGroup()));
                     serverFileService.save(file);
                     response.append("Added: ").append(url).append("\n");
                 } catch (MalformedURLException e) {
@@ -120,7 +124,6 @@ public class FileQueryService {
     private void initFileInfoCommand() {
         // .file info --id <file_id>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".file info")
@@ -166,7 +169,54 @@ public class FileQueryService {
 
     private void initFileEditCommand() {
         // .file edit --id <file_id> [--group <group_name>] [--name <name>] [--url <url>]
-        // TODO implement .file edit command
+        OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        editIdSpec = parser.acceptsAll(asList("i", "id"), "the name or the unique ID of the file").withRequiredArg().required();
+        editUrlSpec = parser.acceptsAll(asList("u", "url"), "remote URL where to grab the file").withRequiredArg();
+        editGroupSpec = parser.acceptsAll(asList("g", "group"), "sync group name (see .sync list)").withRequiredArg();
+        editNameSpec = parser.acceptsAll(asList("n", "name"), "identifying name").withRequiredArg();
+        editRequiredSpec = parser.acceptsAll(asList("r", "required"), "file required to be synced (when performing health checks)")
+            .withRequiredArg().ofType(Boolean.class);
+        commandService.register(CommandBuilder.startsWith(".file edit")
+            .description("Updates a given file with new values").permission("support")
+            .parser(parser).command(this::fileEdit).build());
+    }
+
+    private String fileEdit(IMessage m, OptionSet o) {
+        if (!o.has("?")) {
+            String key = o.valueOf(editIdSpec);
+            ServerFile file = key.matches("[0-9]+") ?
+                serverFileService.findOne(Long.parseLong(key))
+                    .orElseGet(() -> serverFileService.findByName(key).stream().findFirst().orElse(null)) :
+                serverFileService.findByName(key).stream().findFirst().orElse(null);
+            if (file == null) {
+                return "No file was found with the given id";
+            } else {
+                StringBuilder response = new StringBuilder();
+                Optional<String> url = Optional.ofNullable(o.valueOf(editUrlSpec));
+                Optional<String> name = Optional.ofNullable(o.valueOf(editNameSpec));
+                Optional<String> group = Optional.ofNullable(o.valueOf(editGroupSpec));
+                Optional<Boolean> required = Optional.ofNullable(o.valueOf(editRequiredSpec));
+
+                url.ifPresent(s -> {
+                    try {
+                        new URL(s);
+                        file.setRemoteUrl(s);
+                    } catch (MalformedURLException e) {
+                        response.append("Invalid URL: ").append(s).append(". Value won't be updated\n");
+                    }
+                });
+                name.ifPresent(file::setName);
+                group.map(d -> syncGroupService.findByLocalDir(d).orElse(null)).ifPresent(file::setSyncGroup);
+                required.ifPresent(file::setRequired);
+                ServerFile updated = serverFileService.save(file);
+                response.append(String.format("Updated file id %d: Name='%s' Group='%s' Required=%s URL=%s\n",
+                    updated.getId(), updated.getName(), updated.getSyncGroup().getLocalDir(),
+                    updated.getRequired(), updated.getRemoteUrl()));
+                return response.toString();
+            }
+        }
+        return null;
     }
 
     private void initFileDeleteCommand() {
@@ -177,7 +227,6 @@ public class FileQueryService {
     private void initFileRefreshCommand() {
         // .file refresh [--all] <non-options: file keys>
         OptionParser parser = new OptionParser();
-        parser.posixlyCorrect(true);
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         refreshNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         parser.acceptsAll(asList("a", "all"), "Perform operation on all cached files");
