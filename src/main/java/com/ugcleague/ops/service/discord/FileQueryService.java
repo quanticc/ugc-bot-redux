@@ -44,6 +44,7 @@ public class FileQueryService {
     private OptionSpec<String> editIdSpec;
     private OptionSpec<String> editNameSpec;
     private OptionSpec<Boolean> editRequiredSpec;
+    private OptionSpec<Boolean> editClearSpec;
 
     @Autowired
     public FileQueryService(CommandService commandService, ServerFileService serverFileService, SyncGroupService syncGroupService) {
@@ -182,6 +183,8 @@ public class FileQueryService {
         editNameSpec = parser.acceptsAll(asList("n", "name"), "identifying name").withRequiredArg();
         editRequiredSpec = parser.acceptsAll(asList("r", "required"), "file required to be synced (when performing health checks)")
             .withRequiredArg().ofType(Boolean.class);
+        editClearSpec = parser.acceptsAll(asList("c", "clear"), "clears cached meta-data")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file edit")
             .description("Updates a given file with new values").permission("support")
             .parser(parser).command(this::fileEdit).build());
@@ -202,6 +205,7 @@ public class FileQueryService {
                 Optional<String> name = Optional.ofNullable(o.valueOf(editNameSpec));
                 Optional<String> group = Optional.ofNullable(o.valueOf(editGroupSpec));
                 Optional<Boolean> required = Optional.ofNullable(o.valueOf(editRequiredSpec));
+                Optional<Boolean> clear = o.has(editClearSpec) ? Optional.ofNullable(o.valueOf(editClearSpec)) : Optional.empty();
 
                 url.ifPresent(s -> {
                     try {
@@ -214,10 +218,15 @@ public class FileQueryService {
                 name.ifPresent(file::setName);
                 group.map(d -> syncGroupService.findByLocalDir(d).orElse(null)).ifPresent(file::setSyncGroup);
                 required.ifPresent(file::setRequired);
+                boolean clearCache = clear.isPresent() && clear.get() != null && clear.get();
+                if (clearCache) {
+                    file.seteTag(null);
+                    file.setLastModified(null);
+                }
                 ServerFile updated = serverFileService.save(file);
-                response.append(String.format("Updated file id %d: Name='%s' Group='%s' Required=%s URL=%s\n",
+                response.append(String.format("Updated file id %d: Name='%s' Group='%s' Required=%s URL=%s%s\n",
                     updated.getId(), updated.getName(), updated.getSyncGroup().getLocalDir(),
-                    updated.getRequired(), updated.getRemoteUrl()));
+                    updated.getRequired(), updated.getRemoteUrl(), clearCache ? " and cleared cached meta-data" : ""));
                 return response.toString();
             }
         }

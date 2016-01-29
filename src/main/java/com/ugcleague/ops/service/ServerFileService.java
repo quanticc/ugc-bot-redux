@@ -6,6 +6,7 @@ import com.ugcleague.ops.repository.ServerFileRepository;
 import com.ugcleague.ops.service.util.BZip2Decompressor;
 import com.ugcleague.ops.service.util.RarDecompressor;
 import jodd.io.ZipUtil;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
@@ -21,10 +22,11 @@ import javax.annotation.PostConstruct;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -64,7 +66,8 @@ public class ServerFileService {
         restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
 
         HttpHeaders requestHeaders = new HttpHeaders();
-        requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_OCTET_STREAM));
+        //requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_OCTET_STREAM));
+        requestHeaders.setAccept(Collections.singletonList(MediaType.ALL));
 
         if (serverFile.geteTag() != null) {
             requestHeaders.setIfNoneMatch(serverFile.geteTag());
@@ -88,7 +91,8 @@ public class ServerFileService {
         restTemplate.setRequestFactory(requestFactory);
         restTemplate.getMessageConverters().add(new ByteArrayHttpMessageConverter());
         HttpHeaders requestHeaders = new HttpHeaders();
-        requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_OCTET_STREAM));
+        //requestHeaders.setAccept(Collections.singletonList(MediaType.APPLICATION_OCTET_STREAM));
+        requestHeaders.setAccept(Collections.singletonList(MediaType.ALL));
         if (serverFile.geteTag() != null) {
             requestHeaders.setIfNoneMatch(serverFile.geteTag());
         }
@@ -101,6 +105,7 @@ public class ServerFileService {
 
     public ServerFile refresh(ServerFile serverFile) {
         // check if the resource is up-to-date
+        log.debug("Checking if we have the latest version of: {}", serverFile.getName());
         ResponseEntity<byte[]> response = exchange(serverFile);
         try {
             updateIfNeeded(serverFile, response);
@@ -112,14 +117,46 @@ public class ServerFileService {
         return serverFile;
     }
 
+    static String fallbackFilename(ServerFile serverFile) {
+        URL extUrl;
+        try {
+            extUrl = new URL(serverFile.getRemoteUrl());
+        } catch (MalformedURLException e) {
+            return serverFile.getName();
+        }
+        String filename = serverFile.getName();
+        String path = extUrl.getPath();
+        String[] pathContents = path.split("[\\\\/]");
+        String lastPart = pathContents[pathContents.length - 1];
+        String[] lastPartContents = lastPart.split("\\.");
+        if (lastPartContents.length > 1) {
+            int lastPartContentLength = lastPartContents.length;
+            String name = "";
+            for (int i = 0; i < lastPartContentLength; i++) {
+                if (i < (lastPartContents.length - 1)) {
+                    name += lastPartContents[i];
+                    if (i < (lastPartContentLength - 2)) {
+                        name += ".";
+                    }
+                }
+            }
+            String extension = lastPartContents[lastPartContentLength - 1];
+            filename = name + "." + extension;
+        }
+        log.debug("Got fallback name for file: {} -> {}", serverFile.getRemoteUrl(), filename);
+        return filename;
+    }
+
     private void updateIfNeeded(ServerFile serverFile, ResponseEntity<byte[]> response) throws IOException {
         if (response.getStatusCode() == HttpStatus.OK) {
             HttpHeaders responseHeaders = response.getHeaders();
             String key = "filename=\"";
-            String fileName = responseHeaders.get("Content-Disposition").stream().filter(s -> s.contains(key))
+            List<String> contentDisposition = responseHeaders.get("Content-Disposition");
+            String fileName = (contentDisposition == null ? fallbackFilename(serverFile) : contentDisposition.stream().filter(s -> s.contains(key))
                 .map(s -> s.substring(s.indexOf(key) + key.length(), s.length() - 1)).findFirst()
-                .orElse(serverFile.getName());
-            Path tempDir = Files.createTempDirectory(serverFile.getName());
+                .orElse(fallbackFilename(serverFile)));
+            Path tempDir = Paths.get("tmp", serverFile.getName());
+            Files.createDirectories(tempDir);
             log.info("Downloading resource from {}", serverFile.getRemoteUrl());
             Path output = Files.write(tempDir.resolve(fileName), response.getBody());
             serverFile.setLastModified(responseHeaders.getLastModified());
@@ -131,7 +168,6 @@ public class ServerFileService {
             serverFileRepository.save(serverFile);
             Path destPath = storeFile(serverFile.getSyncGroup().getLocalDir(), output);
             log.info("Resource saved to: {}", destPath);
-            output.toFile().deleteOnExit();
         }
     }
 
@@ -155,8 +191,9 @@ public class ServerFileService {
                 return storeFile(storeKey, srcPath);
             }
         }
-        log.debug("Moving to repository: {} -> {}", srcPath, destDir);
-        return Files.move(srcPath, destDir, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
+        log.debug("Copying to repository: {} -> {}", srcPath, destDir);
+        FileUtils.copyDirectory(srcPath.toFile(), destDir.toFile());
+        return destDir;
     }
 
     static Path walkAndFindCommonPath(Path root) throws IOException {
@@ -180,6 +217,7 @@ public class ServerFileService {
                 commonPath = current;
             }
         }
+        log.debug("Longest common path between {} is {}", paths, commonPath);
         return commonPath;
     }
 

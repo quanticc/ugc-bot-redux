@@ -90,7 +90,6 @@ public class FtpClient {
         try {
             client.connect(credentials.get("ftp-hostname"));
             client.login(credentials.get("ftp-username"), credentials.get("ftp-password"));
-            log.info("Connected to {} FTP server", server.getName());
         } catch (IllegalStateException | IOException | FTPIllegalReplyException | FTPException e) {
             client.disconnect(true);
             // rethrow to trigger retrying
@@ -155,7 +154,7 @@ public class FtpClient {
         Path remotePath = Paths.get(remoteDir).resolve(localPath);
         Path currentDir = remotePath.getParent();
         try {
-            String dir = currentDir.toString();
+            String dir = currentDir.toString().replace("\\", "/");
             if (!visited.contains(dir)) {
                 // create missing directories, starting from the root to the current directory
                 client.changeDirectory("/");

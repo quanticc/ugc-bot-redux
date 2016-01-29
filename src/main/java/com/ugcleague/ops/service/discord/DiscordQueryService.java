@@ -156,7 +156,7 @@ public class DiscordQueryService {
         String version = gitProperties.getProperty("git.commit.id.describe", "0.x");
         builder.append("Hello! I'm here to help with **UGC support**.\n")
             .append(String.format("I was built by %s using the **Discord4J** library `v%s`.\n" +
-                    "Current version is `v%s`, running with %s uptime.\nCheck the available commands with `.beep help`",
+                    "Running `v%s`. Uptime: %s.\nCheck the available commands with `.beep help`",
                 master.mention(), Discord4J.VERSION, version, formatHuman(Duration.ofMillis(uptime))));
         return builder.toString();
     }

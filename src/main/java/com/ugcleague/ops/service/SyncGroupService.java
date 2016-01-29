@@ -9,6 +9,8 @@ import com.ugcleague.ops.service.util.FtpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +48,11 @@ public class SyncGroupService {
     }
 
     public List<SyncGroup> updateGroups(GameServer server, List<SyncGroup> groups) {
-        // TODO: optionally add a filter against FileGroupType to not update "MAPS", for instance.
+        return retryableUpdateGroups(server, groups);
+    }
+
+    @Retryable(backoff = @Backoff(3000))
+    private List<SyncGroup> retryableUpdateGroups(GameServer server, List<SyncGroup> groups) {
         log.debug("Preparing to update {} with files from {}", server, groups);
         Optional<FtpClient> o = establishFtpConnection(server);
         if (o.isPresent()) {
@@ -56,7 +62,6 @@ public class SyncGroupService {
             return successful;
         }
         return Collections.emptyList();
-
     }
 
     private Optional<FtpClient> establishFtpConnection(GameServer server) {
