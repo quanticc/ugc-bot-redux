@@ -34,6 +34,8 @@ public interface GameServerRepository extends JpaRepository<GameServer, Long> {
 
     Stream<GameServer> findByStatusCheckDateBefore(ZonedDateTime dateTime);
 
+    List<GameServer> findByVersionLessThan(Integer version);
+
     Stream<GameServer> findByLastGameUpdateBeforeAndVersionLessThan(ZonedDateTime date, Integer version);
 
 }

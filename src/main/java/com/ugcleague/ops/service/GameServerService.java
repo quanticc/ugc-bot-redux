@@ -131,17 +131,19 @@ public class GameServerService {
         return server;
     }
 
+    public List<GameServer> findOutdatedServers() {
+        int latestVersion = steamCondenserService.getLatestVersion();
+        return gameServerRepository.findByVersionLessThan(latestVersion);
+    }
+
     //@Scheduled(initialDelay = 30000, fixedRate = 150000)
     @Async
     public void updateGameServers() {
         log.debug("==== Refreshing server status ====");
         int latestVersion = steamCondenserService.getLatestVersion();
-        ZonedDateTime now = ZonedDateTime.now();
         long refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
             .map(gameServerRepository::save).count();
-        long updating = gameServerRepository
-            .findByLastGameUpdateBeforeAndVersionLessThan(now.minusMinutes(2), latestVersion)
-            .map(this::performGameUpdate).map(gameServerRepository::save).count();
+        long updating = findOutdatedServers().stream().map(this::performGameUpdate).map(gameServerRepository::save).count();
         if (updating == 0) {
             log.debug("All servers up-to-date");
             if (!updateResultMap.isEmpty()) {

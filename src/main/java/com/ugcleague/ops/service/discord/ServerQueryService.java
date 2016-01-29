@@ -350,13 +350,24 @@ public class ServerQueryService {
 
     private String executeDeadCommand(IMessage message, OptionSet optionSet) {
         DeadServerMap map = gameServerService.getDeadServerMap();
-        String result = map.entrySet().stream()
-            .filter(e -> e.getValue().getAttempts().get() > 5)
-            .map(e -> String.format("• **%s** (%s) is unresponsive since %s",
+        int failedAttempts = 2;
+        String nonResponsive = map.entrySet().stream()
+            .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
+            .map(e -> String.format("• **%s** (%s) appears to be down since %s",
                 e.getKey().getShortName(), e.getKey().getAddress(),
                 DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
             .collect(Collectors.joining("\n"));
-        return result.isEmpty() ? ":ok_hand: All game servers are OK" : "*Game servers with issues*\n" + result;
+        if (!nonResponsive.isEmpty()) {
+            nonResponsive += "\nRestart with `.server restart " + map.entrySet().stream()
+                .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
+                .map(e -> e.getKey().getShortName()).collect(Collectors.joining(" ")) + "`\n";
+        }
+        String outdated = gameServerService.findOutdatedServers().stream()
+            .map(s -> String.format("• **%s** (%s) has an older game version (v%d)",
+                s.getShortName(), s.getAddress(), s.getVersion()))
+            .collect(Collectors.joining("\n"));
+        return nonResponsive.isEmpty() && outdated.isEmpty() ? ":ok_hand: All game servers are OK" :
+            "*Game servers with issues*\n" + nonResponsive + "\n" + outdated;
     }
 
     private void initInsecureCommand() {
