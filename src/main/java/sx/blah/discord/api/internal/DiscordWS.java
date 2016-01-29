@@ -63,7 +63,7 @@ public class DiscordWS extends WebSocketClient {
             this.connect();
         } catch (NoSuchAlgorithmException e) {
             Discord4J.LOGGER.error("Error setting up SSL connection!");
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
     }
 
@@ -237,7 +237,7 @@ public class DiscordWS extends WebSocketClient {
                 client.ws = new DiscordWS(client, new URI(redirectResponse.url.replaceAll("wss", "ws")));
                 disconnect();
             } catch (URISyntaxException e) {
-                e.printStackTrace();
+                Discord4J.LOGGER.error("Discord4J Internal Exception", e);
             }
         } else {
             Discord4J.LOGGER.warn("Unhandled opcode received: {} (ignoring), REPORT THIS TO THE DISCORD4J DEV!", op);
@@ -685,7 +685,7 @@ public class DiscordWS extends WebSocketClient {
 
             onMessage(data);
         } catch (IOException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
     }
 
@@ -696,7 +696,7 @@ public class DiscordWS extends WebSocketClient {
 
     @Override
     public void onError(Exception e) {
-        e.printStackTrace();
+        Discord4J.LOGGER.error("Discord4J Internal Exception", e);
     }
 
     @Override

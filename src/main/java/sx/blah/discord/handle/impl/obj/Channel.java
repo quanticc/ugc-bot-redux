@@ -293,7 +293,7 @@ public class Channel implements IChannel {
 
             return DiscordUtils.getInviteFromJSON(client, response);
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
 
         return null;
@@ -313,7 +313,7 @@ public class Channel implements IChannel {
                             Requests.POST.makeRequest(DiscordEndpoints.CHANNELS + getID() + "/typing",
                                 new BasicNameValuePair("authorization", client.getToken()));
                         } catch (HTTP429Exception e) {
-                            e.printStackTrace();
+                            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
                         }
                     }
                 }
@@ -353,7 +353,7 @@ public class Channel implements IChannel {
                 new BasicNameValuePair("authorization", client.getToken()),
                 new BasicNameValuePair("content-type", "application/json"));
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
     }
 
@@ -498,7 +498,7 @@ public class Channel implements IChannel {
                 new BasicNameValuePair("authorization", client.getToken()),
                 new BasicNameValuePair("content-type", "application/json"));
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
     }
 

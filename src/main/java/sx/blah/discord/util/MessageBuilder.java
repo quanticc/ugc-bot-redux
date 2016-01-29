@@ -19,6 +19,7 @@
 
 package sx.blah.discord.util;
 
+import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
@@ -117,7 +118,7 @@ public class MessageBuilder {
             try {
                 return channel.sendMessage(content);
             } catch (Exception e) {
-                e.printStackTrace();
+                Discord4J.LOGGER.error("Discord4J Internal Exception", e);
             }
         }
         return null;

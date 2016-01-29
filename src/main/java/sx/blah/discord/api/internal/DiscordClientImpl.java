@@ -158,7 +158,7 @@ public final class DiscordClientImpl implements IDiscordClient {
                 new BasicNameValuePair("authorization", token)), GatewayResponse.class);
             gateway = response.url;//.replaceAll("wss", "ws");
         } catch (HTTP429Exception e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         Discord4J.LOGGER.debug("Obtained gateway {}.", gateway);
         return gateway;
@@ -186,7 +186,7 @@ public final class DiscordClientImpl implements IDiscordClient {
                 this.token = response.token;
             }
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
     }
 
@@ -309,7 +309,7 @@ public final class DiscordClientImpl implements IDiscordClient {
 
             return DiscordUtils.getInviteFromJSON(this, response);
         } catch (HTTP429Exception e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         return null;
     }
@@ -338,7 +338,7 @@ public final class DiscordClientImpl implements IDiscordClient {
                     return region;
             }
         } catch (HTTP429Exception e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         return null;
     }
@@ -355,7 +355,7 @@ public final class DiscordClientImpl implements IDiscordClient {
             guildList.add(guild);
             return guild;
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         return null;
     }
