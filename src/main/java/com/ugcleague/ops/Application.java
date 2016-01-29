@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.liquibase.LiquibaseProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 
@@ -27,6 +28,9 @@ import java.util.Collection;
 public class Application {
 
     private static final Logger log = LoggerFactory.getLogger(Application.class);
+
+    @Autowired
+    private ConfigurableApplicationContext context;
 
     @Autowired
     private Environment env;
@@ -57,6 +61,7 @@ public class Application {
                     "It should not run with both the 'dev' and 'cloud' profiles at the same time.");
             }
         }
+        context.registerShutdownHook();
     }
 
     /**

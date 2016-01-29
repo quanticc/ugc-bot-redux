@@ -22,4 +22,14 @@
              relativeToChangelogFile="false"/>
     <include file="classpath:config/liquibase/changelog/20160122160700_edited_entity_Task.xml"
              relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160129173803_added_entity_DiscordUser.xml"
+             relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160129174248_added_entity_DiscordChannel.xml"
+             relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160129174553_added_entity_DiscordMessage.xml"
+             relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160129175203_added_entity_DiscordAttachment.xml"
+             relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160129183900_edited_entity_DiscordMessage.xml"
+             relativeToChangelogFile="false"/>
 </databaseChangeLog>

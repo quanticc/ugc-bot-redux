@@ -1,6 +1,7 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
+import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,7 @@ public class DiscordService {
 
     private IDiscordClient client;
     private Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
+    private Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
 
     @Autowired
     public DiscordService(LeagueProperties leagueProperties) {
@@ -63,6 +65,9 @@ public class DiscordService {
         String email = discord.getEmail();
         String password = discord.getPassword();
         client = new ClientBuilder().withLogin(email, password).login();
+        log.debug("Registering {} Discord event subscribers", queuedListeners.size() + queuedSubscribers.size());
+        queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
+        queuedSubscribers.forEach(subscriber -> client.getDispatcher().registerListener(subscriber));
         client.getDispatcher().registerListener(new IListener<ReadyEvent>() {
             @Override
             public void handle(ReadyEvent readyEvent) {
@@ -100,10 +105,6 @@ public class DiscordService {
                         log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
                     }
                 }
-                // and then register all pending listeners
-                log.debug("Registering {} queued listeners", queuedListeners.size());
-                queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
-                queuedListeners.clear();
             }
         });
     }
@@ -211,8 +212,23 @@ public class DiscordService {
         }
     }
 
+    public void subscribe(DiscordSubscriber subscriber) {
+        if (client != null && client.isReady()) {
+            client.getDispatcher().registerListener(subscriber);
+        } else {
+            // queue if the client is not ready yet
+            queuedSubscribers.add(subscriber);
+        }
+    }
+
     public void unsubscribe(IListener<?> listener) {
         client.getDispatcher().unregisterListener(listener);
+        queuedListeners.remove(listener);
+    }
+
+    public void unsubscribe(DiscordSubscriber subscriber) {
+        client.getDispatcher().unregisterListener(subscriber);
+        queuedSubscribers.remove(subscriber);
     }
 
     public MessageBuilder message() {

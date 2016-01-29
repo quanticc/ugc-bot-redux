@@ -1,8 +1,8 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.*;
+import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.handle.IListener;
+import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
@@ -29,12 +29,11 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class CommandService {
+public class CommandService implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(CommandService.class);
     private static final int LENGTH_LIMIT = 2000;
 
-    private final LeagueProperties leagueProperties;
     private final DiscordService discordService;
     private final Set<Command> commandList = new ConcurrentHashSet<>();
     private final Gatekeeper gatekeeper = new Gatekeeper();
@@ -42,8 +41,7 @@ public class CommandService {
     private OptionSpec<String> helpNonOptionSpec;
 
     @Autowired
-    public CommandService(LeagueProperties leagueProperties, DiscordService discordService) {
-        this.leagueProperties = leagueProperties;
+    public CommandService(DiscordService discordService) {
         this.discordService = discordService;
     }
 
@@ -53,49 +51,48 @@ public class CommandService {
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
         commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
             .command(this::showCommandList).permission(0).parser(parser).build());
-        discordService.subscribe(new IListener<MessageReceivedEvent>() {
+        discordService.subscribe(this);
+    }
 
-            @Override
-            public void handle(MessageReceivedEvent event) {
-                IMessage m = event.getMessage();
-                String content = m.getContent();
-                Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
-                if (match.isPresent()) {
-                    Command command = match.get();
-                    if (canExecute(m.getAuthor(), command)) {
-                        // cut away the "command" portion of the message
-                        String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
-                        args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
-                        // add gatekeeper logic
-                        if (command.isQueued()) {
-                            CommandJob job = new CommandJob(command, m, args);
-                            String key = m.getAuthor().getID();
-                            if (gatekeeper.getQueuedJobCount(key) > 0) {
-                                answerPrivately(m, "**[Gatekeeper]** Please wait until your previous command finishes.");
-                            } else {
-                                answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
-                                CompletableFuture<String> future = gatekeeper.queue(key, job);
-                                future.thenAccept(response -> handleResponse(m, command, response));
-                            }
-                        } else {
-                            try {
-                                log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
-                                    command.getKey(), args);
-                                String response = command.execute(m, args);
-                                handleResponse(m, command, response);
-                                // ignore empty responses (no action)
-                            } catch (OptionException e) {
-                                log.warn("Invalid call: {}", e.toString());
-                                printHelp(m, command);
-                            }
-                        }
+    @EventSubscriber
+    public void onMessageReceived(MessageReceivedEvent event) {
+        IMessage m = event.getMessage();
+        String content = m.getContent();
+        Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
+        if (match.isPresent()) {
+            Command command = match.get();
+            if (canExecute(m.getAuthor(), command)) {
+                // cut away the "command" portion of the message
+                String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
+                args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
+                // add gatekeeper logic
+                if (command.isQueued()) {
+                    CommandJob job = new CommandJob(command, m, args);
+                    String key = m.getAuthor().getID();
+                    if (gatekeeper.getQueuedJobCount(key) > 0) {
+                        answerPrivately(m, "**[Gatekeeper]** Please wait until your previous command finishes.");
                     } else {
-                        log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
-                            command.getKey(), command.getPermissionLevel());
+                        answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
+                        CompletableFuture<String> future = gatekeeper.queue(key, job);
+                        future.thenAccept(response -> handleResponse(m, command, response));
+                    }
+                } else {
+                    try {
+                        log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
+                            command.getKey(), args);
+                        String response = command.execute(m, args);
+                        handleResponse(m, command, response);
+                        // ignore empty responses (no action)
+                    } catch (OptionException e) {
+                        log.warn("Invalid call: {}", e.toString());
+                        printHelp(m, command);
                     }
                 }
+            } else {
+                log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
+                    command.getKey(), command.getPermissionLevel());
             }
-        });
+        }
     }
 
     private void handleResponse(IMessage m, Command command, String response) {
@@ -202,12 +199,13 @@ public class CommandService {
     }
 
     public void register(Command command) {
-        log.info("Registering command: {}", command);
+        log.info("Registering: {} ({}) with level {}{}", command.getKey(), command.getMatchType(),
+            command.getPermissionLevel(), command.isQueued() ? " queued" : "");
         commandList.add(command);
     }
 
     public void unregister(Command command) {
-        log.info("Removing command: {}", command);
+        log.info("Unregistering: {}", command.getKey());
         commandList.remove(command);
     }
 

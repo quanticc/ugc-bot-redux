@@ -24,6 +24,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableJpaRepositories("com.ugcleague.ops.repository")
+@EnableJpaAuditing
 @EnableTransactionManagement
 public class DatabaseConfiguration {
 
