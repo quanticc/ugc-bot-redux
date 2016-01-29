@@ -205,11 +205,11 @@ public class SyncQueryService {
                             log.warn("Could not send PM to user: {}", e.toString());
                         }
                         for (ServerFile file : toRefresh) {
-                            long oldTime = file.getLastModified();
-                            String oldTag = file.geteTag();
+                            long oldTime = Optional.ofNullable(file.getLastModified()).orElse(0L);
+                            String oldTag = Optional.ofNullable(file.geteTag()).orElse("");
                             ServerFile refreshed = serverFileService.refresh(file);
-                            long newTime = refreshed.getLastModified();
-                            String newTag = refreshed.geteTag();
+                            long newTime = Optional.ofNullable(refreshed.getLastModified()).orElse(0L);
+                            String newTag = Optional.ofNullable(refreshed.geteTag()).orElse("");
                             if (oldTime != newTime || !oldTag.equals(newTag)) {
                                 String content = String.format("Refreshed from %s\nLast modified: %d -> %d\nETag: %s -> %s",
                                     file.getRemoteUrl(), oldTime, newTime, oldTag, newTag);

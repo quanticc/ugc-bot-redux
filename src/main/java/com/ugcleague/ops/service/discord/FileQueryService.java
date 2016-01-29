@@ -57,7 +57,7 @@ public class FileQueryService {
         initFileListCommand();
         initFileAddCommand();
         initFileInfoCommand();
-        initFileEditCommand(); // TODO
+        initFileEditCommand();
         initFileDeleteCommand(); // TODO
         initFileRefreshCommand();
     }
@@ -70,7 +70,8 @@ public class FileQueryService {
                 StringBuilder builder = new StringBuilder();
                 for (ServerFile file : serverFileService.findAll()) {
                     builder.append(String.format("[%d] **%s** %s (%s) last modified %s\n",
-                        file.getId(), file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(), file.getLastModified()
+                        file.getId(), file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(),
+                        Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never")
                     ));
                 }
                 return builder.toString();
@@ -143,7 +144,9 @@ public class FileQueryService {
                         ServerFile file = optional.get();
                         response.append("• Info about file **").append(key).append("**\n")
                             .append(String.format("Name: %s\nURL: %s\nGroup: %s\nLast modified: %s\nETag: %s\n",
-                                file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(), file.getLastModified(), file.geteTag()));
+                                file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(),
+                                Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never"),
+                                Optional.ofNullable(file.geteTag()).orElse("<none>")));
                     } else {
                         response.append("• No files matching **").append(key).append("** were found.");
                     }
@@ -164,7 +167,9 @@ public class FileQueryService {
 
     private void appendFileInfo(StringBuilder response, ServerFile file) {
         response.append(String.format("• *ID:* %d, *Name:* %s, *URL:* %s, *Group:* %s, *Last modified:* %s, *ETag:* %s\n",
-            file.getId(), file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(), file.getLastModified(), file.geteTag()));
+            file.getId(), file.getName(), file.getRemoteUrl(), file.getSyncGroup().getLocalDir(),
+            Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never"),
+            Optional.ofNullable(file.geteTag()).orElse("<none>")));
     }
 
     private void initFileEditCommand() {
@@ -232,7 +237,7 @@ public class FileQueryService {
         parser.acceptsAll(asList("a", "all"), "Perform operation on all cached files");
         commandService.register(CommandBuilder.startsWith(".file refresh")
             .description("Checks if a cached file is outdated").permission("support")
-            .parser(parser).command(this::fileRefresh).build());
+            .parser(parser).command(this::fileRefresh).queued().build());
     }
 
     private String fileRefresh(IMessage m, OptionSet o) {
@@ -243,7 +248,9 @@ public class FileQueryService {
                 // ignore all non-options if --all is specified
                 for (ServerFile file : serverFileService.findAll()) {
                     response.append(String.format("• Preparing to refresh **%s**: %s Last modified: %s ETag: %s\n",
-                        file.getName(), file.getRemoteUrl(), file.getLastModified(), file.geteTag()));
+                        file.getName(), file.getRemoteUrl(),
+                        Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never"),
+                        Optional.ofNullable(file.geteTag()).orElse("<none>")));
                     serverFileService.refresh(file);
                 }
             } else {
@@ -253,9 +260,10 @@ public class FileQueryService {
                         Optional<ServerFile> optional = serverFileService.findOne(Long.parseLong(key));
                         if (optional.isPresent()) {
                             ServerFile file = optional.get();
-                            // TODO turn into scheduled response
-                            response.append(String.format("• Preparing to refresh **%s**: %s Last modified: %s ETag: %s\n",
-                                file.getName(), file.getRemoteUrl(), file.getLastModified(), file.geteTag()));
+                            response.append(String.format("• Refresh **%s**: %s Last modified: %s ETag: %s\n",
+                                file.getName(), file.getRemoteUrl(),
+                                Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never"),
+                                Optional.ofNullable(file.geteTag()).orElse("<none>")));
                             serverFileService.refresh(file);
                         } else {
                             response.append("• No files matching **").append(key).append("** were found.");
@@ -266,9 +274,10 @@ public class FileQueryService {
                             response.append("• No files matching **").append(key).append("** were found.");
                         } else {
                             files.forEach(file -> {
-                                // TODO turn into scheduled response
-                                response.append(String.format("• Preparing to refresh **%s**: %s Last modified: %s ETag: %s\n",
-                                    file.getName(), file.getRemoteUrl(), file.getLastModified(), file.geteTag()));
+                                response.append(String.format("• Refresh **%s**: %s Last modified: %s ETag: %s\n",
+                                    file.getName(), file.getRemoteUrl(),
+                                    Optional.ofNullable(file.getLastModified()).map(Object::toString).orElse("never"),
+                                    Optional.ofNullable(file.geteTag()).orElse("<none>")));
                                 serverFileService.refresh(file);
                             });
                         }
