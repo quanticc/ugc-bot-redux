@@ -66,7 +66,7 @@ public class SteamCondenserService {
         try {
             return throwingPing(server);
         } catch (Exception e) {
-            log.warn("Could not ping the server after retrying", e.toString());
+            log.warn("Could not ping {} after retrying", server.getConnectAddress(), e.toString());
             return -2;
         }
     }

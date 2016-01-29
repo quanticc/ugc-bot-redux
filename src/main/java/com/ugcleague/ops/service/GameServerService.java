@@ -103,7 +103,8 @@ public class GameServerService {
         log.debug("==== Refreshing RCON server passwords ====");
         ZonedDateTime now = ZonedDateTime.now();
         // refreshing passwords of expired servers since they auto restart and change password
-        long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream().map(this::refreshRconPassword)
+        long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream()
+            .map(this::refreshRconPassword).filter(u -> u != null)
             .map(gameServerRepository::save).count();
         log.info("{} servers updated their RCON passwords", count);
     }
@@ -128,7 +129,7 @@ public class GameServerService {
         } catch (RemoteAccessException | IOException e) {
             log.warn("Could not refresh the RCON password", e.toString());
         }
-        return server;
+        return null;
     }
 
     public List<GameServer> findOutdatedServers() {
@@ -181,10 +182,11 @@ public class GameServerService {
                 server.setTvPort(Optional.ofNullable(info.get("tvPort")).map(this::safeParse).orElse(0));
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().set(0);
             } else {
-                int failedPings = deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-                //if (failedPings >= 1) {
-                //    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
-                //}
+                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
+//                int failedPings = deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
+//                if (failedPings >= 1) {
+//                    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
+//                }
             }
         }
         return server;
