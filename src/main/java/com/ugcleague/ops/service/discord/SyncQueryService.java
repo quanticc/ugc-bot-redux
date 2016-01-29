@@ -193,14 +193,14 @@ public class SyncQueryService {
                 if (groups.isEmpty()) {
                     response.append("No groups found, skipping local refresh");
                 } else {
-                    response.append("Locally updated groups: **").append(groups.toString()).append("**");
+                    response.append("Locally updated groups: ").append(groups.toString()).append("\n");
                     List<ServerFile> toRefresh = files.stream()
                         .filter(f -> groups.contains(f.getSyncGroup()))
                         .collect(Collectors.toList());
-                    if (toRefresh.isEmpty()) {
+                    if (!toRefresh.isEmpty()) {
                         try {
                             discordService.privateMessage(m.getAuthor().getID())
-                                .appendContent("Refreshing ** " + toRefresh.size() + " **files").send();
+                                .appendContent("Refreshing **" + toRefresh.size() + "** files").send();
                         } catch (Exception e) {
                             log.warn("Could not send PM to user: {}", e.toString());
                         }
