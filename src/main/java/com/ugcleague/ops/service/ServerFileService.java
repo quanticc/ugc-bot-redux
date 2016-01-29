@@ -192,7 +192,11 @@ public class ServerFileService {
             }
         }
         log.debug("Copying to repository: {} -> {}", srcPath, destDir);
-        FileUtils.copyDirectory(srcPath.toFile(), destDir.toFile());
+        if (Files.isDirectory(srcPath)) {
+            FileUtils.copyDirectory(srcPath.toFile(), destDir.toFile());
+        } else {
+            FileUtils.copyFileToDirectory(srcPath.toFile(), destDir.toFile());
+        }
         return destDir;
     }
 
