@@ -74,7 +74,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         connectNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server connect")
-            .description("Shows URL to join UGC game servers").permission("support")
+            .description("Show URL to join UGC game servers [A]").permission("support")
             .parser(parser).command(this::executeConnectCommand).build());
     }
 
@@ -111,7 +111,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         statusNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".status")
-            .description("Displays info about a server").permission("support")
+            .description("Display info about a server [A]").permission("support")
             .parser(parser).command(this::executeStatusCommand).build());
     }
 
@@ -241,7 +241,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server restart")
-            .description("Restart the given servers. Only empty ones will be restarted").permission("support")
+            .description("Restart the given servers (only empty ones will be restarted) [A]").permission("support")
             .parser(parser).command(this::executeRestartCommand).build());
     }
 
@@ -279,7 +279,7 @@ public class ServerQueryService {
         rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
         rconPasswordSpec = parser.acceptsAll(asList("p", "password"), "RCON password").withRequiredArg();
         commandService.register(CommandBuilder.startsWith(".rcon")
-            .description("Send a command to a game server using RCON").permission("support")
+            .description("Send a command to a game server using RCON [A]").permission("support")
             .parser(parser).command(this::executeRconCommand).build());
     }
 
@@ -344,7 +344,7 @@ public class ServerQueryService {
 
     private void initDeadCommand() {
         commandService.register(CommandBuilder.equalsTo(".server issues")
-            .description("Display unresponsive UGC game servers").permission("support")
+            .description("Display unresponsive or outdated UGC game servers [A]").permission("support")
             .command(this::executeDeadCommand).build());
     }
 
@@ -378,7 +378,7 @@ public class ServerQueryService {
         insecureValueSpec = parser.acceptsAll(asList("v", "value"), "value to set as the insecure state")
             .withRequiredArg().required().ofType(Boolean.class);
         commandService.register(CommandBuilder.startsWith(".server insecure")
-            .description("Sets or removes the insecure FTP mode on a GS server").permission("master")
+            .description("Set or remove the insecure FTP mode on a GS server [M]").permission("master")
             .parser(parser).command(this::executeInsecureCommand).build());
     }
 
