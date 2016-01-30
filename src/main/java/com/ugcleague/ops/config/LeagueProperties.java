@@ -18,11 +18,12 @@ public class LeagueProperties {
     private final Datasource datasource = new Datasource();
     private final Cache cache = new Cache();
     private final Discord discord = new Discord();
+    private final Stats stats = new Stats();
+    private final Ugc ugc = new Ugc();
 
     private int consoleListenPort = 7131;
     private String syncRepositoryDir = "sync-repository";
     private String steamApiKey;
-    private String ugcApiKey;
 
     @Data
     public static class GameServers {
@@ -81,5 +82,16 @@ public class LeagueProperties {
             private List<String> roles = new ArrayList<>();
             private List<String> excludedRoles = new ArrayList<>();
         }
+    }
+
+    @Data
+    public static class Stats {
+        private Map<String, String> endpoints = new LinkedHashMap<>();
+    }
+
+    @Data
+    public static class Ugc {
+        private String key;
+        private Map<String, String> endpoints = new LinkedHashMap<>();
     }
 }

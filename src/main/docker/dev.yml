@@ -10,4 +10,11 @@ ugc-bot-dev-mysql:
   ports:
   - "3306:3306"
   command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4
+ugc-bot-dev-mongodb:
+  container_name: ugc-bot-dev-mongodb
+  image: mongo:3.0.7
+  volumes:
+  - ~/volumes/ugc-bot/dev-mongodb/:/data/db/
+  ports:
+  - "27017:27017"
 
