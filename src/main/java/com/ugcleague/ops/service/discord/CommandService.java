@@ -72,7 +72,7 @@ public class CommandService implements DiscordSubscriber {
                     if (gatekeeper.getQueuedJobCount(key) > 0) {
                         answerPrivately(m, "**[Gatekeeper]** Please wait until your previous command finishes.");
                     } else {
-                        answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
+                        //answerPrivately(m, "**[Gatekeeper]** Your command was queued and will begin shortly.");
                         CompletableFuture<String> future = gatekeeper.queue(key, job);
                         future.thenAccept(response -> handleResponse(m, command, response));
                     }
