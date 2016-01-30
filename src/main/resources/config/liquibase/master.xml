@@ -32,4 +32,6 @@
              relativeToChangelogFile="false"/>
     <include file="classpath:config/liquibase/changelog/20160129183900_edited_entity_DiscordMessage.xml"
              relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160130043200_edited_entity_DiscordChannel.xml"
+             relativeToChangelogFile="false"/>
 </databaseChangeLog>

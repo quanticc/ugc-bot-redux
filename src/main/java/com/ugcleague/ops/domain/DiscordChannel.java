@@ -30,8 +30,7 @@ public class DiscordChannel extends AbstractAuditingEntity implements Serializab
     @Column(name = "is_private")
     private Boolean isPrivate;
 
-    @NotNull
-    @Column(name = "parent_guild_id", nullable = false)
+    @Column(name = "parent_guild_id")
     private String parentGuildId;
 
     @OneToMany(mappedBy = "channel")
