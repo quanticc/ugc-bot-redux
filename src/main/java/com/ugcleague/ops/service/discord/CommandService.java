@@ -257,7 +257,7 @@ public class CommandService implements DiscordSubscriber {
     }
 
     @Scheduled(cron = "0 0 * * * *") // every hour
-    private void purgeStatuses() {
+    void purgeStatuses() {
         // purge messages not updated for 1 hour
         invokerToStatusMap.values().removeIf(m -> LocalDateTime.now().minusHours(1).isAfter(m.getTimestamp()));
     }
