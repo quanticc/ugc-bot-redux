@@ -22,6 +22,8 @@ import sx.blah.discord.util.MessageBuilder;
 
 import javax.annotation.PostConstruct;
 import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.Queue;
@@ -258,6 +260,22 @@ public class DiscordService {
     public MessageBuilder privateMessage(IUser user) throws Exception {
         IPrivateChannel pch = client.getOrCreatePMChannel(user);
         return new MessageBuilder(client).withChannel(pch);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
+    public void sendFile(IChannel channel, File file) throws HTTP429Exception, IOException, MissingPermissionsException {
+        channel.sendFile(file);
+    }
+
+    public void sendFilePrivately(String userId, File file) throws Exception {
+        IUser user = client.getUserByID(userId);
+        sendFilePrivately(user, file);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
+    public void sendFilePrivately(IUser user, File file) throws Exception {
+        IPrivateChannel pch = client.getOrCreatePMChannel(user);
+        pch.sendFile(file);
     }
 
     public boolean hasSupportRole(IUser user) {

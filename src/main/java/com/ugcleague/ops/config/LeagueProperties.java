@@ -20,9 +20,12 @@ public class LeagueProperties {
     private final Discord discord = new Discord();
     private final Stats stats = new Stats();
     private final Ugc ugc = new Ugc();
+    private final Dropbox dropbox = new Dropbox();
 
     private int consoleListenPort = 7131;
     private String syncRepositoryDir = "sync-repository";
+    private String downloadsDir = "downloads";
+    private long listCachedMinutes = 60;
     private String steamApiKey;
 
     @Data
@@ -93,5 +96,13 @@ public class LeagueProperties {
     public static class Ugc {
         private String key;
         private Map<String, String> endpoints = new LinkedHashMap<>();
+    }
+
+    @Data
+    public static class Dropbox {
+        private String key; // v1
+        private String secret; // v1
+        private String token; // v2
+        private String uploadsDir;
     }
 }

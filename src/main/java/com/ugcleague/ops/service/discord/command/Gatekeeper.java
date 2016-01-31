@@ -11,6 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+/**
+ * For command throttling
+ */
 public class Gatekeeper {
 
     private static final Logger log = LoggerFactory.getLogger(Gatekeeper.class);

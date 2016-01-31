@@ -1,10 +1,14 @@
 package com.ugcleague.ops.util;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,6 +69,10 @@ public class DateUtil {
         present.put(Long.MAX_VALUE, d -> d.toDays() / 365 + " years");
     }
 
+    public static String formatRelativeBetweenNowAnd(Instant instant) {
+        return formatRelative(Duration.between(Instant.now(), instant));
+    }
+
     public static String formatRelative(Duration duration) {
         Duration abs = duration.abs();
         long seconds = abs.getSeconds();
@@ -88,21 +96,29 @@ public class DateUtil {
     }
 
     public static String formatHuman(Duration duration) {
+        return formatHuman(duration, false);
+    }
+
+    public static String formatHuman(Duration duration, boolean minimal) {
         Duration abs = duration.abs();
         long totalSeconds = abs.getSeconds();
         if (totalSeconds == 0) {
-            return abs.toMillis() + " milliseconds";
+            return abs.toMillis() + (minimal ? "ms" : " milliseconds");
         }
         long d = totalSeconds / (3600 * 24);
         long h = (totalSeconds % (3600 * 24)) / 3600;
         long m = (totalSeconds % 3600) / 60;
         long s = totalSeconds % 60;
-        String days = inflect(d, "day");
-        String hours = inflect(h, "hour");
-        String minutes = inflect(m, "minute");
-        String seconds = inflect(s, "second");
+        String days = minimal ? compact(d, "d") : inflect(d, "day");
+        String hours = minimal ? compact(h, "h") : inflect(h, "hour");
+        String minutes = minimal ? compact(m, "m") : inflect(m, "minute");
+        String seconds = minimal ? compact(s, "s") : inflect(s, "second");
         return Arrays.asList(days, hours, minutes, seconds).stream()
-            .filter(str -> !str.isEmpty()).collect(Collectors.joining(", "));
+            .filter(str -> !str.isEmpty()).collect(Collectors.joining(minimal ? "" : ", "));
+    }
+
+    private static String compact(long value, String suffix) {
+        return (value == 0 ? "" : value + suffix);
     }
 
     private static String inflect(long value, String singular) {
@@ -116,6 +132,23 @@ public class DateUtil {
             totalSeconds / 3600,
             (totalSeconds % 3600) / 60,
             totalSeconds % 60);
+    }
+
+    public static String now(String format) {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern(format));
+    }
+
+    public static String formatMillis(final long millis) {
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(millis)
+            - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(millis));
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(millis) - TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(millis));
+        long hours = TimeUnit.MILLISECONDS.toHours(millis);
+
+        return (hours == 0 ? "00" : hours < 10 ? String.valueOf("0" + hours) : String.valueOf(hours)) +
+            ":" +
+            (minutes == 0 ? "00" : minutes < 10 ? String.valueOf("0" + minutes) : String.valueOf(minutes)) +
+            ":" +
+            (seconds == 0 ? "00" : seconds < 10 ? String.valueOf("0" + seconds) : String.valueOf(seconds));
     }
 
     private DateUtil() {

@@ -23,15 +23,20 @@ public class Command implements Comparable<Command> {
     private BiFunction<IMessage, OptionSet, String> command;
     private int permissionLevel;
     private boolean queued;
+    private ReplyMode replyMode;
+    private boolean mention;
+    private boolean persistStatus;
 
     public Command(MatchType matchType, String key, String description, OptionParser parser,
-                   BiFunction<IMessage, OptionSet, String> command, int permissionLevel, boolean queued) {
+                   BiFunction<IMessage, OptionSet, String> command, int permissionLevel, boolean queued,
+                   ReplyMode replyMode, boolean mention, boolean persistStatus) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
         Objects.requireNonNull(parser, "Parser must not be null");
         Objects.requireNonNull(command, "Command must not be null");
         Objects.requireNonNull(permissionLevel, "Permission must not be null");
+        Objects.requireNonNull(replyMode, "Reply mode must not be null");
         this.matchType = matchType;
         this.key = key;
         this.description = description;
@@ -39,6 +44,9 @@ public class Command implements Comparable<Command> {
         this.command = command;
         this.permissionLevel = permissionLevel;
         this.queued = queued;
+        this.replyMode = replyMode;
+        this.mention = mention;
+        this.persistStatus = persistStatus;
     }
 
     public MatchType getMatchType() {
@@ -97,6 +105,30 @@ public class Command implements Comparable<Command> {
         this.queued = queued;
     }
 
+    public ReplyMode getReplyMode() {
+        return replyMode;
+    }
+
+    public void setReplyMode(ReplyMode replyMode) {
+        this.replyMode = replyMode;
+    }
+
+    public boolean isMention() {
+        return mention;
+    }
+
+    public void setMention(boolean mention) {
+        this.mention = mention;
+    }
+
+    public boolean isPersistStatus() {
+        return persistStatus;
+    }
+
+    public void setPersistStatus(boolean persistStatus) {
+        this.persistStatus = persistStatus;
+    }
+
     public boolean matches(String message) {
         switch (matchType) {
             case COMBINED:
@@ -145,10 +177,11 @@ public class Command implements Comparable<Command> {
             "matchType=" + matchType +
             ", key='" + key + '\'' +
             ", description='" + description + '\'' +
-            //", parser=" + parser +
-            //", command=" + command +
-            ", permissionLevel='" + permissionLevel + '\'' +
+            ", permissionLevel=" + permissionLevel +
             ", queued=" + queued +
+            ", replyMode=" + replyMode +
+            ", mention=" + mention +
+            ", persistStatus=" + persistStatus +
             '}';
     }
 

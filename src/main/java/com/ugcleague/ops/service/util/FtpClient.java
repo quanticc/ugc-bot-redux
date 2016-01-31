@@ -12,6 +12,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -75,7 +76,7 @@ public class FtpClient {
 
     public boolean connect(Map<String, String> credentials) {
         try {
-            throwingConnect(credentials);
+            retryableConnect(credentials);
             log.info("Connected to {} FTP server", server.getName());
             return true;
         } catch (IOException | FTPIllegalReplyException | FTPException e) {
@@ -85,7 +86,7 @@ public class FtpClient {
     }
 
     @Retryable(backoff = @Backoff(2000), include = {IOException.class, FTPIllegalReplyException.class, FTPException.class})
-    private void throwingConnect(Map<String, String> credentials)
+    private void retryableConnect(Map<String, String> credentials)
         throws IllegalStateException, IOException, FTPIllegalReplyException, FTPException {
         try {
             client.connect(credentials.get("ftp-hostname"));
@@ -108,14 +109,15 @@ public class FtpClient {
 
     public SyncGroup updateGroup(SyncGroup group) {
         try {
-            return throwingUpdateGroup(group);
+            return retryableUpdateGroup(group);
         } catch (IllegalStateException | FTPException | IOException | FTPIllegalReplyException e) {
             log.warn("Could not update {} due to {}", group.getRemoteDir(), e.toString());
             return null;
         }
     }
 
-    public SyncGroup throwingUpdateGroup(SyncGroup group) throws FTPException, IOException, FTPIllegalReplyException {
+    @Retryable(backoff = @Backoff(3000))
+    public SyncGroup retryableUpdateGroup(SyncGroup group) throws FTPException, IOException, FTPIllegalReplyException {
         Path localPath = Paths.get(repositoryDir, group.getLocalDir());
         if (!Files.isDirectory(localPath) || !Files.exists(localPath)) {
             log.warn("Skipping missing local folder: {}", localPath);
@@ -127,21 +129,21 @@ public class FtpClient {
         int i = 0;
         for (Path path : toUpload) {
             log.info("[{}/{}] Uploading {} to {}", ++i, toUpload.size(), path, server.getName());
-            tryUpload(path);
+            upload(path);
         }
         return group;
     }
 
-    private void tryUpload(Path path) throws FTPIllegalReplyException, IOException, FTPException {
+    private void upload(Path path) throws FTPIllegalReplyException, IOException, FTPException {
         try {
-            upload(path);
+            retryableUpload(path);
         } catch (FTPDataTransferException | FTPAbortedException e) {
             log.warn("Could not upload file after retrying: {}", e.toString());
         }
     }
 
     @Retryable(backoff = @Backoff(5000), include = {FTPDataTransferException.class, FTPAbortedException.class})
-    private void upload(Path path)
+    private void retryableUpload(Path path)
         throws FTPIllegalReplyException, IOException, FTPException, FTPDataTransferException, FTPAbortedException {
         client.upload(path.toFile(), new SimpleTransferListener());
     }
@@ -202,4 +204,37 @@ public class FtpClient {
         }
     }
 
+    public List<FTPFile> list(String dir) {
+        try {
+            dir = dir.replace("\\", "/");
+            client.changeDirectory("/");
+            createDirectories(dir);
+            client.changeDirectory(dir);
+            FTPFile[] list = client.list();
+            return Arrays.asList(list);
+        } catch (FTPException | IOException | FTPIllegalReplyException |
+            FTPAbortedException | FTPDataTransferException | FTPListParseException e) {
+            log.warn("Could not list files: {}", e.toString());
+        }
+        return Collections.emptyList();
+    }
+
+    public void download(String dir, String filename, File destFile) {
+        try {
+            dir = dir.replace("\\", "/");
+            client.changeDirectory("/");
+            createDirectories(dir);
+            client.changeDirectory(dir);
+            retryableDownload(filename, destFile);
+        } catch (FTPException | IOException | FTPIllegalReplyException |
+            FTPAbortedException | FTPDataTransferException e) {
+            log.warn("Could not download file: {}", e.toString());
+        }
+    }
+
+    @Retryable(backoff = @Backoff(5000), include = {FTPDataTransferException.class, FTPAbortedException.class})
+    private void retryableDownload(String filename, File destFile) throws FTPIllegalReplyException,
+        FTPDataTransferException, FTPException, FTPAbortedException, IOException {
+        client.download(filename, destFile, new SimpleTransferListener());
+    }
 }

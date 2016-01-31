@@ -27,6 +27,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.DateUtil.formatElapsed;
+import static com.ugcleague.ops.util.Util.padLeft;
+import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
 
 @Service
@@ -74,7 +76,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         connectNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server connect")
-            .description("Show URL to join UGC game servers [A]").permission("support")
+            .description("Show URL to join UGC game servers").permission("support")
             .parser(parser).command(this::executeConnectCommand).build());
     }
 
@@ -111,7 +113,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         statusNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".status")
-            .description("Display info about a server [A]").permission("support")
+            .description("Display info about a server").permission("support")
             .parser(parser).command(this::executeStatusCommand).build());
     }
 
@@ -223,14 +225,6 @@ public class ServerQueryService {
         return s;
     }
 
-    private String padRight(String s, int n) {
-        return String.format("%1$-" + n + "s", s);
-    }
-
-    private String padLeft(String s, int n) {
-        return String.format("%1$" + n + "s", s);
-    }
-
     private String formatDuration(Duration duration) {
         return (duration.isNegative() ? "available since " : "claim expires ") + DateUtil.formatRelative(duration);
     }
@@ -241,7 +235,7 @@ public class ServerQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server restart")
-            .description("Restart the given servers (only empty ones will be restarted) [A]").permission("support")
+            .description("Restart the given servers (only empty ones will be restarted)").permission("support")
             .parser(parser).command(this::executeRestartCommand).build());
     }
 
@@ -279,7 +273,7 @@ public class ServerQueryService {
         rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
         rconPasswordSpec = parser.acceptsAll(asList("p", "password"), "RCON password").withRequiredArg();
         commandService.register(CommandBuilder.startsWith(".rcon")
-            .description("Send a command to a game server using RCON [A]").permission("support")
+            .description("Send a command to a game server using RCON").permission("support")
             .parser(parser).command(this::executeRconCommand).build());
     }
 
@@ -344,7 +338,7 @@ public class ServerQueryService {
 
     private void initDeadCommand() {
         commandService.register(CommandBuilder.equalsTo(".server issues")
-            .description("Display unresponsive or outdated UGC game servers [A]").permission("support")
+            .description("Display unresponsive or outdated UGC game servers").permission("support")
             .command(this::executeDeadCommand).build());
     }
 
@@ -378,7 +372,7 @@ public class ServerQueryService {
         insecureValueSpec = parser.acceptsAll(asList("v", "value"), "value to set as the insecure state")
             .withRequiredArg().required().ofType(Boolean.class);
         commandService.register(CommandBuilder.startsWith(".server insecure")
-            .description("Set or remove the insecure FTP mode on a GS server [M]").permission("master")
+            .description("Set or remove the insecure FTP mode on a GS server").permission("master")
             .parser(parser).command(this::executeInsecureCommand).build());
     }
 

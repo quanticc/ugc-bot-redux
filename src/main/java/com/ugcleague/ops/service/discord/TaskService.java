@@ -66,7 +66,7 @@ public class TaskService {
         rateSpec = parser.acceptsAll(asList("r", "rate"), "fixed rate to set").requiredUnless(listSpec, enableSpec)
             .withRequiredArg().ofType(Long.class).describedAs("ms");
         commandService.register(CommandBuilder.startsWith(".beep task")
-            .description("Configure bot scheduled tasks [M]").permission("master")
+            .description("Configure bot scheduled tasks").permission("master")
             .parser(parser).command(this::executeTaskCommand).build());
     }
 
@@ -118,7 +118,7 @@ public class TaskService {
 
     public ScheduledFuture<?> register(String taskName, long initialDelay, long fixedRate, Runnable runnable) {
         Task task = taskRepository.findByName(taskName).orElseGet(() -> newTask(taskName, fixedRate));
-        if (task.getFixedRate() <= 0) {
+        if (task.getFixedRate() == null || task.getFixedRate() <= 0) {
             // invalid fixed rate - normalize to 10s+
             task.setFixedRate(Math.max(10000, fixedRate));
         }

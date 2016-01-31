@@ -60,10 +60,10 @@ public class SupportPingService {
     private void configure() {
         commandService.register(CommandBuilder.equalsTo(".sub")
             .description("Subscribe to support channel messages sent by regular users " +
-                "(max 1 PM per user per hour) [A]")
+                "(max 1 PM per user per hour)")
             .permission("support").command(this::executeSubCommand).build());
         commandService.register(CommandBuilder.equalsTo(".unsub")
-            .description("Unsubscribe from support channel messages [A]")
+            .description("Unsubscribe from support channel messages")
             .permission("support").command(this::executeUnsubCommand).build());
         discordService.subscribe(new IListener<MessageReceivedEvent>() {
 

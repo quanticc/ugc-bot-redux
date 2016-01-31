@@ -95,7 +95,7 @@ public class DiscordQueryService {
         profileAvatarSpec = parser.acceptsAll(asList("a", "avatar"), "change bot's avatar").withRequiredArg();
         profileGameSpec = parser.acceptsAll(asList("g", "game"), "change bot's game").withRequiredArg();
         commandService.register(CommandBuilder.startsWith(".beep profile")
-            .description("Edit this bot's profile [M]").permission("master")
+            .description("Edit this bot's profile").permission("master")
             .parser(parser).command(this::executeProfileCommand).build());
     }
 

@@ -1,5 +1,6 @@
 package com.ugcleague.ops.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.DynamicUpdate;
@@ -80,6 +81,11 @@ public class GameServer implements Serializable {
     @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     @JoinTable(name = "game_server_flag", joinColumns = @JoinColumn(name = "game_servers_id", referencedColumnName = "ID"), inverseJoinColumns = @JoinColumn(name = "flags_id", referencedColumnName = "ID"))
     private Set<Flag> flags = new HashSet<>();
+
+    @OneToMany(mappedBy = "owner")
+    @JsonIgnore
+    @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    private Set<RemoteFile> remoteFiles = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -223,6 +229,14 @@ public class GameServer implements Serializable {
 
     public void setFlags(Set<Flag> flags) {
         this.flags = flags;
+    }
+
+    public Set<RemoteFile> getRemoteFiles() {
+        return remoteFiles;
+    }
+
+    public void setRemoteFiles(Set<RemoteFile> remoteFiles) {
+        this.remoteFiles = remoteFiles;
     }
 
     @Override

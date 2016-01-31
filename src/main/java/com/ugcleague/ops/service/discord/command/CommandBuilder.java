@@ -30,6 +30,9 @@ public class CommandBuilder {
     private BiFunction<IMessage, OptionSet, String> command = (m, o) -> null;
     private int permissionLevel = CommandPermission.MASTER.getLevel(); // by default
     private boolean queued = false;
+    private boolean mention = false;
+    private ReplyMode replyMode = ReplyMode.PRIVATE; // by default
+    private boolean persistStatus = false;
 
     private CommandBuilder() {
 
@@ -81,7 +84,33 @@ public class CommandBuilder {
         return this;
     }
 
+    public CommandBuilder mention() {
+        this.mention = true;
+        return this;
+    }
+
+    public CommandBuilder privateReplies() {
+        this.replyMode = ReplyMode.PRIVATE;
+        return this;
+    }
+
+    public CommandBuilder permissionReplies() {
+        this.replyMode = ReplyMode.WITH_PERMISSION;
+        return this;
+    }
+
+    public CommandBuilder originReplies() {
+        this.replyMode = ReplyMode.ORIGIN;
+        return this;
+    }
+
+    public CommandBuilder persistStatus() {
+        this.persistStatus = true;
+        return this;
+    }
+
     public Command build() {
-        return new Command(matchType, key, description, parser, command, permissionLevel, queued);
+        return new Command(matchType, key, description, parser, command, permissionLevel,
+            queued, replyMode, mention, persistStatus);
     }
 }
