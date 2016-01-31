@@ -36,4 +36,6 @@
              relativeToChangelogFile="false"/>
     <include file="classpath:config/liquibase/changelog/20160130182600_added_entity_RemoteFile.xml"
              relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160131110800_edited_entity_Subscriber.xml"
+             relativeToChangelogFile="false"/>
 </databaseChangeLog>

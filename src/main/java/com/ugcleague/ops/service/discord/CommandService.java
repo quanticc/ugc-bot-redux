@@ -102,7 +102,8 @@ public class CommandService implements DiscordSubscriber {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             c.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
             c.getParser().printHelpOn(stream);
-            b.append(String.format("• Help for **%s**: %s [%s]\n", c.getKey(), c.getDescription(), c.getPermissionLevel()))
+            b.append(String.format("• Help for **%s**: %s%s\n", c.getKey(), c.getDescription(),
+                c.getPermissionLevel() > 0 ? " (requires permission level " + c.getPermissionLevel() + ")" : ""))
                 .append(new String(stream.toByteArray(), "UTF-8")).append("\n");
         } catch (Exception e) {
             b.append("Could not show help for **").append(c.getKey().substring(1)).append("**\n");
@@ -195,7 +196,7 @@ public class CommandService implements DiscordSubscriber {
      */
 
     public void helpReplyFrom(IMessage message, Command command) {
-        helpReplyFrom(message, command, "");
+        helpReplyFrom(message, command, null);
     }
 
     public void helpReplyFrom(IMessage message, Command command, String comment) {
@@ -206,8 +207,8 @@ public class CommandService implements DiscordSubscriber {
             if (comment != null) {
                 response.append(comment).append("\n");
             }
-            response.append(String.format("• Help for **%s**: %s [%s]\n", command.getKey(), command.getDescription()
-                , command.getPermissionLevel()))
+            response.append(String.format("• Help for **%s**: %s%s\n", command.getKey(), command.getDescription(),
+                command.getPermissionLevel() > 0 ? " (requires permission level " + command.getPermissionLevel() + ")" : ""))
                 .append(new String(stream.toByteArray(), "UTF-8"));
             replyFrom(message, command, response.toString());
         } catch (Exception e) {
@@ -256,7 +257,8 @@ public class CommandService implements DiscordSubscriber {
         invokerToStatusMap.remove(message.getID());
     }
 
-    @Scheduled(cron = "0 0 * * * *") // every hour
+    @Scheduled(cron = "0 0 * * * *")
+        // every hour
     void purgeStatuses() {
         // purge messages not updated for 1 hour
         invokerToStatusMap.values().removeIf(m -> LocalDateTime.now().minusHours(1).isAfter(m.getTimestamp()));

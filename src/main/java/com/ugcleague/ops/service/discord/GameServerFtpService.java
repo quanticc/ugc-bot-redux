@@ -91,13 +91,13 @@ public class GameServerFtpService {
 
     private void initGetLogsCommand() {
         getLogsCommand = commandService.register(CommandBuilder.combined(".get logs")
-            .description("List or retrieve log files from a game server").permission("support")
+            .description("List or retrieve log files from a game server").permission("support").permissionReplies()
             .parser(parser).command(this::executeGetLogs).queued().persistStatus().build());
     }
 
     private void initGetStvCommand() {
         getStvCommand = commandService.register(CommandBuilder.combined(".get stv")
-            .description("List or retrieve SourceTV demos from a game server").permission("support")
+            .description("List or retrieve SourceTV demos from a game server").permission("support").permissionReplies()
             .parser(parser).command(this::executeGetStv).queued().persistStatus().build());
     }
 
@@ -178,13 +178,16 @@ public class GameServerFtpService {
                             formatRelativeBetweenNowAnd(file.getModified().toInstant())));
                 }
             }
+            commandService.deleteStatusFrom(message);
         } else {
             // filters will be ignored
             if (filename.isPresent() || after.isPresent() || before.isPresent()) {
                 response.append("Filters are ignored when downloading files\n");
             }
+            // TODO: handle --force download mode
             Predicate<RemoteFile> filter = remoteFile -> remoteFile.getFilename().endsWith(endsWith)
-                && files.stream().anyMatch(s -> remoteFile.getFilename().contains(s));
+                && files.stream().anyMatch(s -> remoteFile.getFilename().contains(s))
+                && remoteFile.getSharedUrl() == null;
             Future<FileShareTask> future = syncGroupService.shareToDropbox(server, dir, filter);
             // wait in the background for the task to complete, but return now
             CompletableFuture.supplyAsync(() -> {

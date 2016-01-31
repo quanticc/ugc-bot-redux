@@ -75,7 +75,7 @@ public class DropboxService {
                     Optional<String> batchShareLink = getSharedLink(destPath);
                     task.setBatchSharedUrl(batchShareLink);
                     for (RemoteFile successful : task.getRequested()) {
-                        batchShareLink.ifPresent(successful::setSharedUrl);
+                        //batchShareLink.ifPresent(successful::setSharedUrl); // to copy batch url to each file
                         task.getSuccessful().add(successful);
                     }
                 }

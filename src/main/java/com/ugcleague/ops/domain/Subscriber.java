@@ -6,6 +6,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -13,7 +14,7 @@ import java.util.Set;
 @Entity
 @Table(name = "subscriber")
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-public class Subscriber {
+public class Subscriber extends AbstractAuditingEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -25,6 +26,15 @@ public class Subscriber {
 
     @Column(name = "name")
     private String name;
+
+    @Column(name = "enabled")
+    private Boolean enabled;
+
+    @Column(name = "start")
+    private ZonedDateTime start;
+
+    @Column(name = "finish")
+    private ZonedDateTime finish;
 
     @ManyToMany(mappedBy = "subscribers")
     @JsonIgnore
@@ -63,6 +73,30 @@ public class Subscriber {
         this.subscriptions = subscriptions;
     }
 
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public ZonedDateTime getStart() {
+        return start;
+    }
+
+    public void setStart(ZonedDateTime start) {
+        this.start = start;
+    }
+
+    public ZonedDateTime getFinish() {
+        return finish;
+    }
+
+    public void setFinish(ZonedDateTime finish) {
+        this.finish = finish;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -83,6 +117,11 @@ public class Subscriber {
             "id=" + id +
             "name='" + name + '\'' +
             ", userId='" + userId + '\'' +
+            ", enabled=" + enabled +
+            ", start=" + start +
+            ", finish=" + finish +
+            ", created_date=" + getCreatedDate() +
+            ", last_modified_date=" + getLastModifiedDate() +
             '}';
     }
 }
