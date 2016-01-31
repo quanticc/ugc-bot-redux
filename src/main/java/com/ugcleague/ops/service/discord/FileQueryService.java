@@ -66,7 +66,7 @@ public class FileQueryService {
     private void initFileListCommand() {
         // .file list
         commandService.register(CommandBuilder.equalsTo(".file list")
-            .description("List the files cached for server synchronization").permission("support")
+            .description("List the files cached for server synchronization").permission("support").permissionReplies()
             .command((message, o) -> {
                 StringBuilder builder = new StringBuilder();
                 for (ServerFile file : serverFileService.findAll()) {
@@ -89,8 +89,8 @@ public class FileQueryService {
         addRequiredSpec = parser.acceptsAll(asList("r", "required"), "file required to be synced (when performing health checks)")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file add")
-            .description("Add remote files to the GS sync list").permission("support")
-            .parser(parser).command(this::fileAdd).build());
+            .description("Add remote files to the GS sync list").permission("support").permissionReplies()
+            .experimental().parser(parser).command(this::fileAdd).build());
     }
 
     private String fileAdd(IMessage m, OptionSet o) {
@@ -129,8 +129,8 @@ public class FileQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".file info")
-            .description("Get info about a cached file").permission("support")
-            .parser(parser).command(this::fileInfo).build());
+            .description("Get info about a cached file").permission("support").permissionReplies()
+            .experimental().parser(parser).command(this::fileInfo).build());
     }
 
     private String fileInfo(IMessage m, OptionSet o) {
@@ -186,8 +186,8 @@ public class FileQueryService {
         editClearSpec = parser.acceptsAll(asList("c", "clear"), "clears cached meta-data")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file edit")
-            .description("Update a given file with new values").permission("support")
-            .parser(parser).command(this::fileEdit).build());
+            .description("Update a given file with new values").permission("support").permissionReplies()
+            .experimental().parser(parser).command(this::fileEdit).build());
     }
 
     private String fileEdit(IMessage m, OptionSet o) {
@@ -250,8 +250,8 @@ public class FileQueryService {
         refreshNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         parser.acceptsAll(asList("a", "all"), "perform operation on all cached files");
         commandService.register(CommandBuilder.startsWith(".file refresh")
-            .description("Check if a cached file is outdated").permission("support")
-            .parser(parser).command(this::fileRefresh).queued().build());
+            .description("Check if a cached file is outdated").permission("support").permissionReplies()
+            .experimental().parser(parser).command(this::fileRefresh).queued().build());
     }
 
     private String fileRefresh(IMessage m, OptionSet o) {

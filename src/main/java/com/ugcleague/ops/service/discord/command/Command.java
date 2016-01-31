@@ -26,10 +26,11 @@ public class Command implements Comparable<Command> {
     private ReplyMode replyMode;
     private boolean mention;
     private boolean persistStatus;
+    private boolean experimental;
 
     public Command(MatchType matchType, String key, String description, OptionParser parser,
                    BiFunction<IMessage, OptionSet, String> command, int permissionLevel, boolean queued,
-                   ReplyMode replyMode, boolean mention, boolean persistStatus) {
+                   ReplyMode replyMode, boolean mention, boolean persistStatus, boolean experimental) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
@@ -47,6 +48,7 @@ public class Command implements Comparable<Command> {
         this.replyMode = replyMode;
         this.mention = mention;
         this.persistStatus = persistStatus;
+        this.experimental = experimental;
     }
 
     public MatchType getMatchType() {
@@ -129,6 +131,14 @@ public class Command implements Comparable<Command> {
         this.persistStatus = persistStatus;
     }
 
+    public boolean isExperimental() {
+        return experimental;
+    }
+
+    public void setExperimental(boolean experimental) {
+        this.experimental = experimental;
+    }
+
     public boolean matches(String message) {
         switch (matchType) {
             case COMBINED:
@@ -182,6 +192,7 @@ public class Command implements Comparable<Command> {
             ", replyMode=" + replyMode +
             ", mention=" + mention +
             ", persistStatus=" + persistStatus +
+            ", experimental=" + experimental +
             '}';
     }
 

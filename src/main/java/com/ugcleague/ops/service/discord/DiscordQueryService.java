@@ -57,17 +57,20 @@ public class DiscordQueryService {
     @PostConstruct
     private void configure() {
         commandService.register(CommandBuilder.equalsTo(".beep info")
-            .description("Get Discord information about the bot").permission(0).command(this::executeInfoCommand).build());
+            .description("Get Discord information about the bot").permission(0).originReplies()
+            .command(this::executeInfoCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep clear")
-            .description("Remove my messages from the channel").permission(0).command(this::executeClearCommand).build());
-        commandService.register(CommandBuilder.equalsTo(".beep pm")
-            .description("Receive a test private message").permission(0).command(this::executePMCommand).build());
+            .description("Remove my messages from this channel").permission(0)
+            .command(this::executeClearCommand).build());
+        commandService.register(CommandBuilder.equalsTo(".beep boop")
+            .description("Test command please ignore").permission(0)
+            .command(this::executePMCommand).build());
         initProfileCommand();
     }
 
     private String executePMCommand(IMessage m, OptionSet optionSet) {
         try {
-            discordService.privateMessage(m.getAuthor()).appendContent(randomMessage()).send();
+            discordService.privateMessage(m.getAuthor()).appendContent("(╯°□°）╯︵ ┻━┻ ").appendContent(randomMessage()).send();
         } catch (Exception e) {
             log.warn("Could not send PM to user: {}", e.toString());
         }
@@ -75,7 +78,7 @@ public class DiscordQueryService {
     }
 
     public static String randomMessage() {
-        String result = "SUP DUDE";
+        String result = "???!!!!111";
         try {
             URL url = new URL("http://whatthecommit.com/index.txt");
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()))) {

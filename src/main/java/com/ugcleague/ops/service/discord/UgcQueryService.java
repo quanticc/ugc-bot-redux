@@ -46,7 +46,7 @@ public class UgcQueryService {
         resultsWeekSpec = parser.acceptsAll(asList("w", "week"), "HL week number").withRequiredArg().ofType(Integer.class).required();
         resultsRefreshSpec = parser.acceptsAll(asList("r", "refresh"), "forces a cache refresh").withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".ugc results")
-            .description("Get HL match results for the given season/week").permission("support")
+            .description("Get HL match results for the given season/week").permission("master")
             .parser(parser).command(this::results).queued().build());
     }
 

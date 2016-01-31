@@ -33,6 +33,7 @@ public class CommandBuilder {
     private boolean mention = false;
     private ReplyMode replyMode = ReplyMode.PRIVATE; // by default
     private boolean persistStatus = false;
+    private boolean experimental = false;
 
     private CommandBuilder() {
 
@@ -109,8 +110,13 @@ public class CommandBuilder {
         return this;
     }
 
+    public CommandBuilder experimental() {
+        this.experimental = true;
+        return this;
+    }
+
     public Command build() {
         return new Command(matchType, key, description, parser, command, permissionLevel,
-            queued, replyMode, mention, persistStatus);
+            queued, replyMode, mention, persistStatus, experimental);
     }
 }

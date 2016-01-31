@@ -71,7 +71,7 @@ public class SyncQueryService {
     private void initSyncListCommand() {
         // .sync list
         commandService.register(CommandBuilder.equalsTo(".sync list")
-            .description("List the file synchronization groups").permission("support")
+            .description("List the file synchronization groups").permission("support").permissionReplies()
             .command((message, o) -> {
                 StringBuilder builder = new StringBuilder();
                 for (SyncGroup group : syncGroupService.findAll()) {
@@ -97,7 +97,7 @@ public class SyncQueryService {
         addRemoteSpec = parser.acceptsAll(asList("r", "remote"), "path to the remote directory")
             .withRequiredArg().required();
         commandService.register(CommandBuilder.startsWith(".sync add")
-            .description("Add a file group").permission("support")
+            .description("Add a file group").permission("support").permissionReplies().experimental()
             .parser(parser).command(this::syncGroupAdd).build());
     }
 
@@ -126,7 +126,7 @@ public class SyncQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or local name of the sync groups").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".sync info")
-            .description("Get info about a sync group").permission("support")
+            .description("Get info about a sync group").permission("support").permissionReplies().experimental()
             .parser(parser).command(this::syncGroupInfo).build());
     }
 
@@ -170,8 +170,8 @@ public class SyncQueryService {
         refreshRemoteSpec = parser.acceptsAll(asList("r", "remote"), "comma-separated list of servers to sync remotely")
             .withOptionalArg().withValuesSeparatedBy(",");
         commandService.register(CommandBuilder.startsWith(".sync refresh")
-            .description("Refresh the given file groups locally and/or remotely").permission("support")
-            .parser(parser).command(this::syncGroupRefresh).queued().build());
+            .description("Refresh the given file groups locally and/or remotely").permission("support").permissionReplies()
+            .experimental().parser(parser).command(this::syncGroupRefresh).queued().build());
     }
 
     private String syncGroupRefresh(IMessage m, OptionSet o) {

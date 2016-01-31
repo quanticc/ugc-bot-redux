@@ -53,6 +53,7 @@ public class CommandService implements DiscordSubscriber {
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
 
     private OptionSpec<String> helpNonOptionSpec;
+    private OptionSpec<Boolean> helpFullSpec;
 
     @Autowired
     public CommandService(DiscordService discordService, LeagueProperties properties) {
@@ -63,7 +64,10 @@ public class CommandService implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
+        helpFullSpec = parser.acceptsAll(asList("f", "full"), "display all commands in a list with their description")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
             .command(this::showCommandList).permission(0).parser(parser).build());
         discordService.subscribe(this);
@@ -74,12 +78,22 @@ public class CommandService implements DiscordSubscriber {
 
     private String showCommandList(IMessage m, OptionSet o) {
         List<String> nonOptions = o.valuesOf(helpNonOptionSpec);
-        if (nonOptions.isEmpty()) {
-            return "*Available Commands*\n" + commandList.stream()
-                .filter(c -> canExecute(m.getAuthor(), c))
-                .sorted(Comparator.naturalOrder())
-                .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
-                .collect(Collectors.joining("\n"));
+        if (o.has("?")) {
+            return null;
+        } else if (nonOptions.isEmpty()) {
+            if (o.has(helpFullSpec) && o.valueOf(helpFullSpec)) {
+                return "*Commands available to you*\n" + commandList.stream()
+                    .filter(c -> canExecute(m.getAuthor(), c))
+                    .sorted(Comparator.naturalOrder())
+                    .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
+                    .collect(Collectors.joining("\n"));
+            } else {
+                return "*Commands available to you:* " + commandList.stream()
+                    .filter(c -> canExecute(m.getAuthor(), c))
+                    .sorted(Comparator.naturalOrder())
+                    .map(Command::getKey)
+                    .collect(Collectors.joining(", "));
+            }
         } else {
             List<Command> requested = commandList.stream()
                 .filter(c -> isRequested(nonOptions, c.getKey().substring(1)))
@@ -207,8 +221,9 @@ public class CommandService implements DiscordSubscriber {
             if (comment != null) {
                 response.append(comment).append("\n");
             }
-            response.append(String.format("• Help for **%s**: %s%s\n", command.getKey(), command.getDescription(),
-                command.getPermissionLevel() > 0 ? " (requires permission level " + command.getPermissionLevel() + ")" : ""))
+            response.append(String.format("• Help for **%s**: %s%s%s\n", command.getKey(), command.getDescription(),
+                command.getPermissionLevel() > 0 ? " (requires permission level " + command.getPermissionLevel() + ")" : "",
+                command.isExperimental() ? " -- Warning, this command is **experimental** and not well tested yet." : ""))
                 .append(new String(stream.toByteArray(), "UTF-8"));
             replyFrom(message, command, response.toString());
         } catch (Exception e) {
@@ -307,7 +322,6 @@ public class CommandService implements DiscordSubscriber {
             // use the same channel as invocation
             return answer(message, response, command.isMention(), file);
         } else if (replyMode == ReplyMode.WITH_PERMISSION) {
-            IUser author = message.getAuthor();
             int commandLevel = command.getPermissionLevel();
             int channelLevel = 0;
             String channelId = message.getChannel().getID(); // can be null
@@ -326,8 +340,10 @@ public class CommandService implements DiscordSubscriber {
             } else {
                 return answerPrivately(message, response, file);
             }
+        } else {
+            log.warn("This command ({}) has an invalid reply-mode: {}", command.getKey(), command.getReplyMode());
+            return answerPrivately(message, response, null);
         }
-        return null;
     }
 
     // Lower level output control
@@ -341,10 +357,15 @@ public class CommandService implements DiscordSubscriber {
                 log.warn("Could not send file to user {} in channel {}: {}",
                     message.getAuthor(), message.getChannel(), e.toString());
             }
+            return null;
         } else {
             if (answer.length() > LENGTH_LIMIT) {
                 SplitMessage s = new SplitMessage(answer);
-                s.split(LENGTH_LIMIT).forEach(str -> answer(message, str, mention, null));
+                IMessage last = null;
+                for (String str : s.split(LENGTH_LIMIT)) {
+                    last = answer(message, str, mention, null);
+                }
+                return last;
             } else {
                 MessageBuilder builder = discordService.channelMessage(message.getChannel());
                 if (mention) {
@@ -353,7 +374,6 @@ public class CommandService implements DiscordSubscriber {
                 return builder.appendContent(answer).send();
             }
         }
-        return null; // on multipart messages
     }
 
     private IMessage answerPrivately(IMessage message, String answer, File file) {
@@ -387,7 +407,8 @@ public class CommandService implements DiscordSubscriber {
             opt(command.getReplyMode(), "", " replies" +
                 opt(command.isMention(), "with mention", "", false, true).orElse(""), null),
             opt(command.isQueued(), "queued", "", false, true),
-            opt(command.isPersistStatus(), "persisted status", "", false, true))
+            opt(command.isPersistStatus(), "persisted status", "", false, true),
+            opt(command.isExperimental(), "experimental", "", false, true))
             .stream().filter(Optional::isPresent).map(Optional::get).collect(Collectors.joining(", "));
         log.info("Command {} [{}] {}", padRight(command.getKey(), 20),
             padLeft("" + command.getPermissionLevel(), 3), description);
