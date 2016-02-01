@@ -250,7 +250,7 @@ public class FileQueryService {
         refreshNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         parser.acceptsAll(asList("a", "all"), "perform operation on all cached files");
         commandService.register(CommandBuilder.startsWith(".file refresh")
-            .description("Check if a cached file is outdated").permission("support").permissionReplies()
+            .description("Check if a cached file is outdated").permission("support").permissionReplies().mention()
             .experimental().parser(parser).command(this::fileRefresh).queued().build());
     }
 

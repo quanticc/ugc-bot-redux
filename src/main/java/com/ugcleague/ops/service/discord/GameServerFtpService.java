@@ -91,13 +91,13 @@ public class GameServerFtpService {
 
     private void initGetLogsCommand() {
         getLogsCommand = commandService.register(CommandBuilder.combined(".get logs")
-            .description("List or retrieve log files from a game server").permission("support").permissionReplies()
+            .description("List or retrieve log files from a game server").permission("support").permissionReplies().mention()
             .parser(parser).command(this::executeGetLogs).queued().persistStatus().build());
     }
 
     private void initGetStvCommand() {
         getStvCommand = commandService.register(CommandBuilder.combined(".get stv")
-            .description("List or retrieve SourceTV demos from a game server").permission("support").permissionReplies()
+            .description("List or retrieve SourceTV demos from a game server").permission("support").permissionReplies().mention()
             .parser(parser).command(this::executeGetStv).queued().persistStatus().build());
     }
 

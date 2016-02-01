@@ -170,7 +170,7 @@ public class SyncQueryService {
         refreshRemoteSpec = parser.acceptsAll(asList("r", "remote"), "comma-separated list of servers to sync remotely")
             .withOptionalArg().withValuesSeparatedBy(",");
         commandService.register(CommandBuilder.startsWith(".sync refresh")
-            .description("Refresh the given file groups locally and/or remotely").permission("support").permissionReplies()
+            .description("Refresh the given file groups locally and/or remotely").permission("support").permissionReplies().mention()
             .experimental().parser(parser).command(this::syncGroupRefresh).queued().build());
     }
 

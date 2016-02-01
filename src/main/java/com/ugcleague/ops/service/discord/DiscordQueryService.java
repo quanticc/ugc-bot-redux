@@ -60,7 +60,7 @@ public class DiscordQueryService {
             .description("Get Discord information about the bot").permission(0).originReplies()
             .command(this::executeInfoCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep clear")
-            .description("Remove my messages from this channel").permission(0)
+            .description("Remove all of bot's messages from this channel").permission(0)
             .command(this::executeClearCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep boop")
             .description("Test command please ignore").permission(0)
