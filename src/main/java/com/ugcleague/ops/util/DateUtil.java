@@ -1,18 +1,24 @@
 package com.ugcleague.ops.util;
 
+import net.redhogs.cronparser.CronExpressionDescriptor;
+import org.quartz.CronExpression;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class DateUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(DateUtil.class);
 
     private static final LinkedHashMap<Long, Function<Duration, String>> past = new LinkedHashMap<>();
     private static final LinkedHashMap<Long, Function<Duration, String>> future = new LinkedHashMap<>();
@@ -149,6 +155,50 @@ public class DateUtil {
             (minutes == 0 ? "00" : minutes < 10 ? String.valueOf("0" + minutes) : String.valueOf(minutes)) +
             ":" +
             (seconds == 0 ? "00" : seconds < 10 ? String.valueOf("0" + seconds) : String.valueOf(seconds));
+    }
+
+    public static String humanizeCronPatterns(String patterns) {
+        String[] array = patterns.split("\\|");
+        if (array.length == 1) {
+            return humanizeCronPattern(patterns);
+        } else {
+            return Arrays.asList(array).stream().map(DateUtil::humanizeCronPattern)
+                .filter(s -> s != null).collect(Collectors.joining(". "));
+        }
+    }
+
+    public static String humanizeCronPattern(String pattern) {
+        try {
+            return CronExpressionDescriptor.getDescription(pattern, Locale.ENGLISH);
+        } catch (ParseException e) {
+            return null;
+        }
+    }
+
+    public static Instant nextValidTimeFromCron(String patterns) {
+        String[] array = patterns.split("\\|");
+        Instant next = Instant.MAX;
+        for (String pattern : array) {
+            if (pattern.split(" ").length == 5) {
+                pattern = "0 " + pattern;
+            }
+            try {
+                List<String> parts = Arrays.asList(pattern.split(" "));
+                if (parts.get(3).equals("*")) {
+                    parts.set(3, "?");
+                }
+                CronExpression cronExpression = new CronExpression(parts.stream().collect(Collectors.joining(" ")));
+                Instant nextPart = cronExpression.getNextValidTimeAfter(Date.from(Instant.now())).toInstant();
+                next = nextPart.isBefore(next) ? nextPart : next;
+            } catch (ParseException e) {
+                log.warn("Could not parse cron expression: {}", e.toString());
+            }
+        }
+        return next;
+    }
+
+    public static String relativeNextTriggerFromCron(String patterns) {
+        return formatRelativeBetweenNowAnd(nextValidTimeFromCron(patterns));
     }
 
     private DateUtil() {

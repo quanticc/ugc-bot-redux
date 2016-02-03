@@ -24,6 +24,6 @@ spring:
 
 league:
     async:
-        corePoolSize: 2
+        corePoolSize: 8
         maxPoolSize: 50
         queueCapacity: 10000

@@ -38,4 +38,8 @@
              relativeToChangelogFile="false"/>
     <include file="classpath:config/liquibase/changelog/20160131110800_edited_entity_Subscriber.xml"
              relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160203062900_removed_entity_Task.xml"
+             relativeToChangelogFile="false"/>
+    <include file="classpath:config/liquibase/changelog/20160203063200_tagged_database.xml"
+             relativeToChangelogFile="false"/>
 </databaseChangeLog>
