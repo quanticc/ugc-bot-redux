@@ -66,7 +66,6 @@ public class UpdatesFeedService {
         feedFetcher.addFetcherEventListener(new FetcherListenerImpl());
     }
 
-    //@Scheduled(initialDelay = 20000, fixedRate = 600000)
     @Async
     public void refreshUpdatesFeed() {
         log.debug("==== Retrieving latest updates feed ====");

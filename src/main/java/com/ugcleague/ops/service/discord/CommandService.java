@@ -405,7 +405,7 @@ public class CommandService implements DiscordSubscriber {
     public Command register(Command command) {
         String description = asList(opt(command.getMatchType(), "", " match", MatchType.STARTS_WITH),
             opt(command.getReplyMode(), "", " replies" +
-                opt(command.isMention(), "with mention", "", false, true).orElse(""), null),
+                opt(command.isMention(), " with mention", "", false, true).orElse(""), null),
             opt(command.isQueued(), "queued", "", false, true),
             opt(command.isPersistStatus(), "persisted status", "", false, true),
             opt(command.isExperimental(), "experimental", "", false, true))

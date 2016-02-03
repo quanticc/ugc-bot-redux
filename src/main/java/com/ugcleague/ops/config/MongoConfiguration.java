@@ -38,11 +38,6 @@ public class MongoConfiguration extends AbstractMongoConfiguration {
     @Autowired
     private MongoProperties mongoProperties;
 
-//    @Bean
-//    public MongoTemplate mongoTemplate() {
-//        return new MongoTemplate(mongo, getDatabaseName());
-//    }
-
     @Bean
     public ValidatingMongoEventListener validatingMongoEventListener() {
         return new ValidatingMongoEventListener(validator());
