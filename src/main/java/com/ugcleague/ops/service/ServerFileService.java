@@ -54,7 +54,7 @@ public class ServerFileService {
 
     @PostConstruct
     private void configure() {
-        repositoryDir = leagueProperties.getSyncRepositoryDir();
+        repositoryDir = leagueProperties.getRemote().getSyncRepositoryDir();
     }
 
     public HttpStatus isUpToDate(ServerFile serverFile) {

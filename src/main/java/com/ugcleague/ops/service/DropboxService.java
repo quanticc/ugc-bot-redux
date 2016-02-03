@@ -48,7 +48,7 @@ public class DropboxService {
      * @return the same FileShareTask instance, now containing the successfully uploaded files.
      */
     public FileShareTask batchUpload(FileShareTask task) {
-        Path downloadsPath = Paths.get(leagueProperties.getDownloadsDir());
+        Path downloadsPath = Paths.get(leagueProperties.getRemote().getDownloadsDir());
         List<RemoteFile> files = task.getRequested();
         if (files.size() > 1) {
             // try to make a batch upload with all the tasked files

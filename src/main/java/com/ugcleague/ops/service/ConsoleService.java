@@ -55,7 +55,7 @@ public class ConsoleService {
 
     @PostConstruct
     private void configure() {
-        listenPort = leagueProperties.getConsoleListenPort();
+        listenPort = leagueProperties.getGameServers().getConsoleListenPort();
     }
 
     public GameServer checkedStart(GameServer server) {

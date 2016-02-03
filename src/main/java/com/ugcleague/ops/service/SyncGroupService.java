@@ -62,8 +62,8 @@ public class SyncGroupService {
 
     @PostConstruct
     private void configure() {
-        repositoryDir = leagueProperties.getSyncRepositoryDir();
-        downloadsDir = leagueProperties.getDownloadsDir();
+        repositoryDir = leagueProperties.getRemote().getSyncRepositoryDir();
+        downloadsDir = leagueProperties.getRemote().getDownloadsDir();
     }
 
     @Async
@@ -142,7 +142,7 @@ public class SyncGroupService {
     private List<RemoteFile> retryableFileList(GameServer server, String dir, Predicate<RemoteFile> filter) throws IOException {
         LocalDateTime last = lastAccessMap.computeIfAbsent(server, k -> new ConcurrentHashMap<>())
             .computeIfAbsent(dir, k -> LocalDateTime.MIN);
-        if (LocalDateTime.now().minusMinutes(leagueProperties.getListCachedMinutes()).isBefore(last)) {
+        if (LocalDateTime.now().minusMinutes(leagueProperties.getRemote().getListCachedMinutes()).isBefore(last)) {
             log.debug("Retrieving a cached file list from {} ({}) on directory {}", server.getShortName(), server.getAddress(), dir);
             return remoteFileRepository.findByFolderAndOwner(dir, server).stream()
                 .filter(filter).collect(Collectors.toList());

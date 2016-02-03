@@ -48,7 +48,7 @@ public class SteamCondenserService {
 
     @PostConstruct
     private void configure() {
-        apiKey = leagueProperties.getSteamApiKey();
+        apiKey = leagueProperties.getGameServers().getSteamApiKey();
         try {
             WebApi.setApiKey(apiKey);
         } catch (WebApiException e) {

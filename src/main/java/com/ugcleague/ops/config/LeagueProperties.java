@@ -21,17 +21,15 @@ public class LeagueProperties {
     private final Stats stats = new Stats();
     private final Ugc ugc = new Ugc();
     private final Dropbox dropbox = new Dropbox();
-
-    private int consoleListenPort = 7131;
-    private String syncRepositoryDir = "sync-repository";
-    private String downloadsDir = "downloads";
-    private long listCachedMinutes = 60;
-    private String steamApiKey;
+    private final Metrics metrics = new Metrics();
+    private final Remote remote = new Remote();
 
     @Data
     public static class GameServers {
         private String username;
         private String password;
+        private int consoleListenPort;
+        private String steamApiKey;
     }
 
     @Data
@@ -104,5 +102,39 @@ public class LeagueProperties {
         private String secret; // v1
         private String token; // v2
         private String uploadsDir;
+    }
+
+    @Data
+    public static class Remote {
+        private String syncRepositoryDir = "sync-repository";
+        private String downloadsDir = "downloads";
+        private long listCachedMinutes = 60;
+    }
+
+    @Data
+    public static class Metrics {
+        private final Jmx jmx = new Jmx();
+        private final Spark spark = new Spark();
+        private final Graphite graphite = new Graphite();
+
+        @Data
+        public static class Jmx {
+            private boolean enabled = true;
+        }
+
+        @Data
+        public static class Spark {
+            private boolean enabled = false;
+            private String host = "localhost";
+            private int port = 9999;
+        }
+
+        @Data
+        public static class Graphite {
+            private boolean enabled = false;
+            private String host = "localhost";
+            private int port = 2003;
+            private String prefix = "ugc";
+        }
     }
 }
