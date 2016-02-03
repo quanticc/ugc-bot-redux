@@ -13,7 +13,9 @@ import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.MissingPermissionsException;
+import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.IListener;
+import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
@@ -33,13 +35,13 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class DiscordService {
+public class DiscordService implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
 
     private final LeagueProperties leagueProperties;
 
-    private IDiscordClient client;
+    private volatile IDiscordClient client;
     private Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
 
@@ -56,7 +58,7 @@ public class DiscordService {
                     Thread.sleep(3000); // wait a bit before firing
                     login();
                 } catch (InterruptedException | DiscordException e) {
-                    log.warn("Could not autologin discord bot", e);
+                    log.warn("Could not connect discord bot", e);
                 }
             });
         }
@@ -70,45 +72,55 @@ public class DiscordService {
         log.debug("Registering {} Discord event subscribers", queuedListeners.size() + queuedSubscribers.size());
         queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
         queuedSubscribers.forEach(subscriber -> client.getDispatcher().registerListener(subscriber));
-        client.getDispatcher().registerListener(new IListener<ReadyEvent>() {
-            @Override
-            public void handle(ReadyEvent readyEvent) {
-                log.info("*** Discord bot armed ***");
-                for (String guildId : leagueProperties.getDiscord().getQuitting()) {
-                    IGuild guild = client.getGuildByID(guildId);
-                    if (guild != null) {
-                        try {
-                            tryLeave(guild);
-                        } catch (HTTP429Exception e) {
-                            log.warn("Could not leave guild after retrying: {}", e.toString());
-                        }
-                    }
-                }
-                List<IGuild> guildList = client.getGuilds();
-                for (IGuild guild : guildList) {
-                    log.info("{}", guildString(guild, client.getOurUser()));
-                }
-                for (String inviteCode : leagueProperties.getDiscord().getInvites()) {
-                    Invite invite = (Invite) client.getInviteForCode(inviteCode);
-                    try {
-                        Invite.InviteResponse response = invite.details();
-                        if (client.getGuildByID(response.getGuildID()) == null) {
-                            log.info("Accepting invite to {} ({}) @ {} ({})",
-                                response.getChannelName(), response.getChannelID(), response.getGuildName(), response.getGuildID());
-                            invite.accept();
-                            IGuild guild = client.getGuildByID(response.getGuildID());
-                            if (guild != null) {
-                                log.info("{}", guildString(guild, client.getOurUser()));
-                            }
-                        } else {
-                            log.info("Invite already accepted: {}", inviteCode);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
-                    }
+        client.getDispatcher().registerListener(this);
+    }
+
+    @EventSubscriber
+    public void onReady(ReadyEvent event) {
+        log.info("*** Discord bot armed ***");
+        for (String guildId : leagueProperties.getDiscord().getQuitting()) {
+            IGuild guild = client.getGuildByID(guildId);
+            if (guild != null) {
+                try {
+                    tryLeave(guild);
+                } catch (HTTP429Exception e) {
+                    log.warn("Could not leave guild after retrying: {}", e.toString());
                 }
             }
-        });
+        }
+        List<IGuild> guildList = client.getGuilds();
+        for (IGuild guild : guildList) {
+            log.info("{}", guildString(guild, client.getOurUser()));
+        }
+        for (String inviteCode : leagueProperties.getDiscord().getInvites()) {
+            Invite invite = (Invite) client.getInviteForCode(inviteCode);
+            try {
+                Invite.InviteResponse response = invite.details();
+                if (client.getGuildByID(response.getGuildID()) == null) {
+                    log.info("Accepting invite to {} ({}) @ {} ({})",
+                        response.getChannelName(), response.getChannelID(), response.getGuildName(), response.getGuildID());
+                    invite.accept();
+                    IGuild guild = client.getGuildByID(response.getGuildID());
+                    if (guild != null) {
+                        log.info("{}", guildString(guild, client.getOurUser()));
+                    }
+                } else {
+                    log.info("Invite already accepted: {}", inviteCode);
+                }
+            } catch (Exception e) {
+                log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
+            }
+        }
+    }
+
+    @EventSubscriber
+    public void onDisconnect(DiscordDisconnectedEvent event) {
+        log.info("Reconnecting bot");
+        try {
+            login();
+        } catch (DiscordException e) {
+            log.warn("Failed to reconnect bot", e);
+        }
     }
 
     @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
