@@ -313,10 +313,11 @@ public class DiscordUtils {
             message.setMentions(getMentionsFromJSON(client, json));
             message.setTimestamp(convertFromTimestamp(json.edited_timestamp == null ? json.timestamp : json.edited_timestamp));
             return message;
-        } else
-            return new Message(client, json.id, json.content, getUserFromJSON(client, json.author),
+        } else {
+            return new Message(client, json.id, json.content, json.author != null ? getUserFromJSON(client, json.author) : client.getOurUser(),
                 channel, convertFromTimestamp(json.timestamp), json.mention_everyone, getMentionsFromJSON(client, json),
                 getAttachmentsFromJSON(json));
+        }
     }
 
     /**
