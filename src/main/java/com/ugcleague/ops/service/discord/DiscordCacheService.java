@@ -1,6 +1,5 @@
 package com.ugcleague.ops.service.discord;
 
-import com.google.common.collect.Sets;
 import com.ugcleague.ops.domain.DiscordAttachment;
 import com.ugcleague.ops.domain.DiscordChannel;
 import com.ugcleague.ops.domain.DiscordMessage;
@@ -19,17 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.EventSubscriber;
-import sx.blah.discord.handle.impl.events.MessageDeleteEvent;
-import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
-import sx.blah.discord.handle.impl.events.MessageUpdateEvent;
-import sx.blah.discord.handle.impl.events.ReadyEvent;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.handle.obj.Presences;
+import sx.blah.discord.handle.impl.events.*;
+import sx.blah.discord.handle.obj.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashSet;
@@ -76,16 +70,18 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
             .map(u -> validateConnected(client, u))
             .filter(u -> u != null)
             .forEach(userRepository::save);
-        log.info("I'm ready to remember stuff! Channels: {}, Users: {}, Messages: {}, Attachments: {}",
+        log.info("Now recording certain events. Channels: {}, Users: {}, Messages: {}, Attachments: {}",
             channelRepository.count(), userRepository.count(), messageRepository.count(), attachmentRepository.count());
     }
 
     @EventSubscriber
     public void onMessageReceived(MessageReceivedEvent event) {
         // for now we will only log command messages
+        // TODO remove attachment repository
+        // TODO track join/leave state in multiple guilds
         IMessage message = event.getMessage();
         String content = message.getContent();
-        if (content.startsWith(".")/* || !message.getAttachments().isEmpty()*/) {
+        if (content.startsWith(".")) {
             DiscordMessage msg = newMessage(message);
             channelRepository.saveAndFlush(msg.getChannel());
             userRepository.saveAndFlush(msg.getAuthor());
@@ -107,7 +103,8 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
                     Set<DiscordAttachment> previousAttachments = new LinkedHashSet<>(previous.getAttachments());
                     current = updateMessage(previous, newMessage);
                     Set<DiscordAttachment> currentAttachments = new LinkedHashSet<>(current.getAttachments());
-                    attachmentRepository.delete(Sets.difference(previousAttachments, currentAttachments));
+                    previousAttachments.removeIf(currentAttachments::contains);
+                    attachmentRepository.delete(previousAttachments);
                 } else {
                     current = newMessage(newMessage);
                 }
@@ -127,6 +124,48 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
                 msg.setDeleted(true);
                 messageRepository.save(msg);
             });
+        }
+    }
+
+    @EventSubscriber
+    public void onUserJoin(UserJoinEvent event) {
+        LocalDateTime timestamp = event.getJoinTime();
+        IUser user = event.getUser();
+        DiscordUser u = userRepository.findByDiscordUserId(user.getID()).orElseGet(() -> newDiscordUser(user));
+        if (u.getJoined() == null) {
+            u.setJoined(timestamp.atZone(ZoneId.systemDefault()));
+        }
+        userRepository.save(u);
+    }
+
+    @EventSubscriber
+    public void onUserUpdate(UserUpdateEvent event) {
+        IUser oldUser = event.getOldUser();
+        IUser newUser = event.getNewUser();
+        DiscordUser u = userRepository.findByDiscordUserId(oldUser.getID()).orElseGet(() -> newDiscordUser(oldUser));
+        u.setName(newUser.getName());
+        userRepository.save(u);
+    }
+
+//    @EventSubscriber
+//    public void onUserLeave(UserLeaveEvent event) {
+//        IGuild guild = event.getGuild();
+//        IUser user = event.getUser();
+//    }
+
+    @EventSubscriber
+    public void onPresenceUpdate(PresenceUpdateEvent event) {
+        IUser user = event.getUser();
+        Presences oldStatus = event.getOldPresence();
+        Presences newStatus = event.getNewPresence();
+        if (oldStatus == Presences.OFFLINE && newStatus == Presences.ONLINE) {
+            DiscordUser u = userRepository.findByDiscordUserId(user.getID()).orElseGet(() -> newDiscordUser(user));
+            u.setConnected(ZonedDateTime.now());
+            userRepository.save(u);
+        } else if (oldStatus == Presences.ONLINE && newStatus == Presences.OFFLINE) {
+            DiscordUser u = userRepository.findByDiscordUserId(user.getID()).orElseGet(() -> newDiscordUser(user));
+            checkout(u);
+            userRepository.save(u);
         }
     }
 
