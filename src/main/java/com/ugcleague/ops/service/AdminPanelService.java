@@ -9,7 +9,7 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.remoting.RemoteAccessException;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
@@ -85,7 +85,7 @@ public class AdminPanelService {
      * services like an FTP server operating for the server's location.
      *
      * @param subId the internal id GameServers uses for its servers
-     * @return
+     * @return a map with configuration key-values found in the GS web page
      * @throws IOException
      */
     @Retryable
@@ -108,7 +108,7 @@ public class AdminPanelService {
     }
 
     @Retryable
-    public Map<String, String> getServerConfig(String subId) throws IOException {
+    public synchronized Map<String, String> getServerConfig(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL).data("view", "server_configuration").data("SUBID", subId).timeout(10000));
@@ -124,7 +124,7 @@ public class AdminPanelService {
      * provider service, including game updates.
      *
      * @param subId the internal id GameServers uses for its servers
-     * @return
+     * @return a map with mods (updates) key-values found in the GS web page
      * @throws IOException
      */
     @Retryable
@@ -208,7 +208,8 @@ public class AdminPanelService {
      * Utility methods
      */
 
-    private boolean login() throws IOException {
+    private synchronized boolean login() throws IOException {
+        log.info("Authenticating to GS admin panel");
         String username = leagueProperties.getGameServers().getUsername();
         String password = leagueProperties.getGameServers().getPassword();
         Connection.Response loginForm = Jsoup.connect("https://my.gameservers.com/").method(Connection.Method.GET).execute();
@@ -223,18 +224,19 @@ public class AdminPanelService {
         return document.title().contains("Login");
     }
 
+    @Retryable(include = {IOException.class}, backoff = @Backoff(2000))
     private Document validateSessionAndGet(Connection connection) throws IOException {
         if (session.isEmpty()) {
             if (!login()) {
                 // failed login at this point most likely means incorrect credentials
-                throw new RemoteAccessException("Login could not be completed");
+                throw new IOException("Login could not be completed");
             }
         }
         // our session might have expired
         Document document = connection.cookies(session).get();
         if (isLoginPage(document)) {
             session.clear();
-            throw new RemoteAccessException("Remote session has expired"); // but will retry
+            throw new IOException("Remote session has expired"); // but will retry
         }
         return document;
     }
