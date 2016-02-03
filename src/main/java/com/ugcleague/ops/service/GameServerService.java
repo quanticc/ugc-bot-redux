@@ -97,15 +97,12 @@ public class GameServerService {
         return server;
     }
 
-    //@Scheduled(initialDelay = 60000, fixedRate = 600000)
-    @Async
     public void refreshRconPasswords() {
         log.debug("==== Refreshing RCON server passwords ====");
         ZonedDateTime now = ZonedDateTime.now();
         // refreshing passwords of expired servers since they auto restart and change password
-        long count = gameServerRepository.findByRconRefreshNeeded(now).parallelStream()
-            .map(this::refreshRconPassword).filter(u -> u != null)
-            .map(gameServerRepository::save).count();
+        long count = gameServerRepository.findByRconRefreshNeeded(now).stream()
+            .map(this::refreshRconPassword).filter(u -> u != null).count();
         log.info("{} servers updated their RCON passwords", count);
     }
 
@@ -137,14 +134,14 @@ public class GameServerService {
         return gameServerRepository.findByVersionLessThan(latestVersion);
     }
 
-    //@Scheduled(initialDelay = 30000, fixedRate = 150000)
     @Async
     public void updateGameServers() {
         log.debug("==== Refreshing server status ====");
         int latestVersion = steamCondenserService.getLatestVersion();
         long refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
             .map(gameServerRepository::save).count();
-        long updating = findOutdatedServers().stream().map(this::performGameUpdate).map(gameServerRepository::save).count();
+        long updating = findOutdatedServers().stream().map(this::performGameUpdate)
+            .map(gameServerRepository::save).count();
         if (updating == 0) {
             log.debug("All servers up-to-date");
             if (!updateResultMap.isEmpty()) {
@@ -153,7 +150,7 @@ public class GameServerService {
                 updateResultMap.clear();
             }
         } else {
-            log.info("Performing game update on {} servers", updating);
+            log.info("Update is pending on {} servers", updating);
             List<GameServer> failed = updateResultMap.getSlowUpdates(10);
             if (!failed.isEmpty()) {
                 // there are servers holding out the update
@@ -161,13 +158,22 @@ public class GameServerService {
             }
         }
         log.debug("{} servers had their status refreshed", refreshed);
+        long failingCount = deadServerMap.values().stream()
+            .map(info -> info.getAttempts().get()).filter(i -> i >= 5).count();
+        int maxFailedAttempts = deadServerMap.values().stream()
+            .map(info -> info.getAttempts().get()).reduce(0, Integer::max);
+        if (failingCount > 0) {
+            log.warn("{} are unresponsive after the last 5 checks (max failures {})", failingCount, maxFailedAttempts);
+        }
+//        if (deadServerMap.values().stream().anyMatch(info -> info.getAttempts().get() >= 1)) {
+//            publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
+//        }
     }
 
     public GameServer refreshServerStatus(GameServer server) {
         if (server == null) {
             return null;
         }
-        //log.debug("Refreshing server status: {}", server.getName());
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
@@ -180,13 +186,9 @@ public class GameServerService {
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
                 Optional.ofNullable(info.get("mapName")).map(Object::toString).ifPresent(server::setMapName);
                 server.setTvPort(Optional.ofNullable(info.get("tvPort")).map(this::safeParse).orElse(0));
-                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().set(0);
+                deadServerMap.put(server, new DeadServerInfo(server));
             } else {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-//                int failedPings = deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-//                if (failedPings >= 1) {
-//                    publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
-//                }
             }
         }
         return server;
@@ -450,5 +452,9 @@ public class GameServerService {
                 return -5;
             }
         }
+    }
+
+    public GameServer save(GameServer gameServer) {
+        return gameServerRepository.save(gameServer);
     }
 }
