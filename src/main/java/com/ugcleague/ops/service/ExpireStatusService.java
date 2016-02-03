@@ -1,7 +1,6 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.repository.GameServerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,29 +27,26 @@ public class ExpireStatusService {
     private final HttpEntity<String> entity;
     private final ParameterizedTypeReference<Map<String, Integer>> type = new ParameterizedTypeReference<Map<String, Integer>>() {
     };
-    private final GameServerRepository gameServerRepository;
+    private final GameServerService gameServerService;
 
     @Autowired
-    public ExpireStatusService(GameServerRepository gameServerRepository) {
-        this.gameServerRepository = gameServerRepository;
+    public ExpireStatusService(GameServerService gameServerService) {
+        this.gameServerService = gameServerService;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("User-Agent", "Mozilla");
         this.entity = new HttpEntity<>(null, headers);
     }
 
-    /**
-     * Retrieves the latest result of the GameServers claim page.
-     */
-    //@Scheduled(initialDelay = 50000, fixedRate = 600000)
     @Async
     public void refreshExpireDates() {
         log.debug("==== Refreshing expire dates of ALL servers ====");
         ZonedDateTime now = ZonedDateTime.now();
         Map<String, Integer> map = getExpireSeconds();
-        long count = gameServerRepository.findAll().parallelStream().filter(s -> map.containsKey(s.getSubId()))
-            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerRepository::save).count();
+        long count = gameServerService.findAll().stream().filter(s -> map.containsKey(s.getSubId()))
+            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerService::save).count();
         log.info("{} expire dates refreshed", count);
+        gameServerService.refreshRconPasswords();
     }
 
     private GameServer refreshExpireDate(GameServer server, ZonedDateTime now, Integer seconds) {
@@ -73,5 +69,4 @@ public class ExpireStatusService {
         }
         return Collections.emptyMap();
     }
-
 }
