@@ -78,7 +78,7 @@ public class ServerQueryService {
         connectNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server connect")
             .description("Show URL to join UGC game servers").permission("support").permissionReplies()
-            .parser(parser).command(this::executeConnectCommand).build());
+            .parser(parser).queued().command(this::executeConnectCommand).build());
     }
 
     private String executeConnectCommand(IMessage m, OptionSet o) {
@@ -115,7 +115,7 @@ public class ServerQueryService {
         statusNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".status")
             .description("Display info about a server").permission("support").permissionReplies()
-            .parser(parser).command(this::executeStatusCommand).build());
+            .parser(parser).queued().command(this::executeStatusCommand).build());
     }
 
     private String executeStatusCommand(IMessage m, OptionSet o) {
@@ -237,7 +237,7 @@ public class ServerQueryService {
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server restart")
             .description("Restart the given servers (only empty ones will be restarted)").permission("support")
-            .permissionReplies().parser(parser).command(this::executeRestartCommand).build());
+            .permissionReplies().queued().parser(parser).command(this::executeRestartCommand).build());
     }
 
     private String executeRestartCommand(IMessage m, OptionSet o) {
@@ -277,7 +277,7 @@ public class ServerQueryService {
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".rcon")
             .description("Send a command to a game server using RCON").permission("support").permissionReplies()
-            .parser(parser).command(this::executeRconCommand).build());
+            .parser(parser).queued().command(this::executeRconCommand).build());
     }
 
     private String executeRconCommand(IMessage m, OptionSet o) {
