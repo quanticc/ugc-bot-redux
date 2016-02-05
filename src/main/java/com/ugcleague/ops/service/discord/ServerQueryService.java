@@ -298,16 +298,15 @@ public class ServerQueryService {
                 }
             }
             StringBuilder message = new StringBuilder();
+            boolean quiet = o.has(rconQuietSpec) && o.valueOf(rconQuietSpec)
+                || (!o.has(rconQuietSpec) && command.contains("exec"));
             for (GameServer server : matched) {
                 String password = o.has(rconPasswordSpec) ? o.valueOf(rconPasswordSpec) : server.getRconPassword();
                 try {
-                    message.append("**").append(gameServerService.toShortName(server)).append("**:");
+                    message.append("**").append(gameServerService.toShortName(server)).append("** (")
+                        .append(server.getAddress()).append("): ");
                     String result = gameServerService.rcon(server, Optional.of(password), command);
-                    if (command.trim().replace("\"", "").equals("status")) {
-                        message.append("```\n").append(result).append("\n```\n");
-                    } else {
-                        message.append(result).append("\n");
-                    }
+                    appendRconResult(message, command, result, quiet);
                 } catch (TimeoutException e) {
                     message.append("Server is not responding");
                 } catch (SteamCondenserException e) {
@@ -318,19 +317,9 @@ public class ServerQueryService {
                 if (o.has(rconPasswordSpec)) {
                     try {
                         String password = o.valueOf(rconPasswordSpec);
-                        message.append("**").append(server.toString()).append("**:");
+                        message.append("**").append(server.toString()).append("**: ");
                         String result = gameServerService.rcon(server, password, command);
-                        if (o.has(rconQuietSpec) && o.valueOf(rconQuietSpec)
-                            || (!o.has(rconQuietSpec) && command.contains("exec"))) {
-                            result = "Executed ``rcon " + command + "`` command\n";
-                            message.append(result);
-                        } else {
-                            if (command.trim().replace("\"", "").equals("status")) {
-                                message.append("```\n").append(result).append("\n```\n");
-                            } else {
-                                message.append(result).append("\n");
-                            }
-                        }
+                        appendRconResult(message, command, result, quiet);
                     } catch (TimeoutException e) {
                         message.append("Server is not responding");
                     } catch (SteamCondenserException e) {
@@ -343,6 +332,19 @@ public class ServerQueryService {
             return message.toString();
         }
         return null;
+    }
+
+    private void appendRconResult(StringBuilder message, String command, String result, boolean quiet) {
+        if (quiet) {
+            result = "Executed ``rcon " + command + "`` command\n";
+            message.append(result);
+        } else {
+            if (command.trim().replace("\"", "").equals("status")) {
+                message.append("```\n").append(result).append("\n```\n");
+            } else {
+                message.append(result).append("\n");
+            }
+        }
     }
 
     private void initDeadCommand() {
