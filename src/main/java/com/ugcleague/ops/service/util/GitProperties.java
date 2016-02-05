@@ -16,8 +16,12 @@ public class GitProperties {
     public GitProperties() {
         this.properties = new Properties();
         try (InputStream input = getClass().getResourceAsStream("/git.properties")) {
-            properties.load(input);
-            log.debug("Loaded Git properties: {}", properties.toString());
+            if (input != null) {
+                properties.load(input);
+                log.debug("Loaded Git properties: {}", properties.toString());
+            } else {
+                log.warn("Could not load version properties");
+            }
         } catch (IOException e) {
             log.warn("Git properties could not be loaded: {}", e.toString());
         }
