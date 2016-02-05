@@ -3,6 +3,7 @@ package com.ugcleague.ops.service;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.event.GameServerDeathEvent;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
@@ -162,12 +163,10 @@ public class GameServerService {
             .map(info -> info.getAttempts().get()).filter(i -> i >= 5).count();
         int maxFailedAttempts = deadServerMap.values().stream()
             .map(info -> info.getAttempts().get()).reduce(0, Integer::max);
-        if (failingCount > 0) {
+        if (failingCount > 5) {
             log.warn("{} are unresponsive after the last 5 checks (max failures {})", failingCount, maxFailedAttempts);
+            publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
         }
-//        if (deadServerMap.values().stream().anyMatch(info -> info.getAttempts().get() >= 1)) {
-//            publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
-//        }
     }
 
     public GameServer refreshServerStatus(GameServer server) {

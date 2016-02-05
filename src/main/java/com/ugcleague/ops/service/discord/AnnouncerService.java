@@ -23,7 +23,6 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.util.MessageBuilder;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
@@ -157,9 +156,7 @@ public class AnnouncerService {
                     return ":satellite: I'll PM you about **" + announcer + "**";
                 } else {
                     try {
-                        discordService.channelMessage(channel.getID())
-                            .appendContent(":satellite: I'll let this channel know about ")
-                            .appendContent(announcer, MessageBuilder.Styles.BOLD).send();
+                        discordService.sendMessage(channel, ":satellite: I'll let this channel know about **" + announcer + "**");
                     } catch (Exception e) {
                         log.warn("Could not send channel message to {}: {}", channel, e.toString());
                     }
@@ -184,10 +181,7 @@ public class AnnouncerService {
                     subs.remove(sub);
                     publisherRepository.save(publisher);
                     try {
-                        discordService.channelMessage(channel.getID())
-                            .appendContent(":speak_no_evil: I'll stop sending messages about ")
-                            .appendContent(announcer, MessageBuilder.Styles.BOLD)
-                            .appendContent(" to this channel").send();
+                        discordService.sendMessage(channel, ":speak_no_evil: I'll stop sending messages about **" + announcer + "**");
                     } catch (Exception e) {
                         log.warn("Could not send channel message to {}: {}", channel, e.toString());
                     }
@@ -253,6 +247,7 @@ public class AnnouncerService {
     @EventListener
     private void onServerDeath(GameServerDeathEvent event) {
         String list = event.getSource().entrySet().stream()
+            .filter(e -> e.getValue().getAttempts().get() > 5)
             .map(e -> String.format("• **%s** (%s) is unresponsive since %s",
                 e.getKey().getShortName(), e.getKey().getAddress(),
                 DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
@@ -279,9 +274,7 @@ public class AnnouncerService {
                     if (channel != null) {
                         log.debug("Making an announcement from {} to {}", publisherName,
                             (channel.isPrivate() ? sub.getName() : channel.getName()));
-                        discordService.channelMessage(channel)
-                            .appendContent("**<" + publisherName + ">** ")
-                            .appendContent(message).send();
+                        commandService.answerToChannel(channel, "**<" + publisherName + ">** " + message);
                     } else {
                         log.warn("Could not find a channel with id {} to send our {} message", sub.getUserId(), publisherName);
                     }
