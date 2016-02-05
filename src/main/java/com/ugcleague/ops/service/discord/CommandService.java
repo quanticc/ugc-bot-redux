@@ -12,18 +12,17 @@ import org.apache.mina.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
+import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.util.HTTP429Exception;
-import sx.blah.discord.util.MessageBuilder;
 
 import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
@@ -147,7 +146,7 @@ public class CommandService implements DiscordSubscriber {
                     CommandJob job = new CommandJob(command, m, args);
                     String key = m.getAuthor().getID();
                     if (gatekeeper.getQueuedJobCount(key) > 0) {
-                        replyFrom(m, command, "Please wait until your previous command finishes running");
+                        tryReplyFrom(m, command, "Please wait until your previous command finishes running");
                     } else {
                         statusReplyFrom(m, command, "Your command will be executed shortly...");
                         CompletableFuture<String> future = gatekeeper.queue(key, job);
@@ -199,7 +198,7 @@ public class CommandService implements DiscordSubscriber {
         if (response == null) {
             helpReplyFrom(message, command); // show help on null responses
         } else if (!response.isEmpty()) {
-            replyFrom(message, command, response);
+            tryReplyFrom(message, command, response);
         } // empty responses fall through silently
     }
 
@@ -235,26 +234,18 @@ public class CommandService implements DiscordSubscriber {
         IMessage statusMessage = invokerToStatusMap.get(message.getID());
         if (response == null) {
             if (statusMessage != null && !command.isPersistStatus()) {
-                try {
-                    retryableDelete(statusMessage);
-                } catch (HTTP429Exception e) {
-                    log.warn("Could not delete message {} due to rate limits after retrying", message.getID());
-                }
+                tryDelete(statusMessage);
                 invokerToStatusMap.remove(message.getID());
                 // commands with persisted status will be purged if not updated after a while
             }
         } else if (response.length() < LENGTH_LIMIT) {
             if (statusMessage == null) {
-                statusMessage = replyFrom(message, command, response);
+                statusMessage = tryReplyFrom(message, command, response);
                 if (statusMessage != null) {
                     invokerToStatusMap.put(message.getID(), statusMessage);
                 }
             } else {
-                try {
-                    retryableEdit(statusMessage, response);
-                } catch (HTTP429Exception e) {
-                    log.warn("Could not edit message {} due to rate limits after retrying", message.getID());
-                }
+                tryEdit(statusMessage, response);
             }
         } // ignore longer "status" responses
     }
@@ -263,57 +254,52 @@ public class CommandService implements DiscordSubscriber {
         // ignores persist-status setting
         IMessage statusMessage = invokerToStatusMap.get(message.getID());
         if (statusMessage != null) {
-            try {
-                retryableDelete(statusMessage);
-            } catch (HTTP429Exception e) {
-                log.warn("Could not delete message {} due to rate limits after retrying", message.getID());
-            }
+            tryDelete(statusMessage);
         }
         invokerToStatusMap.remove(message.getID());
     }
 
     @Scheduled(cron = "0 0 * * * *")
-        // every hour
     void purgeStatuses() {
         // purge messages not updated for 1 hour
         invokerToStatusMap.values().removeIf(m -> LocalDateTime.now().minusHours(1).isAfter(m.getTimestamp()));
     }
 
-    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
-    private void retryableEdit(IMessage message, String response) throws HTTP429Exception {
+    private IMessage tryEdit(IMessage message, String response) {
         try {
-            message.edit(response);
-        } catch (MissingPermissionsException e) {
-            log.warn("No permission to edit message {}: {}", message.getID(), e.toString());
+            return discordService.editMessage(message, response);
+        } catch (HTTP429Exception | DiscordException | MissingPermissionsException e) {
+            log.warn("Could not edit message: {}", e.toString());
+        }
+        return null;
+    }
+
+    private void tryDelete(IMessage message) {
+        try {
+            discordService.deleteMessage(message);
+        } catch (HTTP429Exception | DiscordException | MissingPermissionsException e) {
+            log.warn("Could not delete message: {}", e.toString());
         }
     }
 
-    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
-    private void retryableDelete(IMessage message) throws HTTP429Exception {
+    public IMessage tryReplyFrom(IMessage message, Command command, String response) {
         try {
-            message.delete();
-        } catch (MissingPermissionsException e) {
-            log.warn("No permission to delete message {}: {}", message.getID(), e.toString());
+            return replyFrom(message, command, response);
+        } catch (HTTP429Exception | MissingPermissionsException | DiscordException e) {
+            log.warn("Could not reply to user: {}", e.toString());
         }
+        return null;
     }
 
-    /**
-     * Reply to the author of a message, using the mode and permission settings from a given command.
-     *
-     * @param message  the original message that invoked the command.
-     * @param command  the Command to determine the reply mode and permission.
-     * @param response the answer to the author.
-     * @return the sent message
-     */
-    public IMessage replyFrom(IMessage message, Command command, String response) {
+    public IMessage replyFrom(IMessage message, Command command, String response) throws HTTP429Exception, DiscordException, MissingPermissionsException {
         return commonReply(message, command, response, null);
     }
 
-    public void fileReplyFrom(IMessage message, Command command, File file) {
+    public void fileReplyFrom(IMessage message, Command command, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
         commonReply(message, command, null, file);
     }
 
-    private IMessage commonReply(IMessage message, Command command, String response, File file) {
+    private IMessage commonReply(IMessage message, Command command, String response, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
         ReplyMode replyMode = command.getReplyMode();
         if (replyMode == ReplyMode.PRIVATE) {
             // always to private - so ignore all permission calculations
@@ -349,11 +335,24 @@ public class CommandService implements DiscordSubscriber {
     // Lower level output control
     ////////////////////////////////////////
 
-    private IMessage answer(IMessage message, String answer, boolean mention, File file) {
+    public IMessage answerToChannel(IChannel channel, String answer) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        if (answer.length() > LENGTH_LIMIT) {
+            SplitMessage s = new SplitMessage(answer);
+            IMessage last = null;
+            for (String str : s.split(LENGTH_LIMIT)) {
+                last = answerToChannel(channel, str);
+            }
+            return last;
+        } else {
+            return discordService.sendMessage(channel, answer);
+        }
+    }
+
+    private IMessage answer(IMessage message, String answer, boolean mention, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
         if (file != null) {
             try {
                 discordService.sendFile(message.getChannel(), file);
-            } catch (HTTP429Exception | IOException | MissingPermissionsException e) {
+            } catch (HTTP429Exception | IOException | MissingPermissionsException | DiscordException e) {
                 log.warn("Could not send file to user {} in channel {}: {}",
                     message.getAuthor(), message.getChannel(), e.toString());
             }
@@ -367,16 +366,12 @@ public class CommandService implements DiscordSubscriber {
                 }
                 return last;
             } else {
-                MessageBuilder builder = discordService.channelMessage(message.getChannel());
-                if (mention) {
-                    builder.appendContent(message.getAuthor().mention());
-                }
-                return builder.appendContent(answer).send();
+                return discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() : "") + answer);
             }
         }
     }
 
-    private IMessage answerPrivately(IMessage message, String answer, File file) {
+    private IMessage answerPrivately(IMessage message, String answer, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
         if (file != null) {
             try {
                 discordService.sendFilePrivately(message.getAuthor(), file);
@@ -387,13 +382,13 @@ public class CommandService implements DiscordSubscriber {
         } else {
             if (answer.length() > LENGTH_LIMIT) {
                 SplitMessage s = new SplitMessage(answer);
-                s.split(LENGTH_LIMIT).forEach(str -> answerPrivately(message, str, null));
-            } else {
-                try {
-                    return discordService.privateMessage(message.getAuthor()).appendContent(answer).send();
-                } catch (Exception e) {
-                    log.warn("Could not answer privately to user. Response was: {}", e.toString());
+                IMessage last = null;
+                for (String split : s.split(LENGTH_LIMIT)) {
+                    answerPrivately(message, split, null);
                 }
+                return last;
+            } else {
+                return discordService.sendPrivateMessage(message.getAuthor(), answer);
             }
         }
         return null; // on multipart messages

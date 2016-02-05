@@ -200,8 +200,7 @@ public class SyncQueryService {
                         .collect(Collectors.toList());
                     if (!toRefresh.isEmpty()) {
                         try {
-                            discordService.privateMessage(m.getAuthor().getID())
-                                .appendContent("Refreshing **" + toRefresh.size() + "** files").send();
+                            discordService.sendPrivateMessage(m.getAuthor(), "Refreshing **" + toRefresh.size() + "** files");
                         } catch (Exception e) {
                             log.warn("Could not send PM to user: {}", e.toString());
                         }
@@ -215,7 +214,7 @@ public class SyncQueryService {
                                 String content = String.format("Refreshed from %s\nLast modified: %d -> %d\nETag: %s -> %s",
                                     file.getRemoteUrl(), oldTime, newTime, oldTag, newTag);
                                 try {
-                                    discordService.privateMessage(m.getAuthor().getID()).appendContent(content).send();
+                                    discordService.sendPrivateMessage(m.getAuthor(), content);
                                 } catch (Exception e) {
                                     log.warn("Could not send PM to user: {}", e.toString());
                                 }

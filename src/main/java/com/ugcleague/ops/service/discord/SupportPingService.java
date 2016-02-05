@@ -77,7 +77,7 @@ public class SupportPingService {
             @Override
             public void handle(MessageReceivedEvent event) {
                 IMessage m = event.getMessage();
-                if (!isOwnUser(m.getAuthor())
+                if (!discordService.isOwnUser(m.getAuthor())
                     && isSupportChannel(m.getChannel())
                     && !discordService.hasSupportRole(m.getAuthor())
                     && !hasExcludedSupportRole(m.getAuthor())) {
@@ -251,7 +251,7 @@ public class SupportPingService {
             // ping subscribers at most once per hour per user
             getPublisher().getSubscribers().stream().filter(this::hasPingsEnabled).forEach(sub -> {
                 try {
-                    discordService.privateMessage(sub.getUserId()).withContent(buildPingMessage(m)).send();
+                    discordService.sendPrivateMessage(sub.getUserId(), buildPingMessage(m));
                 } catch (Exception e) {
                     log.warn("Could not send PM to subscriber: {}", e.toString());
                 }
@@ -283,14 +283,6 @@ public class SupportPingService {
 
     private boolean isSupportChannel(IChannel channel) {
         return support.getChannels().contains(channel.getID());
-    }
-
-    private boolean isMasterUser(IUser user) {
-        return properties.getDiscord().getMasters().contains(user.getID());
-    }
-
-    private boolean isOwnUser(IUser user) {
-        return user.getID().equals(discordService.getClient().getOurUser().getID());
     }
 
     private String subscribeUser(IUser user) {

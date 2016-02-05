@@ -20,15 +20,15 @@ import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.HTTP429Exception;
-import sx.blah.discord.util.MessageBuilder;
 
 import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
@@ -40,10 +40,9 @@ public class DiscordService implements DiscordSubscriber {
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
 
     private final LeagueProperties leagueProperties;
-
+    private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
+    private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
-    private Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
-    private Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
 
     @Autowired
     public DiscordService(LeagueProperties leagueProperties) {
@@ -82,9 +81,11 @@ public class DiscordService implements DiscordSubscriber {
             IGuild guild = client.getGuildByID(guildId);
             if (guild != null) {
                 try {
-                    tryLeave(guild);
+                    leaveGuild(guild);
                 } catch (HTTP429Exception e) {
                     log.warn("Could not leave guild after retrying: {}", e.toString());
+                } catch (DiscordException e) {
+                    log.warn("Discord exception", e);
                 }
             }
         }
@@ -123,9 +124,12 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void tryLeave(IGuild guild) throws HTTP429Exception {
-        guild.deleteOrLeaveGuild();
+    public IDiscordClient getClient() {
+        return client;
+    }
+
+    public IUser getMasterUser() {
+        return client.getUserByID(leagueProperties.getDiscord().getMasters().get(0));
     }
 
     public boolean isMaster(String id) {
@@ -136,31 +140,98 @@ public class DiscordService implements DiscordSubscriber {
         return isMaster(user.getID());
     }
 
-    public void send(String channelNameRegex, String message) {
-        client.getGuilds().stream()
-            .flatMap(g -> g.getChannels().stream())
-            .filter(ch -> ch.getName().matches(channelNameRegex))
-            .forEach(channel -> {
-                try {
-                    trySendMessage(channel, message);
-                } catch (MissingPermissionsException e) {
-                    log.warn("No permission to perform action: {}", e.toString());
-                } catch (HTTP429Exception e) {
-                    log.warn("Too many requests. Slow down!", e);
-                }
-            });
+    public boolean isOwnUser(IUser user) {
+        return user.getID().equals(client.getOurUser().getID());
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void trySendMessage(IChannel channel, String message) throws MissingPermissionsException, HTTP429Exception {
-        channel.sendMessage(message);
+    public boolean hasSupportRole(IUser user) {
+        Set<IRole> roleSet = new HashSet<>();
+        LeagueProperties.Discord.Support support = leagueProperties.getDiscord().getSupport();
+        for (String gid : support.getGuilds()) {
+            roleSet.addAll(user.getRolesForGuild(gid));
+        }
+        return roleSet.stream().anyMatch(r -> support.getRoles().contains(r.getID()));
     }
 
-    public IDiscordClient getClient() {
-        return client;
+    public void subscribe(IListener<?> listener) {
+        if (client != null && client.isReady()) {
+            client.getDispatcher().registerListener(listener);
+        } else {
+            // queue if the client is not ready yet
+            queuedListeners.add(listener);
+        }
     }
 
-    // utilities
+    public void subscribe(DiscordSubscriber subscriber) {
+        if (client != null && client.isReady()) {
+            client.getDispatcher().registerListener(subscriber);
+        } else {
+            // queue if the client is not ready yet
+            queuedSubscribers.add(subscriber);
+        }
+    }
+
+    public void unsubscribe(IListener<?> listener) {
+        client.getDispatcher().unregisterListener(listener);
+        queuedListeners.remove(listener);
+    }
+
+    public void unsubscribe(DiscordSubscriber subscriber) {
+        client.getDispatcher().unregisterListener(subscriber);
+        queuedSubscribers.remove(subscriber);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    private void leaveGuild(IGuild guild) throws HTTP429Exception, DiscordException {
+        guild.deleteOrLeaveGuild();
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendMessage(String channelId, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        IChannel channel = client.getChannelByID(channelId);
+        return channel.sendMessage(content);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendMessage(IChannel channel, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        return channel.sendMessage(content);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendPrivateMessage(String userId, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        IUser user = client.getUserByID(userId);
+        return client.getOrCreatePMChannel(user).sendMessage(content);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendPrivateMessage(IUser user, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        return client.getOrCreatePMChannel(user).sendMessage(content);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendFile(IChannel channel, File file) throws HTTP429Exception, IOException, MissingPermissionsException, DiscordException {
+        return channel.sendFile(file);
+    }
+
+    public IMessage sendFilePrivately(String userId, File file) throws DiscordException, HTTP429Exception, IOException, MissingPermissionsException {
+        IUser user = client.getUserByID(userId);
+        return sendFilePrivately(user, file);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage sendFilePrivately(IUser user, File file) throws HTTP429Exception, DiscordException, IOException, MissingPermissionsException {
+        return client.getOrCreatePMChannel(user).sendFile(file);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public IMessage editMessage(IMessage message, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        return message.edit(content);
+    }
+
+    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
+    public void deleteMessage(IMessage message) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+        message.delete();
+    }
 
     public static String guildString(IGuild guild, IUser user) {
         String id = guild.getID();
@@ -215,91 +286,5 @@ public class DiscordService implements DiscordSubscriber {
             + "', name='" + name
             + "', status='" + status
             + "']";
-    }
-
-    public void subscribe(IListener<?> listener) {
-        if (client != null && client.isReady()) {
-            client.getDispatcher().registerListener(listener);
-        } else {
-            // queue if the client is not ready yet
-            queuedListeners.add(listener);
-        }
-    }
-
-    public void subscribe(DiscordSubscriber subscriber) {
-        if (client != null && client.isReady()) {
-            client.getDispatcher().registerListener(subscriber);
-        } else {
-            // queue if the client is not ready yet
-            queuedSubscribers.add(subscriber);
-        }
-    }
-
-    public void unsubscribe(IListener<?> listener) {
-        client.getDispatcher().unregisterListener(listener);
-        queuedListeners.remove(listener);
-    }
-
-    public void unsubscribe(DiscordSubscriber subscriber) {
-        client.getDispatcher().unregisterListener(subscriber);
-        queuedSubscribers.remove(subscriber);
-    }
-
-    public MessageBuilder message() {
-        return new MessageBuilder(client);
-    }
-
-    public MessageBuilder channelMessage(String channelId) throws DiscordException {
-        IChannel channel = client.getChannelByID(channelId);
-        if (channel != null) {
-            return message().withChannel(channel);
-        } else {
-            throw new DiscordException("Channel '" + channelId + "' does not exists");
-        }
-    }
-
-    public MessageBuilder channelMessage(IChannel channel) {
-        Objects.requireNonNull(channel, "Channel must not be null");
-        return message().withChannel(channel);
-    }
-
-    public MessageBuilder privateMessage(String userId) throws Exception {
-        IUser user = client.getUserByID(userId);
-        IPrivateChannel pch = client.getOrCreatePMChannel(user);
-        return new MessageBuilder(client).withChannel(pch);
-    }
-
-    public MessageBuilder privateMessage(IUser user) throws Exception {
-        IPrivateChannel pch = client.getOrCreatePMChannel(user);
-        return new MessageBuilder(client).withChannel(pch);
-    }
-
-    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
-    public void sendFile(IChannel channel, File file) throws HTTP429Exception, IOException, MissingPermissionsException {
-        channel.sendFile(file);
-    }
-
-    public void sendFilePrivately(String userId, File file) throws Exception {
-        IUser user = client.getUserByID(userId);
-        sendFilePrivately(user, file);
-    }
-
-    @Retryable(include = {HTTP429Exception.class}, backoff = @Backoff(1000))
-    public void sendFilePrivately(IUser user, File file) throws Exception {
-        IPrivateChannel pch = client.getOrCreatePMChannel(user);
-        pch.sendFile(file);
-    }
-
-    public boolean hasSupportRole(IUser user) {
-        Set<IRole> roleSet = new HashSet<>();
-        LeagueProperties.Discord.Support support = leagueProperties.getDiscord().getSupport();
-        for (String gid : support.getGuilds()) {
-            roleSet.addAll(user.getRolesForGuild(gid));
-        }
-        return roleSet.stream().anyMatch(r -> support.getRoles().contains(r.getID()));
-    }
-
-    public IUser getMasterUser() {
-        return client.getUserByID(leagueProperties.getDiscord().getMasters().get(0));
     }
 }

@@ -228,7 +228,7 @@ public class GameServerFtpService {
                 .collect(Collectors.joining("\n")))
                 .append("\n");
         }
-        commandService.replyFrom(message, command, response.toString());
+        commandService.tryReplyFrom(message, command, response.toString());
         //commandService.deleteStatusFrom(message); // remove status
     }
 

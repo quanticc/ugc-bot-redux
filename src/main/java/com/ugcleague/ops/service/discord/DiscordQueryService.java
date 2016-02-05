@@ -6,6 +6,7 @@ import com.ugcleague.ops.service.util.GitProperties;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,13 +14,16 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.Discord4J;
+import sx.blah.discord.api.DiscordEndpoints;
+import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.MissingPermissionsException;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.handle.obj.Presences;
+import sx.blah.discord.api.internal.DiscordUtils;
+import sx.blah.discord.handle.impl.obj.Channel;
+import sx.blah.discord.handle.obj.*;
+import sx.blah.discord.json.responses.MessageResponse;
 import sx.blah.discord.util.HTTP429Exception;
+import sx.blah.discord.util.Requests;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
@@ -30,6 +34,7 @@ import java.lang.management.RuntimeMXBean;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.EnumSet;
 import java.util.Optional;
 
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
@@ -65,16 +70,46 @@ public class DiscordQueryService {
         commandService.register(CommandBuilder.equalsTo(".beep boop")
             .description("Test command please ignore").permission(0)
             .command(this::executePMCommand).build());
+        commandService.register(CommandBuilder.equalsTo(".beep load")
+            .description("Load more messages in this channel").permission("master").experimental()
+            .command((message, optionSet) -> {
+                try {
+                    loadChannelMessages(discordService.getClient(), (Channel) message.getChannel());
+                } catch (IOException | HTTP429Exception | DiscordException e) {
+                    log.warn("Could not load messages", e);
+                }
+                return "";
+            }).build());
         initProfileCommand();
     }
 
     private String executePMCommand(IMessage m, OptionSet optionSet) {
         try {
-            discordService.privateMessage(m.getAuthor()).appendContent("(╯°□°）╯︵ ┻━┻ ").appendContent(randomMessage()).send();
+            discordService.sendPrivateMessage(m.getAuthor(), "(╯°□°）╯︵ ┻━┻ " + randomMessage());
         } catch (Exception e) {
             log.warn("Could not send PM to user: {}", e.toString());
         }
         return "";
+    }
+
+    public static void loadChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP429Exception, DiscordException {
+        try {
+            if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
+                DiscordUtils.checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
+        } catch (MissingPermissionsException e) {
+            Discord4J.LOGGER.warn("Error getting messages for channel " + channel.getName() + ": {}", e.getErrorMessage());
+            return;
+        }
+
+        IMessage oldest = channel.getMessages().get(0);
+        String before = oldest.getID();
+        String response = Requests.GET.makeRequest(DiscordEndpoints.CHANNELS + channel.getID() + "/messages?limit=50&before=" + before,
+            new BasicNameValuePair("authorization", client.getToken()));
+        MessageResponse[] messages = DiscordUtils.GSON.fromJson(response, MessageResponse[].class);
+
+        for (MessageResponse message : messages) {
+            channel.addMessage(DiscordUtils.getMessageFromJSON(client, channel, message));
+        }
     }
 
     public static String randomMessage() {
@@ -111,6 +146,8 @@ public class DiscordQueryService {
                 tryChangeAccountInfo(name, avatar, game);
             } catch (HTTP429Exception e) {
                 log.warn("Could not change account info: {}", e.toString());
+            } catch (DiscordException e) {
+                log.warn("Discord exception", e);
             }
             IDiscordClient client = discordService.getClient();
             client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE), game);
@@ -119,7 +156,7 @@ public class DiscordQueryService {
     }
 
     @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void tryChangeAccountInfo(Optional<String> name, Optional<String> avatar, Optional<String> game) throws HTTP429Exception {
+    private void tryChangeAccountInfo(Optional<String> name, Optional<String> avatar, Optional<String> game) throws HTTP429Exception, DiscordException {
         IDiscordClient client = discordService.getClient();
         Optional<IDiscordClient.Image> image = avatar.map(s -> IDiscordClient.Image.forUrl("jpeg", s));
         client.changeAccountInfo(name, Optional.empty(), Optional.empty(), image);
@@ -137,6 +174,8 @@ public class DiscordQueryService {
                     log.warn("No permission to perform action: {}", e.toString());
                 } catch (HTTP429Exception e) {
                     log.warn("Too many requests. Slow down!", e);
+                } catch (DiscordException e) {
+                    log.warn("Discord exception", e);
                 }
             });
         }
@@ -144,7 +183,7 @@ public class DiscordQueryService {
     }
 
     @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void tryDelete(IMessage message) throws MissingPermissionsException, HTTP429Exception {
+    private void tryDelete(IMessage message) throws MissingPermissionsException, HTTP429Exception, DiscordException {
         message.delete();
     }
 
