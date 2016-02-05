@@ -12,8 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Transactional
@@ -26,6 +29,7 @@ public class TaskService implements DisposableBean {
     private final GameServerService gameServerService;
     private final ExpireStatusService expireStatusService;
     private final Scheduler scheduler;
+    private final Map<String, RunnableTask> runnables = new LinkedHashMap<>();
 
     @Autowired
     public TaskService(ScheduledTaskRepository repository, UpdatesFeedService updatesFeedService,
@@ -60,11 +64,12 @@ public class TaskService implements DisposableBean {
     }
 
     private ScheduledTask schedule(ScheduledTask task, Runnable runnable) {
-        RunnableTask consumingTask = new RunnableTask(task, runnable);
+        RunnableTask runnableTask = new RunnableTask(task, runnable);
         log.debug("Scheduling task {}", task.humanString());
-        String taskId = scheduler.schedule(task.getPattern(), consumingTask);
+        String taskId = scheduler.schedule(task.getPattern(), runnableTask);
         task.setTaskId(taskId);
         task = repository.save(task);
+        runnables.put(task.getName(), runnableTask);
         return task;
     }
 
@@ -109,5 +114,24 @@ public class TaskService implements DisposableBean {
 
     public ScheduledTask save(ScheduledTask task) {
         return repository.save(task);
+    }
+
+    public void run(ScheduledTask task, long delay) {
+        RunnableTask runnableTask = runnables.get(task.getName());
+        if (runnableTask != null) {
+            log.debug("Scheduling task as a one-off execution: {}", task.getName());
+            CompletableFuture.runAsync(() -> {
+                if (delay > 0) {
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        log.warn("Waiting to start task interrupted: {}", e.toString());
+                    }
+                }
+            }).thenRun(runnableTask.getRunnable())
+                .thenRun(() -> log.info("One-off execution of {} was completed", task.getName()));
+        } else {
+            log.warn("Could not find a runnable for task named {}", task.getName());
+        }
     }
 }
