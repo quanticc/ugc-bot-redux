@@ -135,7 +135,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public void logout() throws HTTP429Exception {
+    public void logout() throws HTTP429Exception, DiscordException {
         if (isReady()) {
             ws.disconnect();
 
@@ -157,7 +157,7 @@ public final class DiscordClientImpl implements IDiscordClient {
             GatewayResponse response = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest("https://discordapp.com/api/gateway",
                 new BasicNameValuePair("authorization", token)), GatewayResponse.class);
             gateway = response.url;//.replaceAll("wss", "ws");
-        } catch (HTTP429Exception e) {
+        } catch (HTTP429Exception | DiscordException e) {
             Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         Discord4J.LOGGER.debug("Obtained gateway {}.", gateway);
@@ -165,7 +165,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public void changeAccountInfo(Optional<String> username, Optional<String> email, Optional<String> password, Optional<Image> avatar) throws HTTP429Exception {
+    public void changeAccountInfo(Optional<String> username, Optional<String> email, Optional<String> password, Optional<Image> avatar) throws HTTP429Exception, DiscordException {
         Discord4J.LOGGER.debug("Changing account info.");
 
         if (!isReady()) {
@@ -274,7 +274,7 @@ public final class DiscordClientImpl implements IDiscordClient {
     }
 
     @Override
-    public IPrivateChannel getOrCreatePMChannel(IUser user) throws Exception {
+    public IPrivateChannel getOrCreatePMChannel(IUser user) throws DiscordException, HTTP429Exception {
         if (!isReady()) {
             Discord4J.LOGGER.error("Bot has not signed in yet!");
             return null;
@@ -286,14 +286,19 @@ public final class DiscordClientImpl implements IDiscordClient {
             }
         }
 
-        PrivateChannelResponse response = DiscordUtils.GSON.fromJson(Requests.POST.makeRequest(DiscordEndpoints.USERS + this.ourUser.getID() + "/channels",
-            new StringEntity(DiscordUtils.GSON.toJson(new PrivateChannelRequest(user.getID()))),
-            new BasicNameValuePair("authorization", this.token),
-            new BasicNameValuePair("content-type", "application/json")), PrivateChannelResponse.class);
+        try {
+            PrivateChannelResponse response = DiscordUtils.GSON.fromJson(Requests.POST.makeRequest(DiscordEndpoints.USERS + this.ourUser.getID() + "/channels",
+                new StringEntity(DiscordUtils.GSON.toJson(new PrivateChannelRequest(user.getID()))),
+                new BasicNameValuePair("authorization", this.token),
+                new BasicNameValuePair("content-type", "application/json")), PrivateChannelResponse.class);
 
-        IPrivateChannel channel = DiscordUtils.getPrivateChannelFromJSON(this, response);
-        privateChannels.add(channel);
-        return channel;
+            IPrivateChannel channel = DiscordUtils.getPrivateChannelFromJSON(this, response);
+            privateChannels.add(channel);
+            return channel;
+        } catch (UnsupportedEncodingException e) {
+            Discord4J.LOGGER.error("Discord4J Internal Exception", e);
+        }
+        return null;
     }
 
     @Override
@@ -308,14 +313,14 @@ public final class DiscordClientImpl implements IDiscordClient {
                 new BasicNameValuePair("authorization", token)), InviteJSONResponse.class);
 
             return DiscordUtils.getInviteFromJSON(this, response);
-        } catch (HTTP429Exception e) {
+        } catch (HTTP429Exception | DiscordException e) {
             Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         return null;
     }
 
     @Override
-    public List<IRegion> getRegions() throws HTTP429Exception {
+    public List<IRegion> getRegions() throws HTTP429Exception, DiscordException {
         if (REGIONS.isEmpty()) {
             RegionResponse[] regions = DiscordUtils.GSON.fromJson(Requests.GET.makeRequest(
                 DiscordEndpoints.VOICE + "regions",
@@ -337,14 +342,14 @@ public final class DiscordClientImpl implements IDiscordClient {
                 if (region.getID().equals(regionID))
                     return region;
             }
-        } catch (HTTP429Exception e) {
+        } catch (HTTP429Exception | DiscordException e) {
             Discord4J.LOGGER.error("Discord4J Internal Exception", e);
         }
         return null;
     }
 
     @Override
-    public IGuild createGuild(String name, Optional<String> regionID, Optional<Image> icon) throws HTTP429Exception {
+    public IGuild createGuild(String name, Optional<String> regionID, Optional<Image> icon) throws HTTP429Exception, DiscordException {
         try {
             GuildResponse guildResponse = DiscordUtils.GSON.fromJson(Requests.POST.makeRequest(DiscordEndpoints.APIBASE + "/guilds",
                 new StringEntity(DiscordUtils.GSON_NO_NULLS.toJson(

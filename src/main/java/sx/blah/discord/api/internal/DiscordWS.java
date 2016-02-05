@@ -28,10 +28,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -228,13 +225,13 @@ public class DiscordWS extends WebSocketClient {
                     break;
 
                 default:
-                    Discord4J.LOGGER.warn("Unknown message received: {}, REPORT THIS TO THE DISCORD4J DEV! (ignoring): {}", eventObject.toString(), frame);
+                    Discord4J.LOGGER.warn("Unknown message received: {}, REPORT THIS TO THE DISCORD4J DEV! (ignoring): {}", type, frame);
             }
         } else if (op == 7) { //Gateway is redirecting us
             RedirectResponse redirectResponse = DiscordUtils.GSON.fromJson(object.getAsJsonObject("d"), RedirectResponse.class);
             Discord4J.LOGGER.info("Received a gateway redirect request, closing the socket at reopening at {}", redirectResponse.url);
             try {
-                client.ws = new DiscordWS(client, new URI(redirectResponse.url.replaceAll("wss", "ws")));
+                client.ws = new DiscordWS(client, new URI(redirectResponse.url));
                 disconnect();
             } catch (URISyntaxException e) {
                 Discord4J.LOGGER.error("Discord4J Internal Exception", e);
@@ -431,6 +428,7 @@ public class DiscordWS extends WebSocketClient {
             IMessage message = channel.getMessageByID(id);
             if (message != null) {
                 channel.getMessages().remove(message);
+                Collections.sort(channel.getMessages(), Channel.MessageComparator.INSTANCE);
                 client.dispatcher.dispatch(new MessageDeleteEvent(message));
             }
         }

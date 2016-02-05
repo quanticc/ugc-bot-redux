@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.http.message.BasicNameValuePair;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.DiscordEndpoints;
+import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.impl.obj.*;
@@ -54,9 +55,10 @@ public class DiscordUtils {
      * @param channel The channel to get messages from.
      * @throws IOException
      * @throws HTTP429Exception
+     * @throws DiscordException
      */
     //TODO: maybe move?
-    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP429Exception {
+    public static void getChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP429Exception, DiscordException {
         try {
             if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
                 checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
@@ -313,11 +315,10 @@ public class DiscordUtils {
             message.setMentions(getMentionsFromJSON(client, json));
             message.setTimestamp(convertFromTimestamp(json.edited_timestamp == null ? json.timestamp : json.edited_timestamp));
             return message;
-        } else {
-            return new Message(client, json.id, json.content, json.author != null ? getUserFromJSON(client, json.author) : client.getOurUser(),
+        } else
+            return new Message(client, json.id, json.content, getUserFromJSON(client, json.author),
                 channel, convertFromTimestamp(json.timestamp), json.mention_everyone, getMentionsFromJSON(client, json),
                 getAttachmentsFromJSON(json));
-        }
     }
 
     /**
