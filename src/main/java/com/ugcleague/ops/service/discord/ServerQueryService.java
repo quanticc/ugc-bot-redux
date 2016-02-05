@@ -51,6 +51,7 @@ public class ServerQueryService {
     private OptionSpec<String> rconPasswordSpec;
     private OptionSpec<String> insecureNonOptionSpec;
     private OptionSpec<Boolean> insecureValueSpec;
+    private OptionSpec<Boolean> rconQuietSpec;
 
     @Autowired
     public ServerQueryService(GameServerService gameServerService, CommandService commandService) {
@@ -272,6 +273,8 @@ public class ServerQueryService {
         rconNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
         rconPasswordSpec = parser.acceptsAll(asList("p", "password"), "RCON password").withRequiredArg();
+        rconQuietSpec = parser.acceptsAll(asList("q", "quiet"), "Don't output the command result to the channel")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".rcon")
             .description("Send a command to a game server using RCON").permission("support").permissionReplies()
             .parser(parser).command(this::executeRconCommand).build());
@@ -317,10 +320,16 @@ public class ServerQueryService {
                         String password = o.valueOf(rconPasswordSpec);
                         message.append("**").append(server.toString()).append("**:");
                         String result = gameServerService.rcon(server, password, command);
-                        if (command.trim().replace("\"", "").equals("status")) {
-                            message.append("```\n").append(result).append("\n```\n");
+                        if (o.has(rconQuietSpec) && o.valueOf(rconQuietSpec)
+                            || (!o.has(rconQuietSpec) && command.contains("exec"))) {
+                            result = "Executed ``rcon " + command + "`` command\n";
+                            message.append(result);
                         } else {
-                            message.append(result).append("\n");
+                            if (command.trim().replace("\"", "").equals("status")) {
+                                message.append("```\n").append(result).append("\n```\n");
+                            } else {
+                                message.append(result).append("\n");
+                            }
                         }
                     } catch (TimeoutException e) {
                         message.append("Server is not responding");
