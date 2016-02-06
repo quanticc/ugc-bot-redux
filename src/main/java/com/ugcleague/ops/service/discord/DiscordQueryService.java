@@ -1,7 +1,9 @@
 package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordService;
+import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.discord.util.StatusWrapper;
 import com.ugcleague.ops.service.util.GitProperties;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -34,6 +36,7 @@ import java.lang.management.RuntimeMXBean;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
 
@@ -52,6 +55,10 @@ public class DiscordQueryService {
     private OptionSpec<String> profileAvatarSpec;
     private OptionSpec<String> profileGameSpec;
     private GitProperties gitProperties;
+    private OptionSpec<Integer> rateNumberSpec;
+    private OptionSpec<Integer> rateWaitSpec;
+    private OptionSpec<Boolean> rateStatusSpec;
+    private Command rateCommand;
 
     @Autowired
     public DiscordQueryService(CommandService commandService, DiscordService discordService) {
@@ -80,7 +87,47 @@ public class DiscordQueryService {
                 }
                 return "";
             }).build());
+        initRateTestCommand();
         initProfileCommand();
+    }
+
+    private void initRateTestCommand() {
+        OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        rateNumberSpec = parser.acceptsAll(asList("n", "number"), "number of messages to send")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(10);
+        rateWaitSpec = parser.acceptsAll(asList("w", "wait"), "waiting milliseconds before each message")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(250);
+        rateStatusSpec = parser.acceptsAll(asList("s", "status"), "display progress as status mode (successive edits)")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
+        rateCommand = CommandBuilder.startsWith(".test")
+            .description("Test API rate limits").permission("master").experimental().queued().parser(parser)
+            .command((message, optionSet) -> {
+                if (optionSet.has("?")) {
+                    return null;
+                }
+                int limit = Math.max(1, optionSet.valueOf(rateNumberSpec));
+                long sleep = Math.max(1, optionSet.valueOf(rateWaitSpec));
+                boolean status = optionSet.has(rateStatusSpec) ? optionSet.valueOf(rateStatusSpec) : false;
+                for (int i = 0; i < limit; i++) {
+                    try {
+                        if (status) {
+                            commandService.statusReplyFrom(message, rateCommand,
+                                StatusWrapper.ofWork(i + 1, limit)
+                                    .withMessage("Working in the hall at " + Instant.now().toString())
+                                    .bar().text());
+                        } else {
+                            String msg = String.format("[%d/%d] %s", i + 1, limit, Instant.now().toString());
+                            commandService.replyFrom(message, rateCommand, msg);
+                        }
+                        Thread.sleep(sleep);
+                    } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
+                        log.warn("Could not send test message", e);
+                    }
+                }
+                return "";
+            }).build();
+        commandService.register(rateCommand);
     }
 
     private String executePMCommand(IMessage m, OptionSet optionSet) {

@@ -25,7 +25,6 @@ import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -48,8 +47,6 @@ public class GameServerFtpService {
     private final CommandService commandService;
     private final GameServerService gameServerService;
     private final SyncGroupService syncGroupService;
-
-    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private OptionParser parser;
     private OptionSpec<String> getNonOptionSpec;
@@ -188,16 +185,8 @@ public class GameServerFtpService {
             Predicate<RemoteFile> filter = remoteFile -> remoteFile.getFilename().endsWith(endsWith)
                 && files.stream().anyMatch(s -> remoteFile.getFilename().contains(s))
                 && remoteFile.getSharedUrl() == null;
-            Future<FileShareTask> future = syncGroupService.shareToDropbox(server, dir, filter);
-            // wait in the background for the task to complete, but return now
-            CompletableFuture.supplyAsync(() -> {
-                try {
-                    return future.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    log.warn("Interrupted before result could be retrieved: {}", e.toString());
-                    return new FileShareTask();
-                }
-            }, executor).thenAccept(t -> handleGetResult(t, message, command));
+            syncGroupService.shareToDropbox(server, dir, filter)
+                .thenAccept(t -> handleGetResult(t, message, command));
             commandService.statusReplyFrom(message, command, "Files are being downloaded in the background, please wait...");
         }
         return response.toString();

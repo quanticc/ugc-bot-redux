@@ -5,8 +5,7 @@ import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.ClientBuilder;
@@ -82,7 +81,7 @@ public class DiscordService implements DiscordSubscriber {
             if (guild != null) {
                 try {
                     leaveGuild(guild);
-                } catch (HTTP429Exception e) {
+                } catch (InterruptedException e) {
                     log.warn("Could not leave guild after retrying: {}", e.toString());
                 } catch (DiscordException e) {
                     log.warn("Discord exception", e);
@@ -181,56 +180,126 @@ public class DiscordService implements DiscordSubscriber {
         queuedSubscribers.remove(subscriber);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    private void leaveGuild(IGuild guild) throws HTTP429Exception, DiscordException {
-        guild.deleteOrLeaveGuild();
+    private void sleep(long millis) throws InterruptedException {
+        log.info("Backing off for {} ms due to rate limits", millis);
+        Thread.sleep(Math.max(1, millis));
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendMessage(String channelId, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    @Async
+    public void leaveGuild(IGuild guild) throws DiscordException, InterruptedException {
+        while (true) {
+            try {
+                guild.deleteOrLeaveGuild();
+                return;
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+    }
+
+    @Async
+    public CompletableFuture<IMessage> sendMessage(String channelId, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
         IChannel channel = client.getChannelByID(channelId);
-        return channel.sendMessage(content);
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = channel.sendMessage(content);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendMessage(IChannel channel, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
-        return channel.sendMessage(content);
+    @Async
+    public CompletableFuture<IMessage> sendMessage(IChannel channel, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = channel.sendMessage(content);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendPrivateMessage(String userId, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    @Async
+    public CompletableFuture<IMessage> sendPrivateMessage(String userId, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
         IUser user = client.getUserByID(userId);
-        return client.getOrCreatePMChannel(user).sendMessage(content);
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = client.getOrCreatePMChannel(user).sendMessage(content);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendPrivateMessage(IUser user, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
-        return client.getOrCreatePMChannel(user).sendMessage(content);
+    @Async
+    public CompletableFuture<IMessage> sendPrivateMessage(IUser user, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = client.getOrCreatePMChannel(user).sendMessage(content);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendFile(IChannel channel, File file) throws HTTP429Exception, IOException, MissingPermissionsException, DiscordException {
-        return channel.sendFile(file);
+    @Async
+    public CompletableFuture<IMessage> sendFile(IChannel channel, File file) throws IOException, MissingPermissionsException, DiscordException, InterruptedException {
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = channel.sendFile(file);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    public IMessage sendFilePrivately(String userId, File file) throws DiscordException, HTTP429Exception, IOException, MissingPermissionsException {
-        IUser user = client.getUserByID(userId);
-        return sendFilePrivately(user, file);
+    @Async
+    public CompletableFuture<IMessage> sendFilePrivately(IUser user, File file) throws DiscordException, IOException, MissingPermissionsException, InterruptedException {
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = client.getOrCreatePMChannel(user).sendFile(file);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage sendFilePrivately(IUser user, File file) throws HTTP429Exception, DiscordException, IOException, MissingPermissionsException {
-        return client.getOrCreatePMChannel(user).sendFile(file);
+    @Async
+    public CompletableFuture<IMessage> editMessage(IMessage message, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+        IMessage response = null;
+        while (response == null) {
+            try {
+                response = message.edit(content);
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(response);
     }
 
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public IMessage editMessage(IMessage message, String content) throws HTTP429Exception, DiscordException, MissingPermissionsException {
-        return message.edit(content);
-    }
-
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L, maxDelay = 10000L))
-    public void deleteMessage(IMessage message) throws HTTP429Exception, DiscordException, MissingPermissionsException {
-        message.delete();
+    @Async
+    public void deleteMessage(IMessage message) throws DiscordException, MissingPermissionsException, InterruptedException {
+        while (true) {
+            try {
+                message.delete();
+                return;
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
     }
 
     public static String guildString(IGuild guild, IUser user) {

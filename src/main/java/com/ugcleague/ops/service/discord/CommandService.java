@@ -4,6 +4,7 @@ import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.*;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
+import com.ugcleague.ops.service.discord.util.StatusWrapper;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -22,7 +23,6 @@ import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.util.HTTP429Exception;
 
 import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.Util.padLeft;
@@ -152,7 +153,7 @@ public class CommandService implements DiscordSubscriber {
                         CompletableFuture<String> future = gatekeeper.queue(key, job);
                         // handle response and then delete status command
                         future.thenAccept(response -> handleResponse(m, command, response))
-                            .thenRun(() -> statusReplyFrom(m, command, null));
+                            .thenRun(() -> statusReplyFrom(m, command, (String) null));
                     }
                 } else {
                     try {
@@ -202,12 +203,6 @@ public class CommandService implements DiscordSubscriber {
         } // empty responses fall through silently
     }
 
-    /*
-     command |--> handleResponse |--> helpReplyFrom -->| replyFrom |--> answer          |--> Discord4J --> API
-     execute \                   \-------------------->\           \--> answerPrivately \
-             |---------------------------------------->|           |
-     */
-
     public void helpReplyFrom(IMessage message, Command command) {
         helpReplyFrom(message, command, null);
     }
@@ -230,6 +225,10 @@ public class CommandService implements DiscordSubscriber {
         }
     }
 
+    public void statusReplyFrom(IMessage message, Command command, StatusWrapper status) {
+        statusReplyFrom(message, command, status.toString());
+    }
+
     public void statusReplyFrom(IMessage message, Command command, String response) {
         IMessage statusMessage = invokerToStatusMap.get(message.getID());
         if (response == null) {
@@ -240,9 +239,11 @@ public class CommandService implements DiscordSubscriber {
             }
         } else if (response.length() < LENGTH_LIMIT) {
             if (statusMessage == null) {
-                statusMessage = tryReplyFrom(message, command, response);
-                if (statusMessage != null) {
-                    invokerToStatusMap.put(message.getID(), statusMessage);
+                try {
+                    IMessage status = tryReplyFrom(message, command, response).get();
+                    invokerToStatusMap.put(message.getID(), status);
+                } catch (InterruptedException | ExecutionException e) {
+                    log.warn("Interrupted wait for the initial status message");
                 }
             } else {
                 tryEdit(statusMessage, response);
@@ -265,41 +266,40 @@ public class CommandService implements DiscordSubscriber {
         invokerToStatusMap.values().removeIf(m -> LocalDateTime.now().minusHours(1).isAfter(m.getTimestamp()));
     }
 
-    private IMessage tryEdit(IMessage message, String response) {
+    private void tryEdit(IMessage message, String response) {
         try {
-            return discordService.editMessage(message, response);
-        } catch (HTTP429Exception | DiscordException | MissingPermissionsException e) {
+            discordService.editMessage(message, response);
+        } catch (InterruptedException | DiscordException | MissingPermissionsException e) {
             log.warn("Could not edit message: {}", e.toString());
         }
-        return null;
     }
 
     private void tryDelete(IMessage message) {
         try {
             discordService.deleteMessage(message);
-        } catch (HTTP429Exception | DiscordException | MissingPermissionsException e) {
+        } catch (InterruptedException | DiscordException | MissingPermissionsException e) {
             log.warn("Could not delete message: {}", e.toString());
         }
     }
 
-    public IMessage tryReplyFrom(IMessage message, Command command, String response) {
+    public CompletableFuture<IMessage> tryReplyFrom(IMessage message, Command command, String response) {
         try {
             return replyFrom(message, command, response);
-        } catch (HTTP429Exception | MissingPermissionsException | DiscordException e) {
+        } catch (InterruptedException | MissingPermissionsException | DiscordException e) {
             log.warn("Could not reply to user: {}", e.toString());
         }
         return null;
     }
 
-    public IMessage replyFrom(IMessage message, Command command, String response) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    public CompletableFuture<IMessage> replyFrom(IMessage message, Command command, String response) throws InterruptedException, DiscordException, MissingPermissionsException {
         return commonReply(message, command, response, null);
     }
 
-    public void fileReplyFrom(IMessage message, Command command, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    public void fileReplyFrom(IMessage message, Command command, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
         commonReply(message, command, null, file);
     }
 
-    private IMessage commonReply(IMessage message, Command command, String response, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    private CompletableFuture<IMessage> commonReply(IMessage message, Command command, String response, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
         ReplyMode replyMode = command.getReplyMode();
         if (replyMode == ReplyMode.PRIVATE) {
             // always to private - so ignore all permission calculations
@@ -335,12 +335,12 @@ public class CommandService implements DiscordSubscriber {
     // Lower level output control
     ////////////////////////////////////////
 
-    public IMessage answerToChannel(IChannel channel, String answer) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    public CompletableFuture<IMessage> answerToChannel(IChannel channel, String answer) throws InterruptedException, DiscordException, MissingPermissionsException {
         if (answer.length() > LENGTH_LIMIT) {
             SplitMessage s = new SplitMessage(answer);
-            IMessage last = null;
+            CompletableFuture<IMessage> last = null;
             for (String str : s.split(LENGTH_LIMIT)) {
-                last = answerToChannel(channel, str);
+                last = discordService.sendMessage(channel, str);
             }
             return last;
         } else {
@@ -348,11 +348,11 @@ public class CommandService implements DiscordSubscriber {
         }
     }
 
-    private IMessage answer(IMessage message, String answer, boolean mention, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    private CompletableFuture<IMessage> answer(IMessage message, String answer, boolean mention, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
         if (file != null) {
             try {
                 discordService.sendFile(message.getChannel(), file);
-            } catch (HTTP429Exception | IOException | MissingPermissionsException | DiscordException e) {
+            } catch (InterruptedException | IOException | MissingPermissionsException | DiscordException e) {
                 log.warn("Could not send file to user {} in channel {}: {}",
                     message.getAuthor(), message.getChannel(), e.toString());
             }
@@ -360,9 +360,13 @@ public class CommandService implements DiscordSubscriber {
         } else {
             if (answer.length() > LENGTH_LIMIT) {
                 SplitMessage s = new SplitMessage(answer);
-                IMessage last = null;
-                for (String str : s.split(LENGTH_LIMIT)) {
-                    last = answer(message, str, mention, null);
+                CompletableFuture<IMessage> last = null;
+                List<String> list = s.split(LENGTH_LIMIT);
+                if (list.size() > 0) {
+                    last = discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() : "") + list.get(0));
+                    for (String str : list.subList(1, list.size())) {
+                        last = discordService.sendMessage(message.getChannel(), str);
+                    }
                 }
                 return last;
             } else {
@@ -371,7 +375,7 @@ public class CommandService implements DiscordSubscriber {
         }
     }
 
-    private IMessage answerPrivately(IMessage message, String answer, File file) throws HTTP429Exception, DiscordException, MissingPermissionsException {
+    private CompletableFuture<IMessage> answerPrivately(IMessage message, String answer, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
         if (file != null) {
             try {
                 discordService.sendFilePrivately(message.getAuthor(), file);
@@ -382,9 +386,9 @@ public class CommandService implements DiscordSubscriber {
         } else {
             if (answer.length() > LENGTH_LIMIT) {
                 SplitMessage s = new SplitMessage(answer);
-                IMessage last = null;
-                for (String split : s.split(LENGTH_LIMIT)) {
-                    answerPrivately(message, split, null);
+                CompletableFuture<IMessage> last = null;
+                for (String str : s.split(LENGTH_LIMIT)) {
+                    last = discordService.sendPrivateMessage(message.getAuthor(), str);
                 }
                 return last;
             } else {

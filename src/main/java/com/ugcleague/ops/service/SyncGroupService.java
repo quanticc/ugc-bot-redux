@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +29,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -186,7 +185,7 @@ public class SyncGroupService {
     }
 
     @Async
-    public Future<FileShareTask> shareToDropbox(GameServer server, String dir, Predicate<RemoteFile> filter) {
+    public CompletableFuture<FileShareTask> shareToDropbox(GameServer server, String dir, Predicate<RemoteFile> filter) {
         FileShareTask task = new FileShareTask();
         try {
             List<RemoteFile> files = retryableListAndDownload(server, dir, filter);
@@ -199,7 +198,7 @@ public class SyncGroupService {
             log.warn("Could not get file list: {}", e.toString());
         }
         task.setEnd(System.currentTimeMillis());
-        return new AsyncResult<>(task);
+        return CompletableFuture.completedFuture(task);
     }
 
     @Retryable(backoff = @Backoff(3000))
