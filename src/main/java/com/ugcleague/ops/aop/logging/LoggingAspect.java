@@ -25,7 +25,8 @@ public class LoggingAspect {
     @Autowired
     private Environment env;
 
-    @Pointcut("within(com.ugcleague.ops.repository..*) || within(com.ugcleague.ops.service..*)")
+    //@Pointcut("within(com.ugcleague.ops.repository..*) || within(com.ugcleague.ops.service..*)")
+    @Pointcut("within(com.ugcleague.ops.repository..*)")
     public void loggingPointcut() {
     }
 
