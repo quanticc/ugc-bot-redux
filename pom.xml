@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.ugcleague.ops</groupId>
@@ -14,7 +15,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>1.3.1.RELEASE</version>
-        <relativePath /> <!-- lookup parent from repository -->
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <issueManagement>
@@ -36,15 +37,6 @@
         <tag>HEAD</tag>
     </scm>
 
-    <developers>
-        <developer>
-            <email>ivan.abarca@usach.cl</email>
-            <name>Ivan Abarca</name>
-            <url>https://github.com/iabarca</url>
-            <id>iabarca</id>
-        </developer>
-    </developers>
-
     <repositories>
         <repository>
             <id>spring-milestones</id>
@@ -58,14 +50,6 @@
             <id>sonatype-releases</id>
             <url>https://oss.sonatype.org/content/repositories/releases/</url>
         </repository>
-        <!--<repository>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <id>bintray-austinv11-maven</id>
-            <name>bintray</name>
-            <url>http://dl.bintray.com/austinv11/maven</url>
-        </repository>-->
     </repositories>
     <pluginRepositories>
         <pluginRepository>
@@ -483,11 +467,6 @@
             <artifactId>quartz</artifactId>
             <version>2.2.2</version>
         </dependency>
-        <!--<dependency>
-            <groupId>sx.blah</groupId>
-            <artifactId>Discord4J</artifactId>
-            <version>${discord4j.version}</version>
-        </dependency>-->
 
     </dependencies>
 
