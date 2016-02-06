@@ -19,6 +19,7 @@
 
 package sx.blah.discord.util;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -29,6 +30,8 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.DiscordException;
+import sx.blah.discord.api.internal.DiscordUtils;
+import sx.blah.discord.json.responses.RateLimitResponse;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -100,21 +103,26 @@ public enum Requests {
             }
             HttpResponse response = CLIENT.execute(request);
             int responseCode = response.getStatusLine().getStatusCode();
+
             if (responseCode == 404) {
                 LOGGER.error("Received 404 error, please notify the developer and include the URL ({})", url);
             } else if (responseCode == 403) {
                 LOGGER.error("Received 403 forbidden error for url {}. If you believe this is a Discord4J error, report this!", url);
             } else if (responseCode == 204) { //There is a no content response when deleting messages
                 return null;
-            } else if (responseCode == 429) {
-                throw new HTTP429Exception("Unable to make request to " + url + " you may have hit Discord's rate limit");
             }
 
             String message = EntityUtils.toString(response.getEntity());
 
             JsonParser parser = new JsonParser();
-            if (parser.parse(message).isJsonObject() && parser.parse(message).getAsJsonObject().has("message"))
-                throw new DiscordException(parser.parse(message).getAsJsonObject().get("message").getAsString());
+            JsonElement element = parser.parse(message);
+
+            if (responseCode == 429) {
+                throw new HTTP429Exception(DiscordUtils.GSON.fromJson(element, RateLimitResponse.class));
+            }
+
+            if (element.isJsonObject() && parser.parse(message).getAsJsonObject().has("message"))
+                throw new DiscordException(element.getAsJsonObject().get("message").getAsString());
 
             return message;
         } catch (IOException | NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
@@ -144,21 +152,26 @@ public enum Requests {
                 request.setEntity(entity);
                 HttpResponse response = CLIENT.execute(request);
                 int responseCode = response.getStatusLine().getStatusCode();
+
                 if (responseCode == 404) {
                     LOGGER.error("Received 404 error, please notify the developer and include the URL ({})", url);
                 } else if (responseCode == 403) {
                     LOGGER.error("Received 403 forbidden error for url {}. If you believe this is a Discord4J error, report this!", url);
                 } else if (responseCode == 204) { //There is a no content response when deleting messages
                     return null;
-                } else if (responseCode == 429) {
-                    throw new HTTP429Exception("Unable to make request to " + url + " you may have hit Discord's rate limit");
                 }
 
                 String message = EntityUtils.toString(response.getEntity());
 
                 JsonParser parser = new JsonParser();
-                if (parser.parse(message).isJsonObject() && parser.parse(message).getAsJsonObject().has("message"))
-                    throw new DiscordException(parser.parse(message).getAsJsonObject().get("message").getAsString());
+                JsonElement element = parser.parse(message);
+
+                if (responseCode == 429) {
+                    throw new HTTP429Exception(DiscordUtils.GSON.fromJson(element, RateLimitResponse.class));
+                }
+
+                if (element.isJsonObject() && parser.parse(message).getAsJsonObject().has("message"))
+                    throw new DiscordException(element.getAsJsonObject().get("message").getAsString());
 
                 return message;
             } else {
