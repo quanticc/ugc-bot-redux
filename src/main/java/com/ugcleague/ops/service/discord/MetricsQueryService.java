@@ -54,18 +54,11 @@ public class MetricsQueryService {
     private void initMetricsCommand() {
         OptionParser parser = new OptionParser();
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
-        String metricSetList = buildMetricsList();
-        metricsNonOptionSpec = parser.nonOptions("Metric name: " + metricSetList).ofType(String.class);
+        metricsNonOptionSpec = parser.nonOptions("Metric, list of metrics or metric types to display. " +
+            "For instance: \"jvm\" would match all metrics starting with that key. If you enter a metric type " +
+            "(meter, counter, timer, gauge, histogram) you will get a list of possible metrics of that kind.").ofType(String.class);
         commandService.register(CommandBuilder.combined(".metrics").permission("master").parser(parser)
             .description("Show metrics about the application").command(this::metricsCommand).build());
-    }
-
-    private String buildMetricsList() {
-        return "\n**Meters:** " + metricRegistry.getMeters().keySet().stream().collect(Collectors.joining(", ")) +
-            "\n**Counters:** " + metricRegistry.getCounters().keySet().stream().collect(Collectors.joining(", ")) +
-            "\n**Timers:** " + metricRegistry.getTimers().keySet().stream().collect(Collectors.joining(", ")) +
-            "\n**Gauges:** " + metricRegistry.getGauges().keySet().stream().collect(Collectors.joining(", ")) +
-            "\n**Histograms:** " + metricRegistry.getHistograms().keySet().stream().collect(Collectors.joining(", "));
     }
 
     private String metricsCommand(IMessage message, OptionSet optionSet) {
@@ -76,44 +69,79 @@ public class MetricsQueryService {
         }
         StringBuilder response = new StringBuilder();
         for (String arg : nonOptions) {
-            Counter counter = metricRegistry.getCounters().get(arg);
-            Gauge gauge = metricRegistry.getGauges().get(arg);
-            Histogram histogram = metricRegistry.getHistograms().get(arg);
-            Meter meter = metricRegistry.getMeters().get(arg);
-            Timer timer = metricRegistry.getTimers().get(arg);
-            response.append("**").append(arg).append("**\n");
-            if (counter != null) {
-                response.append("count: ``").append(counter.getCount()).append("``\n");
-            }
-            if (gauge != null) {
-                response.append("gauge value: ``").append(gauge.getValue()).append("``\n");
-            }
-            if (histogram != null) {
-                Snapshot snapshot = histogram.getSnapshot();
-                response.append("histogram snapshots: ``").append(snapshot.size()).append("`` ")
-                    .append("min: ``").append(snapshot.getMin()).append("`` ")
-                    .append("avg: ``").append(snapshot.getMean()).append("`` ")
-                    .append("max: ``").append(snapshot.getMax()).append("`` ")
-                    .append("stdDev: ``").append(snapshot.getStdDev()).append("``\n");
-            }
-            if (meter != null) {
-                response.append("meter count: ``").append(meter.getCount()).append("`` ")
-                    .append("mean: ``").append(meter.getMeanRate()).append("`` ")
-                    .append("events/min: ``").append(meter.getOneMinuteRate()).append("``\n");
-            }
-            if (timer != null) {
-                Snapshot snapshot = timer.getSnapshot();
-                response.append("timer snapshots: ``").append(snapshot.size()).append("`` ")
-                    .append("min: ``").append(snapshot.getMin()).append("`` ")
-                    .append("avg: ``").append(snapshot.getMean()).append("`` ")
-                    .append("max: ``").append(snapshot.getMax()).append("`` ")
-                    .append("stdDev: ``").append(snapshot.getStdDev()).append("``\n")
-                    .append("timer count: ``").append(timer.getCount()).append("`` ")
-                    .append("mean: ``").append(timer.getMeanRate()).append("`` ")
-                    .append("events/min: ``").append(timer.getOneMinuteRate()).append("``\n");
+            switch (arg) {
+                case "meter":
+                    response.append("*List of meters:* ")
+                        .append(metricRegistry.getMeters().keySet().stream().collect(Collectors.joining(", "))).append("\n");
+                    break;
+                case "counter":
+                    response.append("*List of counters:* ")
+                        .append(metricRegistry.getCounters().keySet().stream().collect(Collectors.joining(", "))).append("\n");
+                    break;
+                case "timer":
+                    response.append("*List of timers:* ")
+                        .append(metricRegistry.getTimers().keySet().stream().collect(Collectors.joining(", "))).append("\n");
+                    break;
+                case "gauge":
+                    response.append("*List of gauges:* ")
+                        .append(metricRegistry.getGauges().keySet().stream().collect(Collectors.joining(", "))).append("\n");
+                    break;
+                case "histogram":
+                    response.append("*List of histograms:* ")
+                        .append(metricRegistry.getHistograms().keySet().stream().collect(Collectors.joining(", "))).append("\n");
+                    break;
+                default:
+                    metricRegistry.getMeters().entrySet().stream()
+                        .filter(e -> e.getKey().startsWith(arg))
+                        .map(e -> String.format("[m] **%s** %s\n", e.getKey(), formatMeter(e.getValue())))
+                        .forEach(response::append);
+                    metricRegistry.getCounters().entrySet().stream()
+                        .filter(e -> e.getKey().startsWith(arg))
+                        .map(e -> String.format("[c] **%s** %s\n", e.getKey(), formatCounter(e.getValue())))
+                        .forEach(response::append);
+                    metricRegistry.getTimers().entrySet().stream()
+                        .filter(e -> e.getKey().startsWith(arg))
+                        .map(e -> String.format("[t] **%s** %s\n", e.getKey(), formatTimer(e.getValue())))
+                        .forEach(response::append);
+                    metricRegistry.getGauges().entrySet().stream()
+                        .filter(e -> e.getKey().startsWith(arg))
+                        .map(e -> String.format("[g] **%s** %s\n", e.getKey(), formatGauge(e.getValue())))
+                        .forEach(response::append);
+                    metricRegistry.getHistograms().entrySet().stream()
+                        .filter(e -> e.getKey().startsWith(arg))
+                        .map(e -> String.format("[h] **%s** %s\n", e.getKey(), formatHistogram(e.getValue())))
+                        .forEach(response::append);
+                    break;
             }
         }
         return response.toString();
+    }
+
+    private String formatMeter(Meter meter) {
+        return String.format("count: `%s` mean: `%s` events/min: `%s`",
+            meter.getCount(), meter.getMeanRate(), meter.getOneMinuteRate());
+    }
+
+    private String formatCounter(Counter counter) {
+        return String.format("count: `%s`\n", counter.getCount());
+    }
+
+    private String formatTimer(Timer timer) {
+        Snapshot snapshot = timer.getSnapshot();
+        return String.format("snapshots: `%s` min: `%s` avg: `%s` max: `%s` stdDev: `%s` -- count: `%s` mean: `%s` events/min: `%s`",
+            snapshot.size(), snapshot.getMin(), snapshot.getMean(), snapshot.getMax(), snapshot.getStdDev(),
+            timer.getCount(), timer.getMeanRate(), timer.getOneMinuteRate());
+    }
+
+    private String formatGauge(Gauge gauge) {
+        return String.format("value: `%s`", gauge.getValue());
+    }
+
+    private String formatHistogram(Histogram histogram) {
+        Snapshot snapshot = histogram.getSnapshot();
+        return String.format("snapshots: `%s` min: `%s` avg: `%s` max: `%s` stdDev: `%s` -- count: `%s`",
+            snapshot.size(), snapshot.getMin(), snapshot.getMean(), snapshot.getMax(), snapshot.getStdDev(),
+            histogram.getCount());
     }
 
     private void initHealthCommand() {
@@ -132,7 +160,7 @@ public class MetricsQueryService {
             String msg = result.getMessage();
             Throwable t = result.getError();
             response.append("**").append(entry.getKey()).append("** ")
-                .append(result.isHealthy() ? "OK" : "**ERROR**")
+                .append(result.isHealthy() ? "[Healthy]" : "[**Error**]")
                 .append(msg != null ? " with message: " + msg : "")
                 .append(t != null ? " and exception: " + t.toString() : "").append("\n");
         }
