@@ -12,8 +12,6 @@ import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.DiscordEndpoints;
@@ -39,6 +37,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
 import static java.util.Arrays.asList;
@@ -85,6 +84,18 @@ public class DiscordQueryService {
                 } catch (IOException | HTTP429Exception | DiscordException e) {
                     log.warn("Could not load messages", e);
                 }
+                return "";
+            }).build());
+        commandService.register(CommandBuilder.equalsTo(".beep exit")
+            .description("Exit discord").permission("master").experimental()
+            .command((message, optionSet) -> {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        log.warn("Logout interrupted");
+                    }
+                }).thenRun(discordService::terminate);
                 return "";
             }).build());
         initRateTestCommand();
@@ -148,7 +159,7 @@ public class DiscordQueryService {
             return;
         }
 
-        IMessage oldest = channel.getMessages().get(0);
+        IMessage oldest = channel.getMessages().get(channel.getMessages().size() - 1);
         String before = oldest.getID();
         String response = Requests.GET.makeRequest(DiscordEndpoints.CHANNELS + channel.getID() + "/messages?limit=50&before=" + before,
             new BasicNameValuePair("authorization", client.getToken()));
@@ -185,28 +196,21 @@ public class DiscordQueryService {
     }
 
     private String executeProfileCommand(IMessage message, OptionSet o) {
-        if (!o.has("?")) {
-            Optional<String> name = Optional.ofNullable(o.valueOf(profileNameSpec));
-            Optional<String> avatar = Optional.ofNullable(o.valueOf(profileAvatarSpec));
-            Optional<String> game = Optional.ofNullable(o.valueOf(profileGameSpec));
-            try {
-                tryChangeAccountInfo(name, avatar, game);
-            } catch (HTTP429Exception e) {
-                log.warn("Could not change account info: {}", e.toString());
-            } catch (DiscordException e) {
-                log.warn("Discord exception", e);
-            }
-            IDiscordClient client = discordService.getClient();
-            client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE), game);
+        if (o.has("?")) {
+            return null;
         }
-        return null;
-    }
-
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void tryChangeAccountInfo(Optional<String> name, Optional<String> avatar, Optional<String> game) throws HTTP429Exception, DiscordException {
+        Optional<String> name = Optional.ofNullable(o.valueOf(profileNameSpec));
+        Optional<IDiscordClient.Image> avatar = Optional.ofNullable(o.valueOf(profileAvatarSpec)).map(s -> IDiscordClient.Image.forUrl("jpeg", s));
+        Optional<String> game = Optional.ofNullable(o.valueOf(profileGameSpec));
         IDiscordClient client = discordService.getClient();
-        Optional<IDiscordClient.Image> image = avatar.map(s -> IDiscordClient.Image.forUrl("jpeg", s));
-        client.changeAccountInfo(name, Optional.empty(), Optional.empty(), image);
+        client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE), game);
+        try {
+            discordService.changeAccountInfo(name, avatar);
+            return "Account info changed";
+        } catch (DiscordException | InterruptedException e) {
+            log.warn("Could not change account info", e);
+            return "Could not change account info";
+        }
     }
 
     private String executeClearCommand(IMessage m, OptionSet optionSet) {
@@ -216,22 +220,17 @@ public class DiscordQueryService {
             c.getMessages().stream().filter(message -> message.getAuthor().getID()
                 .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
                 try {
-                    tryDelete(message);
+                    discordService.deleteMessage(message);
                 } catch (MissingPermissionsException e) {
                     log.warn("No permission to perform action: {}", e.toString());
-                } catch (HTTP429Exception e) {
-                    log.warn("Too many requests. Slow down!", e);
+                } catch (InterruptedException e) {
+                    log.warn("Operation was interrupted");
                 } catch (DiscordException e) {
                     log.warn("Discord exception", e);
                 }
             });
         }
         return "";
-    }
-
-    @Retryable(include = {HTTP429Exception.class}, maxAttempts = 10, backoff = @Backoff(delay = 1000L))
-    private void tryDelete(IMessage message) throws MissingPermissionsException, HTTP429Exception, DiscordException {
-        message.delete();
     }
 
     private String executeInfoCommand(IMessage m, OptionSet o) {

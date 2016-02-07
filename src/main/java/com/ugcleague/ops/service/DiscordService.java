@@ -24,12 +24,11 @@ import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +41,7 @@ public class DiscordService implements DiscordSubscriber {
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
+    private final AtomicBoolean reconnect = new AtomicBoolean(true);
 
     @Autowired
     public DiscordService(LeagueProperties leagueProperties) {
@@ -115,11 +115,22 @@ public class DiscordService implements DiscordSubscriber {
 
     @EventSubscriber
     public void onDisconnect(DiscordDisconnectedEvent event) {
-        log.info("Reconnecting bot");
+        if (reconnect.get()) {
+            log.info("Reconnecting bot");
+            try {
+                login();
+            } catch (DiscordException e) {
+                log.warn("Failed to reconnect bot", e);
+            }
+        }
+    }
+
+    public void terminate() {
+        reconnect.set(false);
         try {
-            login();
-        } catch (DiscordException e) {
-            log.warn("Failed to reconnect bot", e);
+            client.logout();
+        } catch (HTTP429Exception | DiscordException e) {
+            log.warn("Logout failed", e);
         }
     }
 
@@ -295,6 +306,18 @@ public class DiscordService implements DiscordSubscriber {
         while (true) {
             try {
                 message.delete();
+                return;
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+    }
+
+    @Async
+    public void changeAccountInfo(Optional<String> name, Optional<IDiscordClient.Image> image) throws DiscordException, InterruptedException {
+        while (true) {
+            try {
+                client.changeAccountInfo(name, Optional.empty(), Optional.empty(), image);
                 return;
             } catch (HTTP429Exception e) {
                 sleep(e.getRetryDelay());
