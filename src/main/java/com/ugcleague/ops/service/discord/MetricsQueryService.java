@@ -54,10 +54,18 @@ public class MetricsQueryService {
     private void initMetricsCommand() {
         OptionParser parser = new OptionParser();
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
-        String metricSetList = metricRegistry.getNames().stream().collect(Collectors.joining(", "));
+        String metricSetList = buildMetricsList();
         metricsNonOptionSpec = parser.nonOptions("Metric name: " + metricSetList).ofType(String.class);
         commandService.register(CommandBuilder.combined(".metrics").permission("master").parser(parser)
             .description("Show metrics about the application").command(this::metricsCommand).build());
+    }
+
+    private String buildMetricsList() {
+        return "\n**Meters:** " + metricRegistry.getMeters().keySet().stream().collect(Collectors.joining(", ")) +
+            "\n**Counters:** " + metricRegistry.getCounters().keySet().stream().collect(Collectors.joining(", ")) +
+            "\n**Timers:** " + metricRegistry.getTimers().keySet().stream().collect(Collectors.joining(", ")) +
+            "\n**Gauges:** " + metricRegistry.getGauges().keySet().stream().collect(Collectors.joining(", ")) +
+            "\n**Histograms:** " + metricRegistry.getHistograms().keySet().stream().collect(Collectors.joining(", "));
     }
 
     private String metricsCommand(IMessage message, OptionSet optionSet) {
