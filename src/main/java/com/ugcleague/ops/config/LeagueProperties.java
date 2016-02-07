@@ -108,7 +108,6 @@ public class LeagueProperties {
     public static class Remote {
         private String syncRepositoryDir = "sync-repository";
         private String downloadsDir = "downloads";
-        private long listCachedMinutes = 60;
     }
 
     @Data

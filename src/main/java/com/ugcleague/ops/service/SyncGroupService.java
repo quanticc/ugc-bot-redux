@@ -25,12 +25,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -44,7 +42,6 @@ public class SyncGroupService {
     private final LeagueProperties leagueProperties;
     private final RemoteFileRepository remoteFileRepository;
     private final DropboxService dropboxService;
-    private final Map<GameServer, Map<String, LocalDateTime>> lastAccessMap = new ConcurrentHashMap<>();
     private String repositoryDir;
     private String downloadsDir;
 
@@ -137,36 +134,27 @@ public class SyncGroupService {
         }
     }
 
-    @Retryable(backoff = @Backoff(3000))
+    @Retryable(backoff = @Backoff(2000L))
     private List<RemoteFile> retryableFileList(GameServer server, String dir, Predicate<RemoteFile> filter) throws IOException {
-        LocalDateTime last = lastAccessMap.computeIfAbsent(server, k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(dir, k -> LocalDateTime.MIN);
-        if (LocalDateTime.now().minusMinutes(leagueProperties.getRemote().getListCachedMinutes()).isBefore(last)) {
-            log.debug("Retrieving a cached file list from {} ({}) on directory {}", server.getShortName(), server.getAddress(), dir);
-            return remoteFileRepository.findByFolderAndOwner(dir, server).stream()
-                .filter(filter).collect(Collectors.toList());
-        } else {
-            log.debug("Preparing to get file list from {} ({}) on directory {}", server.getShortName(), server.getAddress(), dir);
-            Optional<FtpClient> o = establishFtpConnection(server);
-            if (o.isPresent()) {
-                FtpClient client = o.get();
-                List<FTPFile> files = client.list(dir);
-                if (files.isEmpty()) {
-                    client.disconnect();
-                    throw new IOException("No files found");
-                }
-                // map FTPFiles to RemoteFiles
-                List<RemoteFile> remotes = files.stream()
-                    .map(f -> mapToRemoteFile(f, server, dir))
-                    .filter(filter)
-                    .map(remoteFileRepository::save)
-                    .collect(Collectors.toList());
+        log.debug("Preparing to get file list from {} ({}) on directory {}", server.getShortName(), server.getAddress(), dir);
+        Optional<FtpClient> o = establishFtpConnection(server);
+        if (o.isPresent()) {
+            FtpClient client = o.get();
+            List<FTPFile> files = client.list(dir);
+            if (files.isEmpty()) {
                 client.disconnect();
-                lastAccessMap.get(server).put(dir, LocalDateTime.now());
-                return remotes;
-            } else {
-                throw new IOException("Could not establish connection");
+                throw new IOException("No files found");
             }
+            // map FTPFiles to RemoteFiles
+            List<RemoteFile> remotes = files.stream()
+                .map(f -> mapToRemoteFile(f, server, dir))
+                .filter(filter)
+                .map(remoteFileRepository::save)
+                .collect(Collectors.toList());
+            client.disconnect();
+            return remotes;
+        } else {
+            throw new IOException("Could not establish connection");
         }
     }
 
@@ -185,8 +173,9 @@ public class SyncGroupService {
     }
 
     @Async
-    public CompletableFuture<FileShareTask> shareToDropbox(GameServer server, String dir, Predicate<RemoteFile> filter) {
+    public CompletableFuture<FileShareTask> shareToDropbox(GameServer server, String dir, boolean zip, Predicate<RemoteFile> filter) {
         FileShareTask task = new FileShareTask();
+        task.setZip(zip);
         try {
             List<RemoteFile> files = retryableListAndDownload(server, dir, filter);
             if (!files.isEmpty()) {
@@ -201,7 +190,7 @@ public class SyncGroupService {
         return CompletableFuture.completedFuture(task);
     }
 
-    @Retryable(backoff = @Backoff(3000))
+    @Retryable(backoff = @Backoff(2000L))
     private List<RemoteFile> retryableListAndDownload(GameServer server, String dir, Predicate<RemoteFile> filter) throws IOException {
         log.debug("Preparing to get file list from {} ({}) on directory {}",
             server.getShortName(), server.getAddress(), dir);
@@ -228,6 +217,8 @@ public class SyncGroupService {
                     server.getShortName(), server.getAddress(), file.getFolder(), file.getFilename(), destPath);
                 // file could already be downloaded. check first
                 if (Files.exists(destPath)) {
+                    // TODO add another check if the remote url is not null
+                    // file might have been deleted locally
                     log.info("File appears to be already downloaded: {}", destPath);
                     long actual = destPath.toFile().length();
                     long expected = file.getSize();
