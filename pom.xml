@@ -86,20 +86,27 @@
         <run.addResources>false</run.addResources>
         <spring-security.version>4.0.2.RELEASE</spring-security.version>
         <springfox.version>2.0.3</springfox.version>
-        <sysout-over-slf4j.version>1.0.2</sysout-over-slf4j.version>
+        <lombok.version>1.16.6</lombok.version>
+        <mongeez.version>0.9.6</mongeez.version>
 
         <!-- Project-specific properties -->
         <ftp4j.version>1.7.3</ftp4j.version>
         <steam-condenser.version>1.3.9</steam-condenser.version>
-        <rome.version>1.5.1</rome.version>
-        <rome-fetcher.version>1.5.0</rome-fetcher.version>
-        <jsoup.version>1.8.3</jsoup.version>
-        <lombok.version>1.16.6</lombok.version>
-        <tika-parsers.version>1.11</tika-parsers.version>
-        <tika-core.version>1.11</tika-core.version>
         <jodd-core.version>3.6.6</jodd-core.version>
-        <discord4j.version>2.1.1</discord4j.version>
+        <jsoup.version>1.8.3</jsoup.version>
+        <tika-core.version>1.11</tika-core.version>
+        <junrar.version>0.7</junrar.version>
+        <bzip2.version>0.9.1</bzip2.version>
+        <rome.version>1.5.1</rome.version>
+        <rome-fetcher.version>1.5.1</rome-fetcher.version>
+        <prettytime.version>4.0.1.Final</prettytime.version>
+        <prettytime-nlp.version>4.0.0.Final</prettytime-nlp.version>
+        <dropbox-core-sdk.version>2.0-beta-5</dropbox-core-sdk.version>
         <jopt-simple.version>4.9</jopt-simple.version>
+        <quartz.version>2.2.2</quartz.version>
+        <cron4j.version>2.2.5</cron4j.version>
+        <discord4j.version>2.2.3-custom</discord4j.version>
+
     </properties>
 
     <dependencyManagement>
@@ -283,6 +290,59 @@
             <artifactId>json-path</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.mattbertolini</groupId>
+            <artifactId>liquibase-slf4j</artifactId>
+            <version>${liquibase-slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj-core.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-ehcache</artifactId>
+            <version>${hibernate.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.sf.ehcache</groupId>
+                    <artifactId>ehcache-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-envers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mongeez</groupId>
+            <artifactId>mongeez</artifactId>
+            <version>${mongeez.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>jetty-servlet</artifactId>
+                    <groupId>org.eclipse.jetty</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <!-- reporting -->
         <dependency>
@@ -326,12 +386,12 @@
         <dependency>
             <groupId>com.github.junrar</groupId>
             <artifactId>junrar</artifactId>
-            <version>0.7</version>
+            <version>${junrar.version}</version>
         </dependency>
         <dependency>
             <groupId>org.itadaki</groupId>
             <artifactId>bzip2</artifactId>
-            <version>0.9.1</version>
+            <version>${bzip2.version}</version>
         </dependency>
         <dependency>
             <groupId>com.rometools</groupId>
@@ -346,70 +406,17 @@
         <dependency>
             <groupId>org.ocpsoft.prettytime</groupId>
             <artifactId>prettytime</artifactId>
-            <version>4.0.1.Final</version>
+            <version>${prettytime.version}</version>
         </dependency>
         <dependency>
             <groupId>org.ocpsoft.prettytime</groupId>
             <artifactId>prettytime-nlp</artifactId>
-            <version>4.0.0.Final</version>
+            <version>${prettytime-nlp.version}</version>
         </dependency>
         <dependency>
             <groupId>com.dropbox.core</groupId>
             <artifactId>dropbox-core-sdk</artifactId>
-            <version>2.0-beta-5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.mattbertolini</groupId>
-            <artifactId>liquibase-slf4j</artifactId>
-            <version>${liquibase-slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>${assertj-core.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-ehcache</artifactId>
-            <version>${hibernate.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>xml-apis</groupId>
-                    <artifactId>xml-apis</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-envers</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-validator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mongeez</groupId>
-            <artifactId>mongeez</artifactId>
-            <version>0.9.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.liquibase</groupId>
-            <artifactId>liquibase-core</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>jetty-servlet</artifactId>
-                    <groupId>org.eclipse.jetty</groupId>
-                </exclusion>
-            </exclusions>
+            <version>${dropbox-core-sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>net.sf.jopt-simple</groupId>
@@ -419,17 +426,17 @@
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>2.2.2</version>
+            <version>${quartz.version}</version>
         </dependency>
         <dependency>
             <groupId>it.sauronsoftware.cron4j</groupId>
             <artifactId>cron4j</artifactId>
-            <version>2.2.5</version>
+            <version>${cron4j.version}</version>
         </dependency>
         <dependency>
             <groupId>sx.blah</groupId>
             <artifactId>Discord4J</artifactId>
-            <version>2.2.3-custom</version>
+            <version>${discord4j.version}</version>
         </dependency>
     </dependencies>
 
