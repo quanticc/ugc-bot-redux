@@ -9,7 +9,6 @@ import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
-import org.apache.mina.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -48,7 +48,7 @@ public class CommandService implements DiscordSubscriber {
 
     private final DiscordService discordService;
     private final LeagueProperties properties;
-    private final Set<Command> commandList = new ConcurrentHashSet<>();
+    private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Gatekeeper gatekeeper = new Gatekeeper();
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
 
@@ -182,7 +182,7 @@ public class CommandService implements DiscordSubscriber {
                 log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
                     command.getKey(), command.getPermissionLevel());
             }
-        } else if (m.getChannel().isPrivate()
+        } else if (m.getChannel().isPrivate() && !discordService.isOwnUser(m.getAuthor())
             && (m.getContent().startsWith(".") || m.getContent().startsWith("!")
             || m.getContent().contains("help") || m.getContent().contains("info"))) {
             log.debug("User {} might be asking privately for help: {}", format(m.getAuthor()), m.getContent());

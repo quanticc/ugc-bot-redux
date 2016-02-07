@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -235,18 +236,9 @@ public class DiscordService implements DiscordSubscriber {
         return CompletableFuture.completedFuture(response);
     }
 
-    @Async
     public CompletableFuture<IMessage> sendPrivateMessage(String userId, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
         IUser user = client.getUserByID(userId);
-        IMessage response = null;
-        while (response == null) {
-            try {
-                response = client.getOrCreatePMChannel(user).sendMessage(content);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
-            }
-        }
-        return CompletableFuture.completedFuture(response);
+        return sendPrivateMessage(user, content);
     }
 
     @Async
@@ -257,6 +249,9 @@ public class DiscordService implements DiscordSubscriber {
                 response = client.getOrCreatePMChannel(user).sendMessage(content);
             } catch (HTTP429Exception e) {
                 sleep(e.getRetryDelay());
+            } catch (Exception e) {
+                log.warn("Could not create PM channel", e);
+                throw new DiscordException("Could not create PM channel");
             }
         }
         return CompletableFuture.completedFuture(response);
@@ -283,6 +278,9 @@ public class DiscordService implements DiscordSubscriber {
                 response = client.getOrCreatePMChannel(user).sendFile(file);
             } catch (HTTP429Exception e) {
                 sleep(e.getRetryDelay());
+            } catch (Exception e) {
+                log.warn("Could not create PM channel", e);
+                throw new DiscordException("Could not create PM channel");
             }
         }
         return CompletableFuture.completedFuture(response);
