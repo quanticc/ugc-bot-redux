@@ -61,7 +61,7 @@ public class UgcApiClient {
         playerTeamCurrentActiveUrl = endpoints.get("playerTeamCurrentActive"); // id64
     }
 
-    @Retryable(backoff = @Backoff(2000))
+    @Retryable(backoff = @Backoff(2000L))
     private String httpToString(String url) throws IOException {
         URL u = new URL(url);
         HttpURLConnection c = (HttpURLConnection) u.openConnection();

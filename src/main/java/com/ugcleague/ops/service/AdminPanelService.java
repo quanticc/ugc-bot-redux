@@ -47,7 +47,7 @@ public class AdminPanelService {
      * @return a map containing data obtained from the provider
      * @throws IOException
      */
-    @Retryable
+    @Retryable(backoff = @Backoff(2000L))
     public Map<String, Map<String, String>> getServerDetails() throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(HOME_URL));
         Map<String, Map<String, String>> latest = new LinkedHashMap<>();
@@ -88,7 +88,7 @@ public class AdminPanelService {
      * @return a map with configuration key-values found in the GS web page
      * @throws IOException
      */
-    @Retryable
+    @Retryable(backoff = @Backoff(2000L))
     public Map<String, String> getServerInfo(String subId) throws IOException {
         Map<String, String> result = new HashMap<>();
         Document document = validateSessionAndGet(
@@ -107,7 +107,7 @@ public class AdminPanelService {
         return result;
     }
 
-    @Retryable
+    @Retryable(backoff = @Backoff(2000L))
     public synchronized Map<String, String> getServerConfig(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
@@ -127,7 +127,7 @@ public class AdminPanelService {
      * @return a map with mods (updates) key-values found in the GS web page
      * @throws IOException
      */
-    @Retryable
+    @Retryable(backoff = @Backoff(2000L))
     public Map<String, String> getServerMods(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
@@ -224,7 +224,7 @@ public class AdminPanelService {
         return document.title().contains("Login");
     }
 
-    @Retryable(include = {IOException.class}, backoff = @Backoff(2000))
+    @Retryable(include = {IOException.class}, backoff = @Backoff(2000L))
     private Document validateSessionAndGet(Connection connection) throws IOException {
         if (session.isEmpty()) {
             if (!login()) {

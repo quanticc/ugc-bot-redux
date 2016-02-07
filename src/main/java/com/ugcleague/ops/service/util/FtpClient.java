@@ -85,7 +85,7 @@ public class FtpClient {
         return false;
     }
 
-    @Retryable(backoff = @Backoff(2000), include = {IOException.class, FTPIllegalReplyException.class, FTPException.class})
+    @Retryable(backoff = @Backoff(2000L), include = {IOException.class, FTPIllegalReplyException.class, FTPException.class})
     private void retryableConnect(Map<String, String> credentials)
         throws IllegalStateException, IOException, FTPIllegalReplyException, FTPException {
         try {
@@ -116,7 +116,7 @@ public class FtpClient {
         }
     }
 
-    @Retryable(backoff = @Backoff(3000))
+    @Retryable(backoff = @Backoff(2000L))
     public SyncGroup retryableUpdateGroup(SyncGroup group) throws FTPException, IOException, FTPIllegalReplyException {
         Path localPath = Paths.get(repositoryDir, group.getLocalDir());
         if (!Files.isDirectory(localPath) || !Files.exists(localPath)) {
@@ -142,7 +142,7 @@ public class FtpClient {
         }
     }
 
-    @Retryable(backoff = @Backoff(5000), include = {FTPDataTransferException.class, FTPAbortedException.class})
+    @Retryable(backoff = @Backoff(5000L), include = {FTPDataTransferException.class, FTPAbortedException.class})
     private void retryableUpload(Path path)
         throws FTPIllegalReplyException, IOException, FTPException, FTPDataTransferException, FTPAbortedException {
         client.upload(path.toFile(), new SimpleTransferListener());
@@ -232,7 +232,7 @@ public class FtpClient {
         }
     }
 
-    @Retryable(backoff = @Backoff(5000), include = {FTPDataTransferException.class, FTPAbortedException.class})
+    @Retryable(backoff = @Backoff(5000L), include = {FTPDataTransferException.class, FTPAbortedException.class})
     private void retryableDownload(String filename, File destFile) throws FTPIllegalReplyException,
         FTPDataTransferException, FTPException, FTPAbortedException, IOException {
         client.download(filename, destFile, new SimpleTransferListener());

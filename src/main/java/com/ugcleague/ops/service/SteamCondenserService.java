@@ -71,7 +71,7 @@ public class SteamCondenserService {
         }
     }
 
-    @Retryable(backoff = @Backoff)
+    @Retryable(backoff = @Backoff(2000L))
     private Integer throwingPing(SourceServer server) throws IOException, SteamCondenserException, TimeoutException {
         if (server != null) {
             server.updatePing();
@@ -96,7 +96,7 @@ public class SteamCondenserService {
         }
     }
 
-    @Retryable(backoff = @Backoff)
+    @Retryable(backoff = @Backoff(2000L))
     private Integer throwingPlayers(SourceServer server) throws IOException, SteamCondenserException, TimeoutException {
         if (server != null) {
             server.updatePlayers();
@@ -122,7 +122,7 @@ public class SteamCondenserService {
         }
     }
 
-    @Retryable(backoff = @Backoff)
+    @Retryable(backoff = @Backoff(2000L))
     private Map<String, SteamPlayer> throwingPlayerList(SourceServer server, String rconPassword)
         throws IOException, SteamCondenserException, TimeoutException {
         // if the credentials are invalid this will fall back to simple player query (no SteamIDs)
@@ -139,7 +139,7 @@ public class SteamCondenserService {
         }
     }
 
-    @Retryable(backoff = @Backoff)
+    @Retryable(backoff = @Backoff(2000L))
     private Map<String, String> throwingRules(SourceServer server) throws IOException, SteamCondenserException, TimeoutException {
         server.updateRules();
         return server.getRules();
@@ -154,7 +154,7 @@ public class SteamCondenserService {
         }
     }
 
-    @Retryable(backoff = @Backoff)
+    @Retryable(backoff = @Backoff(2000L))
     private Map<String, Object> throwingInfo(SourceServer server) throws IOException, SteamCondenserException, TimeoutException {
         server.updateServerInfo();
         return server.getServerInfo();
@@ -171,7 +171,7 @@ public class SteamCondenserService {
      * @throws TimeoutException        if the request times out
      * @throws RemoteAccessException   if <strong>rconPassword</strong> is invalid
      */
-    @Retryable(backoff = @Backoff, exclude = {RemoteAccessException.class})
+    @Retryable(backoff = @Backoff(2000L), exclude = {RemoteAccessException.class})
     public String rcon(SourceServer server, String rconPassword, String command)
         throws SteamCondenserException, TimeoutException, RemoteAccessException {
         if (server.rconAuth(rconPassword)) {
@@ -195,7 +195,7 @@ public class SteamCondenserService {
         return null;
     }
 
-    @Retryable
+    @Retryable(backoff = @Backoff(2000L))
     private SourceServer retryCreateSourceServer(String address) throws SteamCondenserException {
         return new SourceServer(address);
     }
