@@ -13,10 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -50,7 +47,7 @@ public class DropboxService {
     public FileShareTask batchUpload(FileShareTask task) {
         Path downloadsPath = Paths.get(leagueProperties.getRemote().getDownloadsDir());
         List<RemoteFile> files = task.getRequested();
-        if (files.size() > 1) {
+        if (task.isZip()) {
             // try to make a batch upload with all the tasked files
             String id = files.get(0).getOwner().getShortName();
             String zipFilename = String.format("batch-%s-%s.zip", id, now("yyyyMMddHHmmss"));
@@ -128,7 +125,7 @@ public class DropboxService {
             try (InputStream inputStream = new FileInputStream(srcPath.toFile())) {
                 DbxFiles.FileMetadata metadata = client.files.uploadBuilder(destPath)
                     .mode(DbxFiles.WriteMode.add()).run(inputStream);
-                log.info("Uploaded to {} ({}) on {}", metadata.pathLower, humanizeBytes(metadata.size), metadata.serverModified);
+                log.info("Uploaded {} to {} ({}) on {}", srcPath, metadata.pathLower, humanizeBytes(metadata.size), metadata.serverModified);
                 return metadata;
             }
         }
@@ -149,5 +146,30 @@ public class DropboxService {
             log.warn("Could not get a shared link for {}: {}", dropboxPath, e.toString());
         }
         return Optional.empty();
+    }
+
+    public DbxFiles.Metadata exists(String path) throws DbxException {
+        // TODO validate path
+        return client.files.getMetadata(path);
+    }
+
+    public DbxFiles.ListFolderResult listFolder(String path) throws DbxException {
+        return client.files.listFolder(path);
+    }
+
+    public DbxFiles.ListFolderResult listFolderContinue(String cursor) throws DbxException {
+        return client.files.listFolderContinue(cursor);
+    }
+
+    public DbxFiles.FileMetadata downloadFile(String srcPath, Path destPath) throws IOException, DbxException {
+        try (OutputStream outputStream = new FileOutputStream(destPath.toFile())) {
+            DbxFiles.FileMetadata metadata = client.files.downloadBuilder(srcPath).run(outputStream);
+            log.info("Downloaded {} to {} ({})", metadata.pathLower, destPath, humanizeBytes(metadata.size));
+            return metadata;
+        }
+    }
+
+    public DbxFiles.Metadata deleteFile(String path) throws DbxException {
+        return client.files.delete(path);
     }
 }
