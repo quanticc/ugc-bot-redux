@@ -73,6 +73,17 @@ public class CommandService implements DiscordSubscriber {
         discordService.subscribe(this);
     }
 
+    /**
+     * Retrieve a minimal parser with accepts "-?", "-h" or "--help", to use for help
+     *
+     * @return a new OptionParser
+     */
+    public static OptionParser newParser() {
+        OptionParser parser = new OptionParser();
+        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        return parser;
+    }
+
     // Help command definitions
     /////////////////////////////////
 
@@ -162,7 +173,7 @@ public class CommandService implements DiscordSubscriber {
                         // ignore empty responses (no action)
                     } catch (OptionException e) {
                         log.warn("Invalid call: {}", e.toString());
-                        helpReplyFrom(m, command, e.toString());
+                        helpReplyFrom(m, command, e.getMessage());
                     }
                     invokerToStatusMap.remove(m.getID());
                 }
@@ -171,6 +182,11 @@ public class CommandService implements DiscordSubscriber {
                 log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
                     command.getKey(), command.getPermissionLevel());
             }
+        } else if (m.getChannel().isPrivate()
+            && (m.getContent().startsWith(".") || m.getContent().startsWith("!")
+            || m.getContent().contains("help") || m.getContent().contains("info"))) {
+            log.debug("User {} might be asking privately for help: {}", format(m.getAuthor()), m.getContent());
+            showCommandList(m, newParser().parse());
         }
     }
 
@@ -363,14 +379,14 @@ public class CommandService implements DiscordSubscriber {
                 CompletableFuture<IMessage> last = null;
                 List<String> list = s.split(LENGTH_LIMIT);
                 if (list.size() > 0) {
-                    last = discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() : "") + list.get(0));
+                    last = discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() + " " : "") + list.get(0));
                     for (String str : list.subList(1, list.size())) {
                         last = discordService.sendMessage(message.getChannel(), str);
                     }
                 }
                 return last;
             } else {
-                return discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() : "") + answer);
+                return discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() + " " : "") + answer);
             }
         }
     }
