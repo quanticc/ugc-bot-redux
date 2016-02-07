@@ -11,6 +11,7 @@ public class FileShareTask {
     private final List<RemoteFile> requested = new ArrayList<>();
     private final List<RemoteFile> successful = new ArrayList<>();
     private Optional<String> batchSharedUrl = Optional.empty();
+    private boolean zip = false;
     private long start = System.currentTimeMillis();
     private long end;
 
@@ -40,5 +41,13 @@ public class FileShareTask {
 
     public void setBatchSharedUrl(Optional<String> batchSharedUrl) {
         this.batchSharedUrl = batchSharedUrl;
+    }
+
+    public boolean isZip() {
+        return zip;
+    }
+
+    public void setZip(boolean zip) {
+        this.zip = zip;
     }
 }

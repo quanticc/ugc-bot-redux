@@ -57,6 +57,8 @@ public class GameServerFtpService {
     private Command getLogsCommand;
     private Command getStvCommand;
     private OptionSpec<Boolean> getExactDateSpec;
+    private OptionSpec<Integer> getLengthFilterSpec;
+    private OptionSpec<Boolean> getZipSpec;
 
     @Autowired
     public GameServerFtpService(CommandService commandService, GameServerService gameServerService, SyncGroupService syncGroupService) {
@@ -82,6 +84,10 @@ public class GameServerFtpService {
         getFilenameFilterSpec = parser.acceptsAll(asList("f", "filename"), "only display files containing this filename").withRequiredArg();
         getAfterFilterSpec = parser.acceptsAll(asList("a", "after"), "only display files last modified after this date").withRequiredArg();
         getBeforeFilterSpec = parser.acceptsAll(asList("b", "before"), "only display files last modified before this date").withRequiredArg();
+        getLengthFilterSpec = parser.acceptsAll(asList("l", "length"), "only display files with size (in bytes) greater than this")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(100000); // 100 KB
+        getZipSpec = parser.acceptsAll(asList("z", "zip"), "try to put all files into a zip archive")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         getExactDateSpec = parser.accepts("absolute-date", "display last modified date in absolute terms")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
     }
@@ -140,7 +146,7 @@ public class GameServerFtpService {
                     String t1 = afterTime.get().toString();
                     String t2 = beforeTime.get().toString();
                     if (afterTime.get().isAfter(beforeTime.get())) {
-                        response.append("You enter the ranges wrong so I'm fixing your request for you.\n");
+                        response.append("You entered the ranges wrong so I'm fixing the request for you.\n");
                         t1 = beforeTime.get().toString();
                         t2 = afterTime.get().toString();
                     }
@@ -160,7 +166,8 @@ public class GameServerFtpService {
                 remoteFile.getFilename().endsWith(endsWith)
                     && (!filename.isPresent() || remoteFile.getFilename().contains(filename.get()))
                     && (!after.isPresent() || isAfter(afterTime.get(), remoteFile.getModified()))
-                    && (!before.isPresent() || isBefore(beforeTime.get(), remoteFile.getModified()));
+                    && (!before.isPresent() || isBefore(beforeTime.get(), remoteFile.getModified())
+                    && (remoteFile.getSize() == null || remoteFile.getSize() >= optionSet.valueOf(getLengthFilterSpec)));
             List<RemoteFile> remoteFiles = syncGroupService.getFileList(server, dir, filter);
             if (remoteFiles.isEmpty()) {
                 response.append("No files found with the given filters");
@@ -181,11 +188,10 @@ public class GameServerFtpService {
             if (filename.isPresent() || after.isPresent() || before.isPresent()) {
                 response.append("Filters are ignored when downloading files\n");
             }
-            // TODO: handle --force download mode
+            boolean zip = optionSet.has(getZipSpec) && optionSet.valueOf(getZipSpec);
             Predicate<RemoteFile> filter = remoteFile -> remoteFile.getFilename().endsWith(endsWith)
-                && files.stream().anyMatch(s -> remoteFile.getFilename().contains(s))
-                && remoteFile.getSharedUrl() == null;
-            syncGroupService.shareToDropbox(server, dir, filter)
+                && files.stream().anyMatch(s -> remoteFile.getFilename().contains(s));
+            syncGroupService.shareToDropbox(server, dir, zip, filter)
                 .thenAccept(t -> handleGetResult(t, message, command));
             commandService.statusReplyFrom(message, command, "Files are being downloaded in the background, please wait...");
         }
@@ -232,10 +238,10 @@ public class GameServerFtpService {
     }
 
     private boolean isBefore(ZonedDateTime threshold, ZonedDateTime actual) {
-        return actual != null && (threshold == null || actual.isBefore(threshold));
+        return actual == null || threshold == null || actual.isBefore(threshold);
     }
 
     private boolean isAfter(ZonedDateTime threshold, ZonedDateTime actual) {
-        return actual != null && (threshold == null || actual.isAfter(threshold));
+        return actual == null || threshold == null || actual.isAfter(threshold);
     }
 }
