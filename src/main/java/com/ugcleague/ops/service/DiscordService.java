@@ -1,6 +1,7 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
+import com.ugcleague.ops.service.discord.command.SplitMessage;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class DiscordService implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
+    private static final int LENGTH_LIMIT = 2000;
 
     private final LeagueProperties leagueProperties;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
@@ -214,11 +216,7 @@ public class DiscordService implements DiscordSubscriber {
         IChannel channel = client.getChannelByID(channelId);
         IMessage response = null;
         while (response == null) {
-            try {
-                response = channel.sendMessage(content);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
-            }
+            response = blockingSendMessage(channel, content);
         }
         return CompletableFuture.completedFuture(response);
     }
@@ -227,11 +225,7 @@ public class DiscordService implements DiscordSubscriber {
     public CompletableFuture<IMessage> sendMessage(IChannel channel, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
         IMessage response = null;
         while (response == null) {
-            try {
-                response = channel.sendMessage(content);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
-            }
+            response = blockingSendMessage(channel, content);
         }
         return CompletableFuture.completedFuture(response);
     }
@@ -246,15 +240,31 @@ public class DiscordService implements DiscordSubscriber {
         IMessage response = null;
         while (response == null) {
             try {
-                response = client.getOrCreatePMChannel(user).sendMessage(content);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+                response = blockingSendMessage(client.getOrCreatePMChannel(user), content);
             } catch (Exception e) {
                 log.warn("Could not create PM channel", e);
                 throw new DiscordException("Could not create PM channel");
             }
         }
         return CompletableFuture.completedFuture(response);
+    }
+
+    public IMessage blockingSendMessage(IChannel channel, String message) throws MissingPermissionsException, DiscordException, InterruptedException {
+        IMessage response = null;
+        try {
+            if (message.length() > LENGTH_LIMIT) {
+                SplitMessage splitMessage = new SplitMessage(message);
+                List<String> splits = splitMessage.split(LENGTH_LIMIT);
+                for (String split : splits) {
+                    response = channel.sendMessage(split);
+                }
+            } else {
+                response = channel.sendMessage(message);
+            }
+        } catch (HTTP429Exception e) {
+            sleep(e.getRetryDelay());
+        }
+        return response;
     }
 
     @Async

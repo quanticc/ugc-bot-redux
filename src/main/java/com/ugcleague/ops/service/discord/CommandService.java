@@ -352,16 +352,7 @@ public class CommandService implements DiscordSubscriber {
     ////////////////////////////////////////
 
     public CompletableFuture<IMessage> answerToChannel(IChannel channel, String answer) throws InterruptedException, DiscordException, MissingPermissionsException {
-        if (answer.length() > LENGTH_LIMIT) {
-            SplitMessage s = new SplitMessage(answer);
-            CompletableFuture<IMessage> last = null;
-            for (String str : s.split(LENGTH_LIMIT)) {
-                last = discordService.sendMessage(channel, str);
-            }
-            return last;
-        } else {
-            return discordService.sendMessage(channel, answer);
-        }
+        return discordService.sendMessage(channel, answer);
     }
 
     private CompletableFuture<IMessage> answer(IMessage message, String answer, boolean mention, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
@@ -374,44 +365,24 @@ public class CommandService implements DiscordSubscriber {
             }
             return null;
         } else {
-            if (answer.length() > LENGTH_LIMIT) {
-                SplitMessage s = new SplitMessage(answer);
-                CompletableFuture<IMessage> last = null;
-                List<String> list = s.split(LENGTH_LIMIT);
-                if (list.size() > 0) {
-                    last = discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() + " " : "") + list.get(0));
-                    for (String str : list.subList(1, list.size())) {
-                        last = discordService.sendMessage(message.getChannel(), str);
-                    }
-                }
-                return last;
-            } else {
-                return discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() + " " : "") + answer);
-            }
+            return discordService.sendMessage(message.getChannel(), (mention ? message.getAuthor().mention() + " " : "") + answer);
         }
     }
 
-    private CompletableFuture<IMessage> answerPrivately(IMessage message, String answer, File file) throws InterruptedException, DiscordException, MissingPermissionsException {
+    private CompletableFuture<IMessage> answerPrivately(IMessage message, String answer, File file)
+        throws InterruptedException, DiscordException, MissingPermissionsException {
+
         if (file != null) {
             try {
-                discordService.sendFilePrivately(message.getAuthor(), file);
+                return discordService.sendFilePrivately(message.getAuthor(), file);
             } catch (Exception e) {
                 log.warn("Could not send file to user {} in channel {}: {}",
                     message.getAuthor(), message.getChannel(), e.toString());
+                return null;
             }
         } else {
-            if (answer.length() > LENGTH_LIMIT) {
-                SplitMessage s = new SplitMessage(answer);
-                CompletableFuture<IMessage> last = null;
-                for (String str : s.split(LENGTH_LIMIT)) {
-                    last = discordService.sendPrivateMessage(message.getAuthor(), str);
-                }
-                return last;
-            } else {
-                return discordService.sendPrivateMessage(message.getAuthor(), answer);
-            }
+            return discordService.sendPrivateMessage(message.getAuthor(), answer);
         }
-        return null; // on multipart messages
     }
 
     // Command registering operations
