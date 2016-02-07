@@ -76,7 +76,6 @@ public class DropboxQueryService {
             } catch (DbxException e) {
                 response.append(e.getMessage());
             }
-            response.append("\n");
         }
         for (String arg : nonOptions) {
             if (arg.contains("..")) {
@@ -87,7 +86,6 @@ public class DropboxQueryService {
                 } catch (DbxException e) {
                     response.append(e.getMessage());
                 }
-                response.append("\n");
             }
         }
         return response.toString();
@@ -95,10 +93,10 @@ public class DropboxQueryService {
 
     private String listFolder(String path) throws DbxException {
         DbxFiles.ListFolderResult result = dropboxService.listFolder(path);
-        String response = "Contents of **" + path + "**";
+        String response = "Contents of **" + path + "**\n";
         while (result != null) {
             for (DbxFiles.Metadata metadata : result.entries) {
-                response += "\n" + formatMetadata(metadata);
+                response += formatMetadata(metadata);
             }
             if (result.hasMore) {
                 result = dropboxService.listFolderContinue(result.cursor);
@@ -146,7 +144,6 @@ public class DropboxQueryService {
             } catch (DbxException e) {
                 response.append(e.getMessage());
             }
-            response.append("\n");
         }
         for (String arg : nonOptions) {
             if (arg.contains("..")) {
@@ -157,7 +154,6 @@ public class DropboxQueryService {
                 } catch (DbxException e) {
                     response.append(e.getMessage());
                 }
-                response.append("\n");
             }
         }
         return response.toString();
