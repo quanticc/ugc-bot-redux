@@ -62,8 +62,7 @@ public class MetricsQueryService {
     }
 
     private String metricsCommand(IMessage message, OptionSet optionSet) {
-        Set<String> nonOptions = optionSet.valuesOf(metricsNonOptionSpec).stream()
-            .map(String::toLowerCase).collect(Collectors.toSet());
+        Set<String> nonOptions = optionSet.valuesOf(metricsNonOptionSpec).stream().collect(Collectors.toSet());
         if (optionSet.has("?") || nonOptions.isEmpty()) {
             return null;
         }

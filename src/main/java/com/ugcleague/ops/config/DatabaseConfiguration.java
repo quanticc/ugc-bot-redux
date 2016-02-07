@@ -1,5 +1,7 @@
 package com.ugcleague.ops.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.fasterxml.jackson.datatype.hibernate4.Hibernate4Module;
 import com.ugcleague.ops.config.liquibase.AsyncSpringLiquibase;
 import com.zaxxer.hikari.HikariConfig;
@@ -33,6 +35,12 @@ public class DatabaseConfiguration {
     @Autowired
     private Environment env;
 
+    @Autowired(required = false)
+    private MetricRegistry metricRegistry;
+
+    @Autowired(required = false)
+    private HealthCheckRegistry healthCheckRegistry;
+
     @Bean(destroyMethod = "close")
     @ConditionalOnExpression("#{!environment.acceptsProfiles('cloud') && !environment.acceptsProfiles('heroku')}")
     public DataSource dataSource(DataSourceProperties dataSourceProperties, LeagueProperties leagueProperties) {
@@ -63,6 +71,12 @@ public class DatabaseConfiguration {
             config.addDataSourceProperty("cachePrepStmts", leagueProperties.getDatasource().isCachePrepStmts());
             config.addDataSourceProperty("prepStmtCacheSize", leagueProperties.getDatasource().getPrepStmtCacheSize());
             config.addDataSourceProperty("prepStmtCacheSqlLimit", leagueProperties.getDatasource().getPrepStmtCacheSqlLimit());
+        }
+        if (metricRegistry != null) {
+            config.setMetricRegistry(metricRegistry);
+        }
+        if (healthCheckRegistry != null) {
+            config.setHealthCheckRegistry(healthCheckRegistry);
         }
         return new HikariDataSource(config);
     }
