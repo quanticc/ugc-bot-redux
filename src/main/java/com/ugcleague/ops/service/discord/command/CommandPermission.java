@@ -2,20 +2,20 @@ package com.ugcleague.ops.service.discord.command;
 
 public enum CommandPermission {
 
-    NONE(0), SUPPORT(10), MASTER(100);
+    NONE("command.user"), SUPPORT("command.support"), MASTER("command.master");
 
-    private final int level;
+    private final String key;
 
-    CommandPermission(int level) {
-        this.level = level;
+    CommandPermission(String key) {
+        this.key = key;
     }
 
-    public int getLevel() {
-        return level;
+    public String getKey() {
+        return key;
     }
 
     @Override
     public String toString() {
-        return name().toLowerCase();
+        return key;
     }
 }

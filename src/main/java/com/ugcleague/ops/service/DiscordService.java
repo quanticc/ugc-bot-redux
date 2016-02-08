@@ -25,8 +25,8 @@ import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -40,20 +40,20 @@ public class DiscordService implements DiscordSubscriber {
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
     private static final int LENGTH_LIMIT = 2000;
 
-    private final LeagueProperties leagueProperties;
+    private final LeagueProperties properties;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
 
     @Autowired
-    public DiscordService(LeagueProperties leagueProperties) {
-        this.leagueProperties = leagueProperties;
+    public DiscordService(LeagueProperties properties) {
+        this.properties = properties;
     }
 
     @PostConstruct
     private void configure() {
-        if (leagueProperties.getDiscord().isAutologin()) {
+        if (properties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
                     Thread.sleep(3000); // wait a bit before firing
@@ -66,7 +66,7 @@ public class DiscordService implements DiscordSubscriber {
     }
 
     public void login() throws DiscordException {
-        LeagueProperties.Discord discord = leagueProperties.getDiscord();
+        LeagueProperties.Discord discord = properties.getDiscord();
         String email = discord.getEmail();
         String password = discord.getPassword();
         client = new ClientBuilder().withLogin(email, password).login();
@@ -79,7 +79,7 @@ public class DiscordService implements DiscordSubscriber {
     @EventSubscriber
     public void onReady(ReadyEvent event) {
         log.info("*** Discord bot armed ***");
-        for (String guildId : leagueProperties.getDiscord().getQuitting()) {
+        for (String guildId : properties.getDiscord().getQuitting()) {
             IGuild guild = client.getGuildByID(guildId);
             if (guild != null) {
                 try {
@@ -95,7 +95,7 @@ public class DiscordService implements DiscordSubscriber {
         for (IGuild guild : guildList) {
             log.info("{}", guildString(guild, client.getOurUser()));
         }
-        for (String inviteCode : leagueProperties.getDiscord().getInvites()) {
+        for (String inviteCode : properties.getDiscord().getInvites()) {
             Invite invite = (Invite) client.getInviteForCode(inviteCode);
             try {
                 Invite.InviteResponse response = invite.details();
@@ -141,31 +141,19 @@ public class DiscordService implements DiscordSubscriber {
         return client;
     }
 
-    public IUser getMasterUser() {
-        return client.getUserByID(leagueProperties.getDiscord().getMasters().get(0));
-    }
-
-    public boolean isMaster(String id) {
-        return leagueProperties.getDiscord().getMasters().contains(id);
-    }
-
-    public boolean isMaster(IUser user) {
-        return isMaster(user.getID());
-    }
-
     public boolean isOwnUser(IUser user) {
         return user.getID().equals(client.getOurUser().getID());
     }
 
-    public boolean hasSupportRole(IUser user) {
-        Set<IRole> roleSet = new HashSet<>();
-        LeagueProperties.Discord.Support support = leagueProperties.getDiscord().getSupport();
-        for (String gid : support.getGuilds()) {
-            roleSet.addAll(user.getRolesForGuild(gid));
-        }
-        return roleSet.stream().anyMatch(r -> support.getRoles().contains(r.getID()));
+    public IUser getMasterUser() {
+        return client.getUserByID(properties.getDiscord().getMaster());
     }
 
+    /**
+     * Register this listener for Discord4J events
+     *
+     * @param listener the discord event listener
+     */
     public void subscribe(IListener<?> listener) {
         if (client != null && client.isReady()) {
             client.getDispatcher().registerListener(listener);
@@ -175,6 +163,11 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    /**
+     * Register this subscriber as a Discord4J annotation-based event listener
+     *
+     * @param subscriber the discord subscriber
+     */
     public void subscribe(DiscordSubscriber subscriber) {
         if (client != null && client.isReady()) {
             client.getDispatcher().registerListener(subscriber);

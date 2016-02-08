@@ -12,6 +12,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "league", ignoreUnknownFields = false)
 public class LeagueProperties {
 
+    private String configPath = "config.json";
     private final GameServers gameServers = new GameServers();
     private final Feed feed = new Feed();
     private final Async async = new Async();
@@ -70,7 +71,7 @@ public class LeagueProperties {
         private String email;
         private String password;
         private List<String> invites = new ArrayList<>();
-        private List<String> masters = new ArrayList<>();
+        private String master;
         private List<String> quitting = new ArrayList<>();
         private String debugChannel = "";
         private Support support = new Support();
@@ -78,7 +79,7 @@ public class LeagueProperties {
 
         @Data
         public static class Support {
-            private List<String> guilds = new ArrayList<>();
+            private String guild;
             private List<String> channels = new ArrayList<>();
             private List<String> roles = new ArrayList<>();
             private List<String> excludedRoles = new ArrayList<>();

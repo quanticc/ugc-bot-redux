@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
 import static com.ugcleague.ops.util.DateUtil.formatRelativeBetweenNowAnd;
 import static com.ugcleague.ops.util.Util.humanizeBytes;
@@ -76,8 +77,7 @@ public class GameServerFtpService {
     }
 
     private void initCommonParser() {
-        parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        parser = newParser();
         getNonOptionSpec = parser.nonOptions("exact filenames to download from the server, separated by spaces").ofType(String.class);
         getServerSpec = parser.acceptsAll(asList("s", "server"), "a GS server identifier (dal5, chi3), name (\"Miami 4\" **with** quotes) or IP address")
             .withRequiredArg().required();
@@ -94,13 +94,13 @@ public class GameServerFtpService {
 
     private void initGetLogsCommand() {
         getLogsCommand = commandService.register(CommandBuilder.combined(".get logs")
-            .description("List or retrieve log files from a game server").permission("support").permissionReplies().mention()
+            .description("List or retrieve log files from a game server").support().permissionReplies().mention()
             .parser(parser).command(this::executeGetLogs).queued().persistStatus().build());
     }
 
     private void initGetStvCommand() {
         getStvCommand = commandService.register(CommandBuilder.combined(".get stv")
-            .description("List or retrieve SourceTV demos from a game server").permission("support").permissionReplies().mention()
+            .description("List or retrieve SourceTV demos from a game server").support().permissionReplies().mention()
             .parser(parser).command(this::executeGetStv).queued().persistStatus().build());
     }
 

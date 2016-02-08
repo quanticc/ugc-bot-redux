@@ -53,7 +53,7 @@ public class CommandBuilder {
     private String description = "";
     private OptionParser parser = new OptionParser();
     private BiFunction<IMessage, OptionSet, String> command = (m, o) -> null;
-    private int permissionLevel = CommandPermission.MASTER.getLevel(); // by default
+    private CommandPermission permission = CommandPermission.MASTER; // by default
     private boolean queued = false;
     private boolean mention = false;
     private ReplyMode replyMode = ReplyMode.PRIVATE; // by default
@@ -114,8 +114,12 @@ public class CommandBuilder {
      * @return this builder
      */
     public CommandBuilder permission(String permission) {
-        CommandPermission parsedPermission = CommandPermission.valueOf(permission.toUpperCase());
-        this.permissionLevel = (parsedPermission == null ? CommandPermission.NONE.getLevel() : parsedPermission.getLevel());
+        for (CommandPermission perm : CommandPermission.values()) {
+            if (perm.getKey().equals(permission) || perm.getKey().equals("command." + permission)) {
+                this.permission = perm;
+                return this;
+            }
+        }
         return this;
     }
 
@@ -126,18 +130,22 @@ public class CommandBuilder {
      * @return this builder
      */
     public CommandBuilder permission(CommandPermission permission) {
-        this.permissionLevel = permission.getLevel();
+        this.permission = permission;
         return this;
     }
 
-    /**
-     * The permission level required to execute this command.
-     *
-     * @param permissionLevel the command permission in numeric form, higher numbers give greater permission
-     * @return this builder
-     */
-    public CommandBuilder permission(int permissionLevel) {
-        this.permissionLevel = permissionLevel;
+    public CommandBuilder master() {
+        this.permission = CommandPermission.MASTER;
+        return this;
+    }
+
+    public CommandBuilder support() {
+        this.permission = CommandPermission.SUPPORT;
+        return this;
+    }
+
+    public CommandBuilder unrestricted() {
+        this.permission = CommandPermission.NONE;
         return this;
     }
 
@@ -221,7 +229,7 @@ public class CommandBuilder {
      * @return a valid command that can be registered to the service
      */
     public Command build() {
-        return new Command(matchType, key, description, parser, command, permissionLevel,
+        return new Command(matchType, key, description, parser, command, permission,
             queued, replyMode, mention, persistStatus, experimental);
     }
 }

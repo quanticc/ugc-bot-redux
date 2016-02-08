@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
 @Service
@@ -66,7 +67,7 @@ public class FileQueryService {
     private void initFileListCommand() {
         // .file list
         commandService.register(CommandBuilder.equalsTo(".file list")
-            .description("List the files cached for server synchronization").permission("support").permissionReplies()
+            .description("List the files cached for server synchronization").support().permissionReplies()
             .command((message, o) -> {
                 StringBuilder builder = new StringBuilder();
                 for (ServerFile file : serverFileService.findAll()) {
@@ -81,15 +82,14 @@ public class FileQueryService {
 
     private void initFileAddCommand() {
         // .file add [--group <group_name>] [--name <name>] [--required [true|false]] <non-option: url>
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         addNonOptionSpec = parser.nonOptions("URL with the location of the files").ofType(String.class);
         addGroupSpec = parser.acceptsAll(asList("g", "group"), "sync group name (see .sync list)").withRequiredArg();
         addNameSpec = parser.acceptsAll(asList("n", "name"), "identifying name").withRequiredArg();
         addRequiredSpec = parser.acceptsAll(asList("r", "required"), "file required to be synced (when performing health checks)")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file add")
-            .description("Add remote files to the GS sync list").permission("support").permissionReplies()
+            .description("Add remote files to the GS sync list").support().permissionReplies()
             .experimental().parser(parser).command(this::fileAdd).build());
     }
 
@@ -125,11 +125,10 @@ public class FileQueryService {
 
     private void initFileInfoCommand() {
         // .file info --id <file_id>
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".file info")
-            .description("Get info about a cached file").permission("support").permissionReplies()
+            .description("Get info about a cached file").support().permissionReplies()
             .experimental().parser(parser).command(this::fileInfo).build());
     }
 
@@ -175,8 +174,7 @@ public class FileQueryService {
 
     private void initFileEditCommand() {
         // .file edit --id <file_id> [--group <group_name>] [--name <name>] [--url <url>]
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         editIdSpec = parser.acceptsAll(asList("i", "id"), "the name or the unique ID of the file").withRequiredArg().required();
         editUrlSpec = parser.acceptsAll(asList("u", "url"), "remote URL where to grab the file").withRequiredArg();
         editGroupSpec = parser.acceptsAll(asList("g", "group"), "sync group name (see .sync list)").withRequiredArg();
@@ -186,7 +184,7 @@ public class FileQueryService {
         editClearSpec = parser.acceptsAll(asList("c", "clear"), "clears cached meta-data")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".file edit")
-            .description("Update a given file with new values").permission("support").permissionReplies()
+            .description("Update a given file with new values").support().permissionReplies()
             .experimental().parser(parser).command(this::fileEdit).build());
     }
 
@@ -245,12 +243,11 @@ public class FileQueryService {
 
     private void initFileRefreshCommand() {
         // .file refresh [--all] <non-options: file keys>
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         refreshNonOptionSpec = parser.nonOptions("Numeric ID or name of the cached file").ofType(String.class);
         parser.acceptsAll(asList("a", "all"), "perform operation on all cached files");
         commandService.register(CommandBuilder.startsWith(".file refresh")
-            .description("Check if a cached file is outdated").permission("support").permissionReplies().mention()
+            .description("Check if a cached file is outdated").support().permissionReplies().mention()
             .experimental().parser(parser).command(this::fileRefresh).queued().build());
     }
 

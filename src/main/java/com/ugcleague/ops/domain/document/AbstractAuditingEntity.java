@@ -9,8 +9,7 @@ import java.io.Serializable;
 import java.time.ZonedDateTime;
 
 /**
- * Base abstract class for entities which will hold definitions for created, last modified by and created,
- * last modified by date.
+ * Base abstract class for entities which will hold definitions for created, last modified by date.
  */
 public abstract class AbstractAuditingEntity implements Serializable {
 

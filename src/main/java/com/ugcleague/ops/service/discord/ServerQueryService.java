@@ -26,6 +26,7 @@ import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatElapsed;
 import static com.ugcleague.ops.util.Util.padLeft;
 import static com.ugcleague.ops.util.Util.padRight;
@@ -71,13 +72,12 @@ public class ServerQueryService {
 
     private void initConnectCommand() {
         // .connect [-r] (non-option: search key)
-        OptionParser parser = new OptionParser();
+        OptionParser parser = newParser();
         connectRconSpec = parser.acceptsAll(asList("r", "rcon"), "also display rcon_password")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         connectNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server connect")
-            .description("Show URL to join UGC game servers").permission("support").permissionReplies()
+            .description("Show URL to join UGC game servers").support().permissionReplies()
             .parser(parser).queued().command(this::executeConnectCommand).build());
     }
 
@@ -110,11 +110,10 @@ public class ServerQueryService {
 
     private void initStatusCommand() {
         // .status (non-option: search key)
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         statusNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".status")
-            .description("Display info about a server").permission("support").permissionReplies()
+            .description("Display info about a server").support().permissionReplies()
             .parser(parser).queued().command(this::executeStatusCommand).build());
     }
 
@@ -232,12 +231,11 @@ public class ServerQueryService {
 
     private void initRestartCommand() {
         // .restart (non-option: search key)
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        commandService.register(CommandBuilder.startsWith(".server restart")
-            .description("Restart the given servers (only empty ones will be restarted)").permission("support")
-            .permissionReplies().queued().parser(parser).command(this::executeRestartCommand).build());
+        commandService.register(CommandBuilder.startsWith(".server restart").support().permissionReplies()
+            .description("Restart the given servers (only empty ones will be restarted)").queued().parser(parser)
+            .command(this::executeRestartCommand).build());
     }
 
     private String executeRestartCommand(IMessage m, OptionSet o) {
@@ -276,7 +274,7 @@ public class ServerQueryService {
         rconQuietSpec = parser.acceptsAll(asList("q", "quiet"), "Don't output the command result to the channel")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".rcon")
-            .description("Send a command to a game server using RCON").permission("support").permissionReplies()
+            .description("Send a command to a game server using RCON").support().permissionReplies()
             .parser(parser).queued().command(this::executeRconCommand).build());
     }
 
@@ -355,7 +353,7 @@ public class ServerQueryService {
 
     private void initDeadCommand() {
         commandService.register(CommandBuilder.equalsTo(".server issues")
-            .description("Display unresponsive or outdated UGC game servers").permission("support").permissionReplies()
+            .description("Display unresponsive or outdated UGC game servers").support().permissionReplies()
             .command(this::executeDeadCommand).build());
     }
 
@@ -383,13 +381,12 @@ public class ServerQueryService {
 
     private void initInsecureCommand() {
         // .server insecure -v <true|false> <non-options: search key>
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         insecureNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         insecureValueSpec = parser.acceptsAll(asList("v", "value"), "value to set as the insecure state")
             .withRequiredArg().required().ofType(Boolean.class);
         commandService.register(CommandBuilder.startsWith(".server insecure")
-            .description("Set or remove the insecure FTP mode on a GS server").permission("master")
+            .description("Set or remove the insecure FTP mode on a GS server").master()
             .parser(parser).command(this::executeInsecureCommand).build());
     }
 

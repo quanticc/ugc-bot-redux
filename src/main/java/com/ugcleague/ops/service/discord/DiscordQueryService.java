@@ -39,6 +39,7 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
 import static java.util.Arrays.asList;
 
@@ -68,16 +69,16 @@ public class DiscordQueryService {
     @PostConstruct
     private void configure() {
         commandService.register(CommandBuilder.equalsTo(".beep info")
-            .description("Get Discord information about the bot").permission(0).originReplies()
+            .description("Get Discord information about the bot").unrestricted().originReplies()
             .command(this::executeInfoCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep clear")
-            .description("Remove all of bot's messages from this channel").permission(0)
+            .description("Remove all of bot's messages from this channel").unrestricted()
             .command(this::executeClearCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep boop")
-            .description("Test command please ignore").permission(0)
+            .description("Test command please ignore").unrestricted()
             .command(this::executePMCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep load")
-            .description("Load more messages in this channel").permission("master").experimental()
+            .description("Load more messages in this channel").master().experimental()
             .command((message, optionSet) -> {
                 try {
                     loadChannelMessages(discordService.getClient(), (Channel) message.getChannel());
@@ -87,7 +88,7 @@ public class DiscordQueryService {
                 return "";
             }).build());
         commandService.register(CommandBuilder.equalsTo(".beep exit")
-            .description("Exit discord").permission("master").experimental()
+            .description("Exit discord").master().experimental()
             .command((message, optionSet) -> {
                 CompletableFuture.runAsync(() -> {
                     try {
@@ -103,8 +104,7 @@ public class DiscordQueryService {
     }
 
     private void initRateTestCommand() {
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         rateNumberSpec = parser.acceptsAll(asList("n", "number"), "number of messages to send")
             .withRequiredArg().ofType(Integer.class).defaultsTo(10);
         rateWaitSpec = parser.acceptsAll(asList("w", "wait"), "waiting milliseconds before each message")
@@ -112,7 +112,7 @@ public class DiscordQueryService {
         rateStatusSpec = parser.acceptsAll(asList("s", "status"), "display progress as status mode (successive edits)")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         rateCommand = CommandBuilder.startsWith(".test")
-            .description("Test API rate limits").permission("master").experimental().queued().parser(parser)
+            .description("Test API rate limits").master().experimental().queued().parser(parser)
             .command((message, optionSet) -> {
                 if (optionSet.has("?")) {
                     return null;
@@ -185,14 +185,13 @@ public class DiscordQueryService {
     }
 
     private void initProfileCommand() {
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        OptionParser parser = newParser();
         profileNameSpec = parser.acceptsAll(asList("n", "name"), "change bot's name").withRequiredArg();
         profileAvatarSpec = parser.acceptsAll(asList("a", "avatar"), "change bot's avatar").withRequiredArg();
         profileGameSpec = parser.acceptsAll(asList("g", "game"), "change bot's game").withRequiredArg();
         commandService.register(CommandBuilder.startsWith(".beep profile")
-            .description("Edit this bot's profile").permission("master")
-            .parser(parser).command(this::executeProfileCommand).build());
+            .description("Edit this bot's profile").master().parser(parser)
+            .command(this::executeProfileCommand).build());
     }
 
     private String executeProfileCommand(IMessage message, OptionSet o) {

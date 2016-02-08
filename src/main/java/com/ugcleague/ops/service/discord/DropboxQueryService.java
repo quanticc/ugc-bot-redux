@@ -60,8 +60,8 @@ public class DropboxQueryService {
         listNonOptionSpec = parser.nonOptions("Remote folders to list its contents").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".db list")
             .description("List contents of a Dropbox folder")
-            .permission("support").permissionReplies().mention()
-            .queued().parser(parser).command(this::listCommand).build());
+            .support().permissionReplies().mention().queued().parser(parser)
+            .command(this::listCommand).build());
     }
 
     private String listCommand(IMessage message, OptionSet optionSet) {
@@ -128,8 +128,8 @@ public class DropboxQueryService {
         existsNonOptionSpec = parser.nonOptions("Remote file to check for existence").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".db exists")
             .description("Check a Dropbox file for existence")
-            .permission("support").permissionReplies().mention()
-            .queued().parser(parser).command(this::existsCommand).build());
+            .support().permissionReplies().mention().queued().parser(parser)
+            .command(this::existsCommand).build());
     }
 
     private String existsCommand(IMessage message, OptionSet optionSet) {
@@ -169,8 +169,8 @@ public class DropboxQueryService {
         shareNonOptionSpec = parser.nonOptions("Remote file to get its shareable link").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".db share")
             .description("Get shared download link of a remote file")
-            .permission("support").permissionReplies().mention()
-            .queued().parser(parser).command(this::shareCommand).build());
+            .support().permissionReplies().mention().queued().parser(parser)
+            .command(this::shareCommand).build());
     }
 
     private String shareCommand(IMessage message, OptionSet optionSet) {
@@ -204,8 +204,8 @@ public class DropboxQueryService {
         shareNonOptionSpec = parser.nonOptions("Remote file or folder to delete").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".db delete")
             .description("Delete remote file or folder")
-            .permission("support").permissionReplies().mention()
-            .queued().parser(parser).command(this::deleteCommand).build());
+            .support().permissionReplies().mention().queued().parser(parser)
+            .command(this::deleteCommand).build());
     }
 
     private String deleteCommand(IMessage message, OptionSet optionSet) {

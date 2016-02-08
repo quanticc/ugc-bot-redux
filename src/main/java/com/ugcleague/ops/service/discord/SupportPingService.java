@@ -7,6 +7,7 @@ import com.ugcleague.ops.repository.PublisherRepository;
 import com.ugcleague.ops.repository.SubscriberRepository;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -16,11 +17,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.handle.IListener;
+import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
-import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
@@ -32,20 +31,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.util.Arrays.asList;
+import static com.ugcleague.ops.service.discord.CommandService.newParser;
 
 @Service
 @Transactional
-public class SupportPingService {
+public class SupportPingService implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(SupportPingService.class);
     private static final String KEY = "support";
 
-    private final LeagueProperties properties;
     private final DiscordService discordService;
+    private final PermissionService permissionService;
     private final PublisherRepository publisherRepository;
     private final SubscriberRepository subscriberRepository;
-    private final LeagueProperties.Discord.Support support;
     private final CommandService commandService;
 
     private Map<String, LocalDateTime> lastMessage = new ConcurrentHashMap<>();
@@ -53,56 +51,48 @@ public class SupportPingService {
 
     @Autowired
     public SupportPingService(LeagueProperties properties, DiscordService discordService,
-                              PublisherRepository publisherRepository, SubscriberRepository subscriberRepository,
-                              CommandService commandService) {
-        this.properties = properties;
+                              PermissionService permissionService, PublisherRepository publisherRepository,
+                              SubscriberRepository subscriberRepository, CommandService commandService) {
+        this.permissionService = permissionService;
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;
         this.subscriberRepository = subscriberRepository;
         this.commandService = commandService;
-        this.support = properties.getDiscord().getSupport();
     }
 
     @PostConstruct
     private void configure() {
+        discordService.subscribe(this);
         commandService.register(CommandBuilder.equalsTo(".sub")
             .description("Subscribe to support channel messages sent by regular users " +
                 "(max 1 PM per user per hour)")
-            .permission("support").command(this::executeSubCommand).build());
+            .support().command(this::executeSubCommand).build());
         commandService.register(CommandBuilder.equalsTo(".unsub")
             .description("Unsubscribe from support channel messages")
-            .permission("support").command(this::executeUnsubCommand).build());
-        discordService.subscribe(new IListener<MessageReceivedEvent>() {
-
-            @Override
-            public void handle(MessageReceivedEvent event) {
-                IMessage m = event.getMessage();
-                if (!discordService.isOwnUser(m.getAuthor())
-                    && isSupportChannel(m.getChannel())
-                    && !discordService.hasSupportRole(m.getAuthor())
-                    && !hasExcludedSupportRole(m.getAuthor())) {
-                    // publish messages from non-admins and excluding bot's own messages
-                    publishSupportEvent(m);
-                }
-            }
-        });
-
-        // since v0.6
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+            .support().command(this::executeUnsubCommand).build());
+        OptionParser parser = newParser();
         subNonOptionSpec = parser.nonOptions("Exactly two arguments, separated by a space, containing a range of time." +
             " Examples of permitted time expressions are \"midnight\", \"8am UTC+12\" or \"16:00 PST\". Expressions must" +
             " be wrapped within quotes if containing spaces so they are picked up as a single argument.")
             .ofType(String.class);
         commandService.register(CommandBuilder.combined(".sub on")
             .description("Enable support PMs during the given hours")
-            .permission("support").parser(parser).command(this::subOnTimeCommand).build());
+            .support().parser(parser).command(this::subOnTimeCommand).build());
         commandService.register(CommandBuilder.combined(".sub off")
             .description("Disable support PMs during the given hours")
-            .permission("support").parser(parser).command(this::subOffTimeCommand).build());
+            .support().parser(parser).command(this::subOffTimeCommand).build());
         commandService.register(CommandBuilder.equalsTo(".sub status")
             .description("Get my current configuration about support PMs")
-            .permission("support").command(this::subStatusCommand).build());
+            .support().command(this::subStatusCommand).build());
+    }
+
+    @EventSubscriber
+    public void onMessageReceived(MessageReceivedEvent event) {
+        IMessage m = event.getMessage();
+        if (!discordService.isOwnUser(m.getAuthor())
+            && permissionService.canPerform("support.publish", m.getAuthor(), m.getChannel())) {
+            publishSupportEvent(m);
+        }
     }
 
     private String subStatusCommand(IMessage message, OptionSet optionSet) {
@@ -226,15 +216,6 @@ public class SupportPingService {
         return null;
     }
 
-    private boolean hasExcludedSupportRole(IUser user) {
-        Set<IRole> roleSet = new HashSet<>();
-        LeagueProperties.Discord.Support support = properties.getDiscord().getSupport();
-        for (String gid : support.getGuilds()) {
-            roleSet.addAll(user.getRolesForGuild(gid));
-        }
-        return roleSet.stream().anyMatch(r -> support.getExcludedRoles().contains(r.getID()));
-    }
-
     private String executeSubCommand(IMessage message, OptionSet optionSet) {
         return subscribeUser(message.getAuthor());
     }
@@ -281,31 +262,25 @@ public class SupportPingService {
         return String.format("%s needs help at %s: %s", m.getAuthor().mention(), m.getChannel().mention(), m.getContent());
     }
 
-    private boolean isSupportChannel(IChannel channel) {
-        return support.getChannels().contains(channel.getID());
-    }
-
     private String subscribeUser(IUser user) {
         StringBuilder response = new StringBuilder();
-        if (discordService.isMaster(user) || discordService.hasSupportRole(user)) {
-            Publisher publisher = getPublisher();
-            Subscriber subscriber = subscriberRepository.findByUserId(user.getID()).orElseGet(() -> newSubscriber(user));
-            Set<Subscriber> subs = publisher.getSubscribers();
-            if (subs.stream().anyMatch(s -> s.getUserId().equals(user.getID()))) {
-                // assume that user wants to remove previous settings
-                subscriber.setEnabled(null);
-                subscriber.setStart(null);
-                subscriber.setFinish(null);
-                subscriberRepository.save(subscriber);
-            } else {
-                subs.add(subscriber);
-                subscriberRepository.save(subscriber);
-                publisherRepository.save(publisher);
-                log.info("[SupportPing] User subscribed: {}", DiscordService.userString(user));
-            }
-            response.append("*Preferences updated:* Receiving support PMs during the day\n");
-            appendFooter(response);
+        Publisher publisher = getPublisher();
+        Subscriber subscriber = subscriberRepository.findByUserId(user.getID()).orElseGet(() -> newSubscriber(user));
+        Set<Subscriber> subs = publisher.getSubscribers();
+        if (subs.stream().anyMatch(s -> s.getUserId().equals(user.getID()))) {
+            // assume that user wants to remove previous settings
+            subscriber.setEnabled(null);
+            subscriber.setStart(null);
+            subscriber.setFinish(null);
+            subscriberRepository.save(subscriber);
+        } else {
+            subs.add(subscriber);
+            subscriberRepository.save(subscriber);
+            publisherRepository.save(publisher);
+            log.info("[SupportPing] User subscribed: {}", DiscordService.userString(user));
         }
+        response.append("*Preferences updated:* Receiving support PMs during the day\n");
+        appendFooter(response);
         return response.toString();
     }
 

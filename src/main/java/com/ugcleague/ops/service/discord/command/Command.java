@@ -21,7 +21,7 @@ public class Command implements Comparable<Command> {
     private String description;
     private OptionParser parser;
     private BiFunction<IMessage, OptionSet, String> command;
-    private int permissionLevel;
+    private CommandPermission permission;
     private boolean queued;
     private ReplyMode replyMode;
     private boolean mention;
@@ -29,21 +29,21 @@ public class Command implements Comparable<Command> {
     private boolean experimental;
 
     public Command(MatchType matchType, String key, String description, OptionParser parser,
-                   BiFunction<IMessage, OptionSet, String> command, int permissionLevel, boolean queued,
+                   BiFunction<IMessage, OptionSet, String> command, CommandPermission permission, boolean queued,
                    ReplyMode replyMode, boolean mention, boolean persistStatus, boolean experimental) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
         Objects.requireNonNull(parser, "Parser must not be null");
         Objects.requireNonNull(command, "Command must not be null");
-        Objects.requireNonNull(permissionLevel, "Permission must not be null");
+        Objects.requireNonNull(permission, "Permission must not be null");
         Objects.requireNonNull(replyMode, "Reply mode must not be null");
         this.matchType = matchType;
         this.key = key;
         this.description = description;
         this.parser = parser;
         this.command = command;
-        this.permissionLevel = permissionLevel;
+        this.permission = permission;
         this.queued = queued;
         this.replyMode = replyMode;
         this.mention = mention;
@@ -91,12 +91,12 @@ public class Command implements Comparable<Command> {
         this.command = command;
     }
 
-    public int getPermissionLevel() {
-        return permissionLevel;
+    public CommandPermission getPermission() {
+        return permission;
     }
 
-    public void setPermissionLevel(int permissionLevel) {
-        this.permissionLevel = permissionLevel;
+    public void setPermission(CommandPermission permission) {
+        this.permission = permission;
     }
 
     public boolean isQueued() {
@@ -187,7 +187,7 @@ public class Command implements Comparable<Command> {
             "matchType=" + matchType +
             ", key='" + key + '\'' +
             ", description='" + description + '\'' +
-            ", permissionLevel=" + permissionLevel +
+            ", permission=" + permission +
             ", queued=" + queued +
             ", replyMode=" + replyMode +
             ", mention=" + mention +

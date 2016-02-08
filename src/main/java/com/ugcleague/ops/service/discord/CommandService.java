@@ -1,6 +1,5 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.*;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
@@ -35,7 +34,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.ugcleague.ops.util.Util.padLeft;
 import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
 
@@ -47,7 +45,7 @@ public class CommandService implements DiscordSubscriber {
     private static final int LENGTH_LIMIT = 2000;
 
     private final DiscordService discordService;
-    private final LeagueProperties properties;
+    private final PermissionService permissionService;
     private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Gatekeeper gatekeeper = new Gatekeeper();
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
@@ -56,9 +54,9 @@ public class CommandService implements DiscordSubscriber {
     private OptionSpec<Boolean> helpFullSpec;
 
     @Autowired
-    public CommandService(DiscordService discordService, LeagueProperties properties) {
+    public CommandService(DiscordService discordService, PermissionService permissionService) {
         this.discordService = discordService;
-        this.properties = properties;
+        this.permissionService = permissionService;
     }
 
     @PostConstruct
@@ -69,7 +67,7 @@ public class CommandService implements DiscordSubscriber {
         helpFullSpec = parser.acceptsAll(asList("f", "full"), "display all commands in a list with their description")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
-            .command(this::showCommandList).permission(0).parser(parser).build());
+            .command(this::showCommandList).unrestricted().parser(parser).build());
         discordService.subscribe(this);
     }
 
@@ -94,13 +92,13 @@ public class CommandService implements DiscordSubscriber {
         } else if (nonOptions.isEmpty()) {
             if (o.has(helpFullSpec) && o.valueOf(helpFullSpec)) {
                 return "*Commands available to you*\n" + commandList.stream()
-                    .filter(c -> canExecute(m.getAuthor(), c))
+                    .filter(c -> canExecute(c, m.getAuthor(), m.getChannel()))
                     .sorted(Comparator.naturalOrder())
                     .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
                     .collect(Collectors.joining("\n"));
             } else {
                 return "*Commands available to you:* " + commandList.stream()
-                    .filter(c -> canExecute(m.getAuthor(), c))
+                    .filter(c -> canExecute(c, m.getAuthor(), m.getChannel()))
                     .sorted(Comparator.naturalOrder())
                     .map(Command::getKey)
                     .collect(Collectors.joining(", "));
@@ -108,7 +106,7 @@ public class CommandService implements DiscordSubscriber {
         } else {
             List<Command> requested = commandList.stream()
                 .filter(c -> isRequested(nonOptions, c.getKey().substring(1)))
-                .filter(c -> canExecute(m.getAuthor(), c))
+                .filter(c -> canExecute(c, m.getAuthor(), m.getChannel()))
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
             StringBuilder builder = new StringBuilder();
@@ -128,7 +126,7 @@ public class CommandService implements DiscordSubscriber {
             c.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
             c.getParser().printHelpOn(stream);
             b.append(String.format("• Help for **%s**: %s%s\n", c.getKey(), c.getDescription(),
-                c.getPermissionLevel() > 0 ? " (requires permission level " + c.getPermissionLevel() + ")" : ""))
+                c.getPermission() != CommandPermission.NONE ? " (requires `" + c.getPermission() + "` permission)" : ""))
                 .append(new String(stream.toByteArray(), "UTF-8")).append("\n");
         } catch (Exception e) {
             b.append("Could not show help for **").append(c.getKey().substring(1)).append("**\n");
@@ -147,7 +145,7 @@ public class CommandService implements DiscordSubscriber {
         Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
         if (match.isPresent()) {
             Command command = match.get();
-            if (canExecute(m.getAuthor(), command)) {
+            if (canExecute(command, m.getAuthor(), m.getChannel())) {
                 // cut away the "command" portion of the message
                 String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
                 args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
@@ -179,8 +177,8 @@ public class CommandService implements DiscordSubscriber {
                 }
             } else {
                 // fail silently
-                log.debug("User {} has no permission to run {} (requires level {})", format(m.getAuthor()),
-                    command.getKey(), command.getPermissionLevel());
+                log.debug("User {} has no permission to run {} (requires {})", format(m.getAuthor()),
+                    command.getKey(), command.getPermission());
             }
         } else if (m.getChannel().isPrivate() && !discordService.isOwnUser(m.getAuthor())
             && (m.getContent().startsWith(".") || m.getContent().startsWith("!")
@@ -194,18 +192,8 @@ public class CommandService implements DiscordSubscriber {
         return user.getName() + " " + user.toString();
     }
 
-    private boolean canExecute(IUser user, Command command) {
-        return getCommandPermission(user).getLevel() >= command.getPermissionLevel();
-    }
-
-    private CommandPermission getCommandPermission(IUser user) {
-        if (discordService.isMaster(user)) {
-            return CommandPermission.MASTER;
-        } else if (discordService.hasSupportRole(user)) {
-            return CommandPermission.SUPPORT;
-        } else {
-            return CommandPermission.NONE;
-        }
+    private boolean canExecute(Command command, IUser user, IChannel channel) {
+        return permissionService.canExecute(command, user, channel);
     }
 
     // Higher level output control
@@ -232,7 +220,7 @@ public class CommandService implements DiscordSubscriber {
                 response.append(comment).append("\n");
             }
             response.append(String.format("• Help for **%s**: %s%s%s\n", command.getKey(), command.getDescription(),
-                command.getPermissionLevel() > 0 ? " (requires permission level " + command.getPermissionLevel() + ")" : "",
+                command.getPermission() != CommandPermission.NONE ? " (requires `" + command.getPermission() + "` permission)" : "",
                 command.isExperimental() ? " -- Warning, this command is **experimental** and not well tested yet." : ""))
                 .append(new String(stream.toByteArray(), "UTF-8"));
             replyFrom(message, command, response.toString());
@@ -324,20 +312,8 @@ public class CommandService implements DiscordSubscriber {
             // use the same channel as invocation
             return answer(message, response, command.isMention(), file);
         } else if (replyMode == ReplyMode.WITH_PERMISSION) {
-            int commandLevel = command.getPermissionLevel();
-            int channelLevel = 0;
-            String channelId = message.getChannel().getID(); // can be null
-            String permissionKey = properties.getDiscord().getChannels().get(channelId);
-            if (permissionKey != null) {
-                CommandPermission perm = CommandPermission.valueOf(permissionKey.toUpperCase());
-                if (perm != null) {
-                    channelLevel = perm.getLevel();
-                } else {
-                    log.warn("Channel {} has an invalid permission key: {}", channelId, permissionKey);
-                }
-            }
-            if (channelLevel >= commandLevel) {
-                // channel has a higher level than the command's -> print to origin channel
+            // the channel must have the needed permission, otherwise fallback to a private message
+            if (permissionService.canDisplayResult(command, message.getChannel())) {
                 return answer(message, response, command.isMention(), file);
             } else {
                 return answerPrivately(message, response, file);
@@ -397,7 +373,7 @@ public class CommandService implements DiscordSubscriber {
             opt(command.isExperimental(), "experimental", "", false, true))
             .stream().filter(Optional::isPresent).map(Optional::get).collect(Collectors.joining(", "));
         log.info("Command {} [{}] {}", padRight(command.getKey(), 20),
-            padLeft("" + command.getPermissionLevel(), 3), description);
+            command.getPermission().name().charAt(0), description);
         commandList.add(command);
         return command;
     }

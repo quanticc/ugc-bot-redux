@@ -75,7 +75,7 @@ public class AnnouncerService {
         testNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         testMessageSpec = parser.acceptsAll(asList("m", "message"), "message to publish").withRequiredArg();
         commandService.register(CommandBuilder.startsWith(".announce test")
-            .description("Send a test announcement").permission("master")
+            .description("Send a test announcement").master()
             .parser(parser).command(this::executeTestAnnounceCommand).build());
     }
 
@@ -85,7 +85,7 @@ public class AnnouncerService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         startNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".announce start")
-            .description("Enable multi-purpose announcements to this channel").permission("master")
+            .description("Enable multi-purpose announcements to this channel").master()
             .parser(parser).command(this::executeStartAnnounceCommand).build());
     }
 
@@ -95,7 +95,7 @@ public class AnnouncerService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         stopNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".announce stop")
-            .description("Disable an already subscribed announcer from this channel").permission("master")
+            .description("Disable an already subscribed announcer from this channel").master()
             .parser(parser).command(this::executeStopAnnounceCommand).build());
     }
 
