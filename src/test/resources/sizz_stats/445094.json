@@ -1,0 +1,2928 @@
+{
+    "stats": {
+        "_id": 445094,
+        "bluCountry": null,
+        "redCountry": "AU",
+        "hostname": "UGC Highlander Match",
+        "map": "koth_product_rc8",
+        "bluname": "BLU",
+        "redname": "RED",
+        "hostip": "108.61.227.25",
+        "ip": "108.61.227.25",
+        "hostport": 27015,
+        "round": 4,
+        "updated": "2016-02-08T09:34:57.839Z",
+        "created": "2016-02-08T09:11:17.170Z",
+        "viewCount": 87,
+        "pluginVersion": "v0.2",
+        "__v": 4,
+        "matchDuration": 1429,
+        "isLive": false,
+        "owner": {
+            "name": ".blazingboy",
+            "numericid": "76561197985763037"
+        },
+        "chats": [],
+        "players": {
+            "[U:1:56488467]": {
+                "name": "Tikan",
+                "steamid": "[U:1:56488467]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8361",
+                "medpicks": [
+                    0,
+                    1,
+                    1,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    419,
+                    673,
+                    637,
+                    752
+                ],
+                "points": [
+                    5,
+                    16,
+                    13,
+                    22
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    5,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1560,
+                    1709,
+                    3122,
+                    3347
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    1,
+                    3,
+                    2,
+                    4
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    2
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    1,
+                    1,
+                    0
+                ],
+                "captures": [
+                    0,
+                    2,
+                    0,
+                    2
+                ],
+                "deaths": [
+                    2,
+                    7,
+                    8,
+                    5
+                ],
+                "killassists": [
+                    3,
+                    2,
+                    2,
+                    5
+                ],
+                "kills": [
+                    1,
+                    5,
+                    4,
+                    5
+                ],
+                "playedclasses": [
+                    8,
+                    8,
+                    8,
+                    8
+                ],
+                "mostplayedclass": [
+                    4,
+                    4,
+                    4,
+                    4
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/3e/3ee50a767004fdd0f00ac24248e783775f632f14.jpg",
+                "numericid": "76561198016754195",
+                "country": "AU"
+            },
+            "[U:1:71569893]": {
+                "name": "Malice",
+                "steamid": "[U:1:71569893]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d8360",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    260,
+                    140,
+                    509,
+                    657
+                ],
+                "points": [
+                    7,
+                    13,
+                    15,
+                    17
+                ],
+                "bonuspoints": [
+                    2,
+                    0,
+                    0,
+                    1
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    2,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    900,
+                    1743,
+                    1640,
+                    1499
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    80,
+                    10,
+                    30,
+                    40
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    3,
+                    1,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    2,
+                    3
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    1,
+                    0,
+                    1,
+                    2
+                ],
+                "deaths": [
+                    5,
+                    8,
+                    8,
+                    8
+                ],
+                "killassists": [
+                    2,
+                    1,
+                    4,
+                    4
+                ],
+                "kills": [
+                    1,
+                    8,
+                    6,
+                    5
+                ],
+                "playedclasses": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "mostplayedclass": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/97/97229ebe03f4c082deb30bc63b48f76df6b1f5a0.jpg",
+                "numericid": "76561198031835621",
+                "country": "AU"
+            },
+            "[U:1:84221897]": {
+                "name": "iwyfwofb 🐤",
+                "steamid": "[U:1:84221897]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d835f",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    79,
+                    323,
+                    175,
+                    912
+                ],
+                "points": [
+                    12,
+                    14,
+                    11,
+                    16
+                ],
+                "bonuspoints": [
+                    3,
+                    6,
+                    1,
+                    6
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    71,
+                    20,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    950,
+                    551,
+                    1324,
+                    833
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    1,
+                    1,
+                    0,
+                    1
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    1,
+                    1,
+                    0
+                ],
+                "captures": [
+                    1,
+                    1,
+                    1,
+                    2
+                ],
+                "deaths": [
+                    1,
+                    5,
+                    5,
+                    4
+                ],
+                "killassists": [
+                    2,
+                    2,
+                    0,
+                    3
+                ],
+                "kills": [
+                    4,
+                    3,
+                    5,
+                    3
+                ],
+                "playedclasses": [
+                    4,
+                    4,
+                    4,
+                    4
+                ],
+                "mostplayedclass": [
+                    3,
+                    3,
+                    3,
+                    3
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/37/3716423e5c3143c8e51ae2227130eef94efd7e37.jpg",
+                "numericid": "76561198044487625",
+                "country": "AU"
+            },
+            "[U:1:126485428]": {
+                "name": "Thyme",
+                "steamid": "[U:1:126485428]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d835e",
+                "medpicks": [
+                    0,
+                    1,
+                    1,
+                    3
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    489,
+                    157,
+                    167,
+                    391
+                ],
+                "points": [
+                    5,
+                    16,
+                    14,
+                    17
+                ],
+                "bonuspoints": [
+                    1,
+                    1,
+                    4,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    313,
+                    1299,
+                    786,
+                    1949
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    40
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    1,
+                    0,
+                    2
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "suicides": [
+                    1,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "captures": [
+                    1,
+                    3,
+                    1,
+                    0
+                ],
+                "deaths": [
+                    4,
+                    5,
+                    6,
+                    7
+                ],
+                "killassists": [
+                    3,
+                    3,
+                    6,
+                    4
+                ],
+                "kills": [
+                    1,
+                    5,
+                    3,
+                    9
+                ],
+                "playedclasses": [
+                    4,
+                    4,
+                    4,
+                    4
+                ],
+                "mostplayedclass": [
+                    3,
+                    3,
+                    3,
+                    3
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/64/641127857700fe9264282ae3357cd73074c4035f.jpg",
+                "numericid": "76561198086751156",
+                "country": "AU"
+            },
+            "[U:1:20771800]": {
+                "name": "Mr Fathead",
+                "steamid": "[U:1:20771800]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d835d",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    206,
+                    429,
+                    1340,
+                    516
+                ],
+                "points": [
+                    6,
+                    11,
+                    15,
+                    19
+                ],
+                "bonuspoints": [
+                    1,
+                    0,
+                    2,
+                    3
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    20,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    923,
+                    1203,
+                    1449,
+                    1446
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    110,
+                    10,
+                    260,
+                    300
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    3,
+                    3,
+                    2
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    1,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    2,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    2,
+                    0,
+                    0
+                ],
+                "captures": [
+                    1,
+                    0,
+                    0,
+                    3
+                ],
+                "deaths": [
+                    4,
+                    5,
+                    2,
+                    4
+                ],
+                "killassists": [
+                    1,
+                    1,
+                    9,
+                    3
+                ],
+                "kills": [
+                    2,
+                    4,
+                    3,
+                    4
+                ],
+                "playedclasses": [
+                    16,
+                    16,
+                    16,
+                    16
+                ],
+                "mostplayedclass": [
+                    5,
+                    5,
+                    5,
+                    5
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/0d/0d85f2c9e68b545722856b5ca7ad813632acc0bb.jpg",
+                "numericid": "76561197981037528",
+                "country": "AU"
+            },
+            "[U:1:19733575]": {
+                "name": "TDHK",
+                "steamid": "[U:1:19733575]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d835c",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    1,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    0,
+                    75,
+                    183,
+                    219
+                ],
+                "points": [
+                    10,
+                    17,
+                    23,
+                    22
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    2,
+                    3,
+                    5,
+                    5
+                ],
+                "healpoints": [
+                    4360,
+                    6600,
+                    8150,
+                    7670
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    1,
+                    1
+                ],
+                "deaths": [
+                    4,
+                    3,
+                    4,
+                    2
+                ],
+                "killassists": [
+                    2,
+                    7,
+                    6,
+                    5
+                ],
+                "kills": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "playedclasses": [
+                    64,
+                    64,
+                    64,
+                    64
+                ],
+                "mostplayedclass": [
+                    7,
+                    7,
+                    7,
+                    7
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/a7/a7372d5146f7e560bf9dc732ea0009899e97c063.jpg",
+                "numericid": "76561197979999303",
+                "country": "NZ"
+            },
+            "[U:1:71420501]": {
+                "name": "Son of Jaws",
+                "steamid": "[U:1:71420501]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d835b",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    1,
+                    89,
+                    255,
+                    181
+                ],
+                "points": [
+                    4,
+                    17,
+                    20,
+                    14
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    338,
+                    1127,
+                    1810,
+                    1080
+                ],
+                "teleports": [
+                    5,
+                    12,
+                    6,
+                    2
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    220,
+                    320,
+                    60
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "buildingsbuilt": [
+                    6,
+                    16,
+                    19,
+                    17
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    2,
+                    0
+                ],
+                "captures": [
+                    1,
+                    3,
+                    1,
+                    5
+                ],
+                "deaths": [
+                    5,
+                    4,
+                    3,
+                    6
+                ],
+                "killassists": [
+                    0,
+                    2,
+                    7,
+                    5
+                ],
+                "kills": [
+                    0,
+                    3,
+                    6,
+                    0
+                ],
+                "playedclasses": [
+                    32,
+                    32,
+                    32,
+                    32
+                ],
+                "mostplayedclass": [
+                    6,
+                    6,
+                    6,
+                    6
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/47/4735f8ab78bfddc91206224ef34f3d1353edaa31.jpg",
+                "numericid": "76561198031686229",
+                "country": "AU"
+            },
+            "[U:1:98546919]": {
+                "name": "mitch",
+                "steamid": "[U:1:98546919]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d835a",
+                "medpicks": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    119,
+                    43,
+                    292,
+                    383
+                ],
+                "points": [
+                    15,
+                    16,
+                    23,
+                    11
+                ],
+                "bonuspoints": [
+                    0,
+                    2,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    6,
+                    8,
+                    10,
+                    8
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    899,
+                    896,
+                    1176,
+                    899
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    3,
+                    4,
+                    5,
+                    4
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    3,
+                    1
+                ],
+                "buildingsdestroyed": [
+                    5,
+                    2,
+                    3,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    1,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    1,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "deaths": [
+                    4,
+                    9,
+                    5,
+                    7
+                ],
+                "killassists": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "kills": [
+                    5,
+                    5,
+                    12,
+                    5
+                ],
+                "playedclasses": [
+                    256,
+                    256,
+                    256,
+                    256
+                ],
+                "mostplayedclass": [
+                    9,
+                    9,
+                    9,
+                    9
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/38/38a11a3e8cab48ca578b74bde5a32260274f4229.jpg",
+                "numericid": "76561198058812647",
+                "country": "AU"
+            },
+            "[U:1:65827727]": {
+                "name": "♛ Mr P",
+                "steamid": "[U:1:65827727]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8359",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    136,
+                    11,
+                    111,
+                    98
+                ],
+                "points": [
+                    11,
+                    8,
+                    12,
+                    17
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    8,
+                    4,
+                    2,
+                    2
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    908,
+                    809,
+                    778,
+                    1467
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    4,
+                    2,
+                    1,
+                    1
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    1,
+                    2
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    2,
+                    5,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "captures": [
+                    1,
+                    0,
+                    1,
+                    2
+                ],
+                "deaths": [
+                    4,
+                    9,
+                    8,
+                    7
+                ],
+                "killassists": [
+                    0,
+                    0,
+                    1,
+                    5
+                ],
+                "kills": [
+                    4,
+                    3,
+                    3,
+                    6
+                ],
+                "playedclasses": [
+                    256,
+                    256,
+                    256,
+                    256
+                ],
+                "mostplayedclass": [
+                    9,
+                    9,
+                    9,
+                    9
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/5e/5edf3ba85b365989428d9f36be0f5ad4fef1068d.jpg",
+                "numericid": "76561198026093455",
+                "country": "AU"
+            },
+            "[U:1:164629227]": {
+                "name": "raze",
+                "steamid": "[U:1:164629227]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d8358",
+                "medpicks": [
+                    0,
+                    1,
+                    1,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    154,
+                    394,
+                    223,
+                    0
+                ],
+                "points": [
+                    9,
+                    26,
+                    19,
+                    13
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1210,
+                    2787,
+                    2132,
+                    1773
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    4,
+                    15,
+                    11,
+                    7
+                ],
+                "buildingsdestroyed": [
+                    1,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    1,
+                    3,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "deaths": [
+                    4,
+                    3,
+                    4,
+                    6
+                ],
+                "killassists": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "kills": [
+                    4,
+                    15,
+                    11,
+                    8
+                ],
+                "playedclasses": [
+                    128,
+                    128,
+                    128,
+                    128
+                ],
+                "mostplayedclass": [
+                    8,
+                    8,
+                    8,
+                    8
+                ]
+            },
+            "[U:1:40874242]": {
+                "name": "sᴉsdoʎpod∀",
+                "steamid": "[U:1:40874242]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8357",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    0,
+                    237,
+                    352,
+                    75
+                ],
+                "points": [
+                    13,
+                    16,
+                    26,
+                    15
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    0,
+                    118,
+                    86,
+                    270
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    3,
+                    2,
+                    4,
+                    2
+                ],
+                "healpoints": [
+                    5450,
+                    6320,
+                    7950,
+                    6640
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    2,
+                    1
+                ],
+                "deaths": [
+                    1,
+                    4,
+                    3,
+                    5
+                ],
+                "killassists": [
+                    3,
+                    6,
+                    10,
+                    1
+                ],
+                "kills": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "playedclasses": [
+                    64,
+                    64,
+                    64,
+                    64
+                ],
+                "mostplayedclass": [
+                    7,
+                    7,
+                    7,
+                    7
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/bb/bbd3f874e5550cd45efbfc67611ecb1d06947e43.jpg",
+                "numericid": "76561198001139970",
+                "country": "AU"
+            },
+            "[U:1:37710963]": {
+                "name": "Hero [Incognito]",
+                "steamid": "[U:1:37710963]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8356",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    7,
+                    133,
+                    203,
+                    205
+                ],
+                "points": [
+                    10,
+                    14,
+                    8,
+                    26
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    676,
+                    1488,
+                    1273,
+                    1393
+                ],
+                "teleports": [
+                    6,
+                    10,
+                    5,
+                    14
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    30,
+                    460,
+                    120,
+                    390
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "buildingsbuilt": [
+                    13,
+                    21,
+                    17,
+                    21
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "captures": [
+                    1,
+                    0,
+                    1,
+                    4
+                ],
+                "deaths": [
+                    1,
+                    5,
+                    4,
+                    3
+                ],
+                "killassists": [
+                    6,
+                    5,
+                    3,
+                    6
+                ],
+                "kills": [
+                    1,
+                    5,
+                    1,
+                    4
+                ],
+                "playedclasses": [
+                    32,
+                    32,
+                    32,
+                    32
+                ],
+                "mostplayedclass": [
+                    6,
+                    6,
+                    6,
+                    6
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/95/95413f448fee203e333f8a51e1ee64ed195d4b5b.jpg",
+                "numericid": "76561197997976691",
+                "country": "AU"
+            },
+            "[U:1:37613251]": {
+                "name": "heykatie!",
+                "steamid": "[U:1:37613251]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8355",
+                "medpicks": [
+                    3,
+                    2,
+                    2,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    123,
+                    121,
+                    144,
+                    186
+                ],
+                "points": [
+                    14,
+                    18,
+                    16,
+                    23
+                ],
+                "bonuspoints": [
+                    2,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1556,
+                    2672,
+                    1975,
+                    2327
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    2,
+                    6,
+                    6,
+                    9
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    1,
+                    1,
+                    2
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    3,
+                    0,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    1,
+                    1
+                ],
+                "deaths": [
+                    1,
+                    3,
+                    7,
+                    3
+                ],
+                "killassists": [
+                    1,
+                    2,
+                    1,
+                    1
+                ],
+                "kills": [
+                    9,
+                    9,
+                    7,
+                    11
+                ],
+                "playedclasses": [
+                    128,
+                    128,
+                    128,
+                    128
+                ],
+                "mostplayedclass": [
+                    8,
+                    8,
+                    8,
+                    8
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/cb/cb01927b96ec4f0ff7e10debf191392f8e7fa70d.jpg",
+                "numericid": "76561197997878979",
+                "country": "AU"
+            },
+            "[U:1:138357236]": {
+                "name": "ohai ☺",
+                "steamid": "[U:1:138357236]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8354",
+                "medpicks": [
+                    1,
+                    0,
+                    0,
+                    1
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    321,
+                    477,
+                    483,
+                    345
+                ],
+                "points": [
+                    7,
+                    17,
+                    17,
+                    19
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1163,
+                    1596,
+                    2066,
+                    2196
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    1,
+                    1,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    2,
+                    1
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    2,
+                    0
+                ],
+                "captures": [
+                    0,
+                    2,
+                    0,
+                    2
+                ],
+                "deaths": [
+                    2,
+                    5,
+                    6,
+                    5
+                ],
+                "killassists": [
+                    0,
+                    3,
+                    5,
+                    1
+                ],
+                "kills": [
+                    6,
+                    9,
+                    9,
+                    12
+                ],
+                "playedclasses": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "mostplayedclass": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/e9/e952b8b38c8c0dd9a6f7c331af42b141c227923e.jpg",
+                "numericid": "76561198098622964"
+            },
+            "[U:1:51159643]": {
+                "name": "Gooseman",
+                "steamid": "[U:1:51159643]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d8353",
+                "medpicks": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    680,
+                    414,
+                    917,
+                    1416
+                ],
+                "points": [
+                    7,
+                    17,
+                    25,
+                    25
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    5,
+                    15,
+                    1,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1282,
+                    3082,
+                    3343,
+                    3775
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    10,
+                    20,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    1,
+                    3,
+                    6,
+                    7
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    1,
+                    2
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    1,
+                    3
+                ],
+                "deaths": [
+                    4,
+                    5,
+                    5,
+                    5
+                ],
+                "killassists": [
+                    1,
+                    2,
+                    4,
+                    3
+                ],
+                "kills": [
+                    4,
+                    7,
+                    10,
+                    5
+                ],
+                "playedclasses": [
+                    8,
+                    8,
+                    8,
+                    8
+                ],
+                "mostplayedclass": [
+                    4,
+                    4,
+                    4,
+                    4
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/6b/6b34715a7f04f170d4b61371c2385598a706be0d.jpg",
+                "numericid": "76561198011425371"
+            },
+            "[U:1:90356190]": {
+                "name": "ckm",
+                "steamid": "[U:1:90356190]",
+                "team": 2,
+                "_id": "56b85bb5e758508a6d1d8352",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    309,
+                    738,
+                    620,
+                    1003
+                ],
+                "points": [
+                    2,
+                    14,
+                    9,
+                    15
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    407,
+                    2100,
+                    2204,
+                    2165
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    50,
+                    70,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    2,
+                    3,
+                    0,
+                    1
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    1,
+                    0,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    1,
+                    0,
+                    1
+                ],
+                "deaths": [
+                    6,
+                    8,
+                    11,
+                    9
+                ],
+                "killassists": [
+                    0,
+                    1,
+                    3,
+                    1
+                ],
+                "kills": [
+                    0,
+                    5,
+                    5,
+                    8
+                ],
+                "playedclasses": [
+                    2,
+                    2,
+                    2,
+                    2
+                ],
+                "mostplayedclass": [
+                    2,
+                    2,
+                    2,
+                    2
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/46/4617bee1ba10929b354a5d5a7d4ba59c0bc53e7d.jpg",
+                "numericid": "76561198050621918",
+                "country": "AU"
+            },
+            "[U:1:77699874]": {
+                "name": ";0",
+                "steamid": "[U:1:77699874]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8351",
+                "medpicks": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    873,
+                    1069,
+                    934,
+                    1199
+                ],
+                "points": [
+                    14,
+                    9,
+                    15,
+                    18
+                ],
+                "bonuspoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1630,
+                    1355,
+                    1555,
+                    2129
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    2,
+                    3,
+                    2,
+                    5
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    2,
+                    1
+                ],
+                "dominations": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "deaths": [
+                    3,
+                    8,
+                    9,
+                    6
+                ],
+                "killassists": [
+                    2,
+                    1,
+                    2,
+                    3
+                ],
+                "kills": [
+                    9,
+                    4,
+                    8,
+                    8
+                ],
+                "playedclasses": [
+                    2,
+                    2,
+                    2,
+                    2
+                ],
+                "mostplayedclass": [
+                    2,
+                    2,
+                    2,
+                    2
+                ],
+                "avatar": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/a4/a4f0d100ba1c22751cfd22827e074fa27d6173cb.jpg",
+                "numericid": "76561198037965602",
+                "country": "AU"
+            },
+            "[U:1:28309527]": {
+                "name": "Disturbed",
+                "steamid": "[U:1:28309527]",
+                "team": 3,
+                "_id": "56b85bb5e758508a6d1d8350",
+                "medpicks": [
+                    0,
+                    0,
+                    1,
+                    0
+                ],
+                "ubersdropped": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healsreceived": [
+                    495,
+                    192,
+                    531,
+                    490
+                ],
+                "points": [
+                    14,
+                    22,
+                    21,
+                    17
+                ],
+                "bonuspoints": [
+                    1,
+                    4,
+                    2,
+                    5
+                ],
+                "resupplypoints": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "crits": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "overkillDamage": [],
+                "damagedone": [
+                    1382,
+                    2562,
+                    2872,
+                    2030
+                ],
+                "teleports": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "invulns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "healpoints": [
+                    180,
+                    0,
+                    0,
+                    270
+                ],
+                "backstabs": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "headshots": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "buildingsdestroyed": [
+                    0,
+                    2,
+                    2,
+                    0
+                ],
+                "buildingsbuilt": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "revenge": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dominations": [
+                    0,
+                    3,
+                    0,
+                    0
+                ],
+                "suicides": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "defenses": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "captures": [
+                    2,
+                    0,
+                    0,
+                    1
+                ],
+                "deaths": [
+                    2,
+                    6,
+                    6,
+                    6
+                ],
+                "killassists": [
+                    4,
+                    3,
+                    4,
+                    4
+                ],
+                "kills": [
+                    5,
+                    11,
+                    11,
+                    5
+                ],
+                "playedclasses": [
+                    16,
+                    16,
+                    16,
+                    16
+                ],
+                "mostplayedclass": [
+                    5,
+                    5,
+                    5,
+                    5
+                ],
+                "avatar": "http://media.steampowered.com/steamcommunity/public/images/avatars/78/789959a4c185f8ad7c8644d4d60744bc90f8eea8.jpg",
+                "numericid": "76561197988575255",
+                "country": "AU"
+            }
+        },
+        "roundduration": [
+            245,
+            386,
+            393,
+            382
+        ],
+        "teamfirstcap": [
+            3,
+            2,
+            3,
+            2
+        ],
+        "bluscore": [
+            1,
+            0,
+            0,
+            0
+        ],
+        "redscore": [
+            0,
+            1,
+            1,
+            1
+        ]
+    }
+}

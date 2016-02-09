@@ -14,7 +14,7 @@ import java.time.*;
 public class JacksonConfiguration {
 
     @Bean
-    Jackson2ObjectMapperBuilder jackson2ObjectMapperBuilder() {
+    public Jackson2ObjectMapperBuilder jackson2ObjectMapperBuilder() {
         JavaTimeModule module = new JavaTimeModule();
         module.addSerializer(OffsetDateTime.class, JSR310DateTimeSerializer.INSTANCE);
         module.addSerializer(ZonedDateTime.class, JSR310DateTimeSerializer.INSTANCE);
