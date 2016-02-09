@@ -1,7 +1,10 @@
 package com.ugcleague.ops.config;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.ehcache.InstrumentedEhcache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -16,10 +19,11 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.metamodel.EntityType;
 import java.util.Set;
+import java.util.SortedSet;
 
 @Configuration
 @EnableCaching
-@AutoConfigureAfter(value = {DatabaseConfiguration.class})
+@AutoConfigureAfter(value = {MetricsConfiguration.class, DatabaseConfiguration.class})
 @Profile("!" + Constants.SPRING_PROFILE_FAST)
 public class CacheConfiguration {
 
@@ -28,10 +32,16 @@ public class CacheConfiguration {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private MetricRegistry metricRegistry;
+
     private net.sf.ehcache.CacheManager cacheManager;
 
     @PreDestroy
     public void destroy() {
+        log.info("Remove Cache Manager metrics");
+        SortedSet<String> names = metricRegistry.getNames();
+        names.forEach(metricRegistry::remove);
         log.info("Closing Cache Manager");
         cacheManager.shutdown();
     }
@@ -41,6 +51,7 @@ public class CacheConfiguration {
         log.debug("Starting Ehcache");
         cacheManager = net.sf.ehcache.CacheManager.create();
         cacheManager.getConfiguration().setMaxBytesLocalHeap(leagueProperties.getCache().getEhcache().getMaxBytesLocalHeap());
+        log.debug("Registering Ehcache Metrics gauges");
         Set<EntityType<?>> entities = entityManager.getMetamodel().getEntities();
         for (EntityType<?> entity : entities) {
 
@@ -53,6 +64,8 @@ public class CacheConfiguration {
             net.sf.ehcache.Cache cache = cacheManager.getCache(name);
             if (cache != null) {
                 cache.getCacheConfiguration().setTimeToLiveSeconds(leagueProperties.getCache().getTimeToLiveSeconds());
+                net.sf.ehcache.Ehcache decoratedCache = InstrumentedEhcache.instrument(metricRegistry, cache);
+                cacheManager.replaceCacheWithDecoratedCache(cache, decoratedCache);
             }
         }
         EhCacheCacheManager ehCacheManager = new EhCacheCacheManager();
