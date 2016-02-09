@@ -6,9 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -199,6 +197,18 @@ public class DateUtil {
 
     public static String relativeNextTriggerFromCron(String patterns) {
         return formatRelativeBetweenNowAnd(nextValidTimeFromCron(patterns));
+    }
+
+    /**
+     * Returns a corrected Date which originally has an incorrect time while keeping the same time-zone.
+     *
+     * @param incorrect the incorrect Date
+     * @return a corrected ZonedDateTime, with the same time-zone as the given date but with the hour fixed.
+     */
+    public static ZonedDateTime correctOffsetSameZone(Date incorrect) {
+        Instant instant = incorrect.toInstant();
+        ZonedDateTime zoned = instant.atZone(ZoneId.systemDefault());
+        return zoned.plusSeconds(zoned.getOffset().getTotalSeconds());
     }
 
     private DateUtil() {

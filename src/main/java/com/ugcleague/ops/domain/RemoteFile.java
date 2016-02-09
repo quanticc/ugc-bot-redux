@@ -6,13 +6,14 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.Objects;
 
 @Entity
 @Table(name = "remote_file",
     uniqueConstraints = @UniqueConstraint(columnNames = {"game_server_id", "folder", "filename"}))
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-public class RemoteFile extends AbstractAuditingEntity {
+public class RemoteFile extends AbstractAuditingEntity implements Comparable<RemoteFile> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -123,5 +124,11 @@ public class RemoteFile extends AbstractAuditingEntity {
             ", size=" + size +
             ", sharedUrl='" + sharedUrl + '\'' +
             '}';
+    }
+
+    @Override
+    public int compareTo(RemoteFile o) {
+        return Comparator.nullsLast(Comparator.comparing(RemoteFile::getModified).reversed())
+            .thenComparing(Comparator.comparingInt(RemoteFile::hashCode)).compare(this, o);
     }
 }

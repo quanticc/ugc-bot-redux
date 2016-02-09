@@ -27,6 +27,8 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.util.DateUtil.correctOffsetSameZone;
+
 public class FtpClient {
     private static final Logger log = LoggerFactory.getLogger(FtpClient.class);
 
@@ -184,7 +186,7 @@ public class FtpClient {
 
     private void saveFileAttributes(Path parentDir, FTPFile file) {
         String key = parentDir.resolve(file.getName()).toString();
-        times.put(key, LocalDateTime.ofInstant(file.getModifiedDate().toInstant(), ZoneId.systemDefault()));
+        times.put(key, correctOffsetSameZone(file.getModifiedDate()).toLocalDateTime());
         sizes.put(key, file.getSize());
     }
 

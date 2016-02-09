@@ -141,6 +141,7 @@ public class GameServerFtpService {
             // parse after/before filters
             Optional<ZonedDateTime> afterTime = after.map(this::parseTimeDate);
             Optional<ZonedDateTime> beforeTime = before.map(this::parseTimeDate);
+            long minLength = Math.max(0, optionSet.valueOf(getLengthFilterSpec));
             if (afterTime.isPresent() || beforeTime.isPresent()) {
                 if (afterTime.isPresent() && beforeTime.isPresent()) {
                     String t1 = afterTime.get().toString();
@@ -162,12 +163,13 @@ public class GameServerFtpService {
                 response.append("*Use `--after <date>` and `--before <date>` to filter by modified date*\n");
             }
             // construct the filter
+
             Predicate<RemoteFile> filter = remoteFile ->
                 remoteFile.getFilename().endsWith(endsWith)
                     && (!filename.isPresent() || remoteFile.getFilename().contains(filename.get()))
                     && (!after.isPresent() || isAfter(afterTime.get(), remoteFile.getModified()))
-                    && (!before.isPresent() || isBefore(beforeTime.get(), remoteFile.getModified())
-                    && (remoteFile.getSize() == null || remoteFile.getSize() >= optionSet.valueOf(getLengthFilterSpec)));
+                    && (!before.isPresent() || isBefore(beforeTime.get(), remoteFile.getModified()))
+                    && (remoteFile.getSize() == null || remoteFile.getSize() >= minLength);
             List<RemoteFile> remoteFiles = syncGroupService.getFileList(server, dir, filter);
             if (remoteFiles.isEmpty()) {
                 response.append("No files found with the given filters");

@@ -25,12 +25,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static com.ugcleague.ops.util.DateUtil.correctOffsetSameZone;
 
 @Service
 @Transactional
@@ -149,8 +149,10 @@ public class SyncGroupService {
             List<RemoteFile> remotes = files.stream()
                 .map(f -> mapToRemoteFile(f, server, dir))
                 .filter(filter)
-                .map(remoteFileRepository::save)
+                .map(this::updateIfNeeded)
+                .sorted()
                 .collect(Collectors.toList());
+            remoteFileRepository.save(remotes);
             client.disconnect();
             return remotes;
         } else {
@@ -158,16 +160,23 @@ public class SyncGroupService {
         }
     }
 
+    private RemoteFile updateIfNeeded(RemoteFile f) {
+        RemoteFile remote = remoteFileRepository.findByFolderAndFilenameAndOwner(f.getFolder(), f.getFilename(), f.getOwner()).orElse(f);
+        remote.setSize(f.getSize());
+        remote.setModified(f.getModified());
+        return remote;
+    }
+
     private RemoteFile mapToRemoteFile(FTPFile file, GameServer server, String dir) {
-        RemoteFile remote = remoteFileRepository.findByFolderAndFilenameAndOwner(dir, file.getName(), server)
-            .orElseGet(RemoteFile::new);
+        RemoteFile remote = new RemoteFile();
         remote.setFilename(file.getName());
         remote.setFolder(dir);
         remote.setOwner(server);
         remote.setSize(file.getSize());
         Date modifiedDate = file.getModifiedDate();
         if (modifiedDate != null) {
-            remote.setModified(ZonedDateTime.ofInstant(modifiedDate.toInstant(), ZoneId.systemDefault()));
+            // convert keeping the time but changing the time-zone
+            remote.setModified(correctOffsetSameZone(modifiedDate));
         }
         return remote;
     }
@@ -206,8 +215,10 @@ public class SyncGroupService {
             List<RemoteFile> remotes = files.stream()
                 .map(f -> mapToRemoteFile(f, server, dir))
                 .filter(filter)
-                .map(remoteFileRepository::save)
+                .map(this::updateIfNeeded)
+                .sorted()
                 .collect(Collectors.toList());
+            remoteFileRepository.save(remotes);
             for (RemoteFile file : remotes) {
                 // TODO improve path concatenation (check for bad input)
                 Path parent = Paths.get(downloadsDir).resolve(server.getShortName() + file.getFolder());
