@@ -9,7 +9,7 @@ ugc-bot-prod-mysql:
   - MYSQL_DATABASE=ugc_league
   ports:
   - "3306:3306"
-  command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --innodb_lock_wait_timeout=150
+  command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --innodb_lock_wait_timeout=150 --max_allowed_packet=32M
 ugc-bot-prod-mongodb:
   container_name: ugc-bot-prod-mongodb
   image: mongo:3.0.7
