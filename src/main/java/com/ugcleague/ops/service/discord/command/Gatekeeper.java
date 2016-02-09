@@ -29,7 +29,10 @@ public class Gatekeeper {
         log.info("+++ Queueing command job to '{}': {}", key, job.getMessage().getContent());
         requests.computeIfAbsent(key, k -> new ArrayList<>()).add(job);
         return CompletableFuture.supplyAsync(job, dispatcher)
-            .exceptionally(Throwable::getMessage).thenApply(s -> {
+            .exceptionally(t -> {
+                log.warn("Background job '" + key + "' terminated exceptionally", t);
+                return ":no_good: Something happened. Something happened.";
+            }).thenApply(s -> {
                 log.info("--- Removing command job from '{}': {}", key, job.getMessage().getContent());
                 requests.get(key).remove(job);
                 return s;
