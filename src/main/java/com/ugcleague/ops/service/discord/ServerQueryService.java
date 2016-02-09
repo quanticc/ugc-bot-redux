@@ -270,8 +270,8 @@ public class ServerQueryService {
         // .rcon -c <command> [-p <password>] (non-option: search key)
         OptionParser parser = new OptionParser();
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
-        rconNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
-        rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg().required();
+        rconNonOptionSpec = parser.nonOptions(nonOptDesc + "\nCan also be invoked simply in the form: `.rcon <cmd> <server>`").ofType(String.class);
+        rconCommandSpec = parser.acceptsAll(asList("c", "command"), "command to run via RCON").withRequiredArg();
         rconPasswordSpec = parser.acceptsAll(asList("p", "password"), "RCON password").withRequiredArg();
         rconQuietSpec = parser.acceptsAll(asList("q", "quiet"), "Don't output the command result to the channel")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
@@ -283,7 +283,13 @@ public class ServerQueryService {
     private String executeRconCommand(IMessage m, OptionSet o) {
         List<String> nonOptions = o.valuesOf(rconNonOptionSpec);
         if (!o.has("?") && !nonOptions.isEmpty()) {
-            String command = o.valueOf(rconCommandSpec);
+            String command;
+            if (o.has(rconCommandSpec)) {
+                command = o.valueOf(rconCommandSpec);
+            } else {
+                command = nonOptions.get(0);
+                nonOptions = nonOptions.subList(1, nonOptions.size());
+            }
             Set<GameServer> matched = new LinkedHashSet<>();
             List<SourceServer> otherServers = new ArrayList<>();
             List<GameServer> found = gameServerService.findServersMultiple(nonOptions);
