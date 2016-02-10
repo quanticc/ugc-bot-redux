@@ -64,8 +64,8 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
             .map(u -> validateConnected(client, u))
             .filter(u -> u != null)
             .forEach(userRepository::save);
-        log.info("Now recording certain events. Channels: {}, Users: {}, Messages: {}",
-            channelRepository.count(), userRepository.count(), messageRepository.count());
+        log.info("Servers: {}, Channels: {}, Users: {}, Messages: {}",
+            guildRepository.count(), channelRepository.count(), userRepository.count(), messageRepository.count());
     }
 
     @EventSubscriber
@@ -74,15 +74,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         IMessage message = event.getMessage();
         String content = message.getContent();
         if (content.startsWith(".")) {
-            DiscordMessage msg = newMessage(message);
-            channelRepository.save(msg.getChannel());
-            if (!msg.getChannel().isPrivate()) {
-                DiscordGuild guild = msg.getChannel().getGuild();
-                guild.getChannels().add(msg.getChannel());
-                guildRepository.save(guild);
-            }
-            userRepository.save(msg.getAuthor());
-            messageRepository.save(msg);
+            saveAll(newMessage(message));
         }
     }
 
@@ -93,23 +85,24 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         if (oldMessage.getContent().startsWith(".")) {
             Optional<DiscordMessage> o = messageRepository.findById(oldMessage.getID());
             if (o.isPresent()) {
-                DiscordMessage current;
-                if (o.isPresent()) {
-                    DiscordMessage previous = o.get();
-                    current = updateMessage(previous, newMessage);
-                } else {
-                    current = newMessage(newMessage);
-                }
-                channelRepository.save(current.getChannel());
-                if (!current.getChannel().isPrivate()) {
-                    DiscordGuild guild = current.getChannel().getGuild();
-                    guild.getChannels().add(current.getChannel());
-                    guildRepository.save(guild);
-                }
-                userRepository.save(current.getAuthor());
-                messageRepository.save(current);
+                saveAll(o.isPresent() ? updateMessage(o.get(), newMessage) : newMessage(newMessage));
             }
         }
+    }
+
+    private void saveAll(DiscordMessage message) {
+        channelRepository.save(message.getChannel());
+        if (!message.getChannel().isPrivate()) {
+            DiscordGuild guild = message.getChannel().getGuild();
+            guild.getChannels().add(message.getChannel());
+            guildRepository.save(guild);
+        }
+        userRepository.save(message.getAuthor());
+        messageRepository.save(message);
+        message.getChannel().getMessages().add(message);
+        message.getAuthor().getMessages().add(message);
+        channelRepository.save(message.getChannel());
+        userRepository.save(message.getAuthor());
     }
 
     @EventSubscriber
@@ -118,6 +111,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         if (message.getContent().startsWith(".")) {
             messageRepository.findById(message.getID()).ifPresent(msg -> {
                 msg.setDeleted(true);
+                msg.getEvents().add(new Event("deleted_message"));
                 messageRepository.save(msg);
             });
         }

@@ -9,6 +9,14 @@ public class Event extends AbstractAuditingEntity {
 
     private Map<String, Object> properties = new LinkedHashMap<>();
 
+    public Event() {
+
+    }
+
+    public Event(String type) {
+        this.type = type;
+    }
+
     public String getType() {
         return type;
     }

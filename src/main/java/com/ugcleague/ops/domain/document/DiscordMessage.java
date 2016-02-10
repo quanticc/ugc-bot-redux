@@ -99,7 +99,7 @@ public class DiscordMessage extends AbstractAuditingEntity {
             "id='" + id + '\'' +
             ", content='" + content + '\'' +
             ", timestamp=" + timestamp +
-            ", author=" + author +
+            ", author=" + (author != null ? author.getId() : "null") +
             ", channel=" + (channel != null ? channel.getId() : "null") +
             ", deleted=" + deleted +
             //", events=" + events +
