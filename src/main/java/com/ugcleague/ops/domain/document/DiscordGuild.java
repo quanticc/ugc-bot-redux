@@ -24,6 +24,14 @@ public class DiscordGuild extends AbstractAuditingEntity implements PermissionPr
     private Set<Permission> denied = new LinkedHashSet<>();
     private List<Event> events = new ArrayList<>();
 
+    public DiscordGuild() {
+
+    }
+
+    public DiscordGuild(String id) {
+        this.id = id;
+    }
+
     public String getId() {
         return id;
     }

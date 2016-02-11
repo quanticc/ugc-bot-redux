@@ -131,6 +131,8 @@ public class PermissionService {
                 }
                 channelRepository.save(channel);
             }
+
+            guildRepository.save(guild);
         }
         log.debug("Permissions: {}", permissionRepository.findAll());
     }
