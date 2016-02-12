@@ -4,14 +4,18 @@ import com.ugcleague.ops.domain.document.UgcResult;
 import com.ugcleague.ops.domain.document.UgcSeason;
 import com.ugcleague.ops.domain.document.UgcWeek;
 import com.ugcleague.ops.repository.mongo.UgcSeasonRepository;
+import com.ugcleague.ops.service.discord.util.RosterData;
+import com.ugcleague.ops.web.rest.UgcPlayerPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -21,11 +25,13 @@ public class UgcDataService {
 
     private final UgcSeasonRepository seasonRepository;
     private final UgcApiClient apiClient;
+    private final SteamCondenserService steamCondenserService;
 
     @Autowired
-    public UgcDataService(UgcSeasonRepository seasonRepository, UgcApiClient apiClient) {
+    public UgcDataService(UgcSeasonRepository seasonRepository, UgcApiClient apiClient, SteamCondenserService steamCondenserService) {
         this.seasonRepository = seasonRepository;
         this.apiClient = apiClient;
+        this.steamCondenserService = steamCondenserService;
     }
 
     public Set<UgcResult> findBySeasonAndWeek(int season, int week, boolean refresh) {
@@ -42,5 +48,17 @@ public class UgcDataService {
         ugcSeason.getWeeks().add(ugcWeek);
         seasonRepository.save(ugcSeason);
         return results;
+    }
+
+    public List<RosterData> findPlayers(List<RosterData> request) {
+        return request.parallelStream()
+            .map(rd -> rd.updateUgcData(apiClient.getCurrentPlayer(rd.getCommunityId())))
+            .collect(Collectors.toList());
+    }
+
+    public List<UgcPlayerPage> findPlayers(Set<Long> communityIdSet) {
+        return communityIdSet.parallelStream()
+            .map(apiClient::getCurrentPlayer)
+            .collect(Collectors.toList());
     }
 }

@@ -1,0 +1,34 @@
+] status
+hostname: GamerLive.cL | CloudBurn
+version : 3271684/24 3271684 secure
+udp/ip  : 131.221.33.54:31270  (public ip: 131.221.33.54)
+steamid : [G:1:3145] (85568392920042569)
+account : not logged in  (No account specified)
+map     : plr_hightower at: 0 x, 0 y, 0 z
+tags    : payload
+players : 12 humans, 0 bots (18 max)
+edicts  : 1076 used of 2048 max
+         Spawns Points Kills Deaths Assists
+Scout       141    212    67     97       9
+Sniper       70     63    33     44       2
+Soldier     104    160    79     59       8
+Demoman      43     35    18     27       0
+Medic        23     21     6     11       6
+Heavy        96    142    69     64       9
+Pyro        130    190    69     91      17
+Spy          90    111    42     67       0
+Engineer     53     62    24     30       2
+
+# userid name                uniqueid            connected ping loss state
+#    108 "Mega Man"          [U:1:222415707]     30:25       69    0 active
+#    114 "CroLoBoL"          [U:1:125785245]     20:26       74    0 active
+#    118 "MayOnixer"         [U:1:141866318]     08:49       57    0 active
+#     86 "XxXLunaGamerXxX"   [U:1:245292181]      1:09:57    42    1 active
+#    119 "kie"               [U:1:163687408]     05:03      181    0 active
+#    111 "' [T.M.D.B] ' Camilo.uN" [U:1:128988813] 21:40     87    0 active
+#    121 "FranILove"         [U:1:317693120]     04:12      207    0 active
+#    122 "Uncle shaggy #TostadoraQl" [U:1:157813542] 03:34   76    0 active
+#    113 "beaR"              [U:1:294908163]     20:41       56    0 active
+#    126 "UGC quantic"       [U:1:51827133]      00:37       61    0 active
+#    117 "[Kx!]Slyme ?"    [U:1:90257875]      16:08       83    0 active
+#    125 "Heaven King"       [U:1:183189726]     02:26       58    0 active

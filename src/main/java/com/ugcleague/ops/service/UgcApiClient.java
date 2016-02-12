@@ -1,15 +1,21 @@
 package com.ugcleague.ops.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ugcleague.ops.web.rest.JsonUgcResponse;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.UgcResult;
+import com.ugcleague.ops.web.rest.JsonUgcResponse;
+import com.ugcleague.ops.web.rest.UgcPlayerPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
@@ -29,7 +35,7 @@ public class UgcApiClient {
 
     private static final Logger log = LoggerFactory.getLogger(UgcApiClient.class);
 
-    private final LeagueProperties leagueProperties;
+    private final LeagueProperties properties;
     private final ObjectMapper mapper;
 
     private String teamRosterUrl;
@@ -41,14 +47,14 @@ public class UgcApiClient {
     private String playerTeamCurrentActiveUrl;
 
     @Autowired
-    public UgcApiClient(LeagueProperties leagueProperties, ObjectMapper mapper) {
-        this.leagueProperties = leagueProperties;
+    public UgcApiClient(LeagueProperties properties, ObjectMapper mapper) {
+        this.properties = properties;
         this.mapper = mapper;
     }
 
     @PostConstruct
     private void configure() {
-        Map<String, String> endpoints = leagueProperties.getUgc().getEndpoints();
+        Map<String, String> endpoints = properties.getUgc().getEndpoints();
         // load endpoints
         // v1 API
         teamRosterUrl = endpoints.get("teamRoster"); // clan_id
@@ -143,5 +149,16 @@ public class UgcApiClient {
             log.warn("Could not extract date from {}: {}", text, e.toString());
         }
         return ZonedDateTime.now();
+    }
+
+    @Retryable(backoff = @Backoff(2000L))
+    public UgcPlayerPage getCurrentPlayer(Long steamId64) {
+        String key = properties.getUgc().getKey();
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36");
+        ResponseEntity<UgcPlayerPage> response = restTemplate.exchange(playerTeamCurrentUrl, HttpMethod.GET,
+            new HttpEntity<>(headers), UgcPlayerPage.class, key, steamId64);
+        return response.getBody();
     }
 }
