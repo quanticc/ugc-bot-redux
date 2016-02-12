@@ -47,16 +47,17 @@ public class CommandService implements DiscordSubscriber {
     private final DiscordService discordService;
     private final PermissionService permissionService;
     private final Set<Command> commandList = new ConcurrentSkipListSet<>();
-    private final Gatekeeper gatekeeper = new Gatekeeper();
+    private final Gatekeeper gatekeeper;
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
 
     private OptionSpec<String> helpNonOptionSpec;
     private OptionSpec<Boolean> helpFullSpec;
 
     @Autowired
-    public CommandService(DiscordService discordService, PermissionService permissionService) {
+    public CommandService(DiscordService discordService, PermissionService permissionService, Gatekeeper gatekeeper) {
         this.discordService = discordService;
         this.permissionService = permissionService;
+        this.gatekeeper = gatekeeper;
     }
 
     @PostConstruct
@@ -180,11 +181,6 @@ public class CommandService implements DiscordSubscriber {
                 log.debug("User {} has no permission to run {} (requires {})", format(m.getAuthor()),
                     command.getKey(), command.getPermission());
             }
-        } else if (m.getChannel().isPrivate() && !discordService.isOwnUser(m.getAuthor())
-            && (m.getContent().startsWith(".") || m.getContent().startsWith("!")
-            || m.getContent().contains("help") || m.getContent().contains("info"))) {
-            log.debug("User {} might be asking privately for help: {}", format(m.getAuthor()), m.getContent());
-            showCommandList(m, newParser().parse());
         }
     }
 

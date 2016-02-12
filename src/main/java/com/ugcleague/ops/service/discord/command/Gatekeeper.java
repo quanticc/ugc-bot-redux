@@ -2,6 +2,8 @@ package com.ugcleague.ops.service.discord.command;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +16,8 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * For command throttling
  */
-public class Gatekeeper {
+@Component
+public class Gatekeeper implements DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(Gatekeeper.class);
 
@@ -26,16 +29,21 @@ public class Gatekeeper {
     }
 
     public CompletableFuture<String> queue(final String key, final CommandJob job) {
-        log.info("+++ Queueing command job to '{}': {}", key, job.getMessage().getContent());
+        log.info("+++ Queueing command job to '{}': {}", key, job.getCommand().getKey());
         requests.computeIfAbsent(key, k -> new ArrayList<>()).add(job);
         return CompletableFuture.supplyAsync(job, dispatcher)
             .exceptionally(t -> {
                 log.warn("Background job '" + key + "' terminated exceptionally", t);
                 return ":no_good: Something happened. Something happened.";
             }).thenApply(s -> {
-                log.info("--- Removing command job from '{}': {}", key, job.getMessage().getContent());
+                log.info("--- Removing command job from '{}': {}", key, job.getCommand().getKey());
                 requests.get(key).remove(job);
                 return s;
             });
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        dispatcher.shutdown();
     }
 }
