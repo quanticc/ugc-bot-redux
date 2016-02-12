@@ -445,6 +445,10 @@
             <artifactId>Discord4J</artifactId>
             <version>${discord4j.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.codehaus.groovy</groupId>
+            <artifactId>groovy-all</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
