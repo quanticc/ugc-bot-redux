@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import sx.blah.discord.handle.obj.IUser;
 
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -28,6 +29,15 @@ public class DiscordUser extends AbstractAuditingEntity implements PermissionPro
     private ZonedDateTime lastConnect = ZonedDateTime.now();
     @Field("last_disconnect")
     private ZonedDateTime lastDisconnect = ZonedDateTime.now();
+
+    public DiscordUser() {
+
+    }
+
+    public DiscordUser(IUser user) {
+        this.id = user.getID();
+        this.name = user.getName();
+    }
 
     public String getId() {
         return id;

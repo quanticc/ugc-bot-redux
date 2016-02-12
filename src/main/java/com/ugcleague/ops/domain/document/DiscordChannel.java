@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import sx.blah.discord.handle.obj.IChannel;
 
 import java.util.*;
 
@@ -27,6 +28,16 @@ public class DiscordChannel extends AbstractAuditingEntity implements Permission
     @DBRef
     private Set<Permission> denied = new LinkedHashSet<>();
     private List<Event> events = new ArrayList<>();
+
+    public DiscordChannel() {
+
+    }
+
+    public DiscordChannel(IChannel channel) {
+        this.id = channel.getID();
+        this.name = channel.getName();
+        this.isPrivate = channel.isPrivate();
+    }
 
     public String getId() {
         return id;

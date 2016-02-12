@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import sx.blah.discord.handle.obj.IGuild;
 
 import java.util.*;
 
@@ -30,6 +31,11 @@ public class DiscordGuild extends AbstractAuditingEntity implements PermissionPr
 
     public DiscordGuild(String id) {
         this.id = id;
+    }
+
+    public DiscordGuild(IGuild guild) {
+        this.id = guild.getID();
+        this.name = guild.getName();
     }
 
     public String getId() {

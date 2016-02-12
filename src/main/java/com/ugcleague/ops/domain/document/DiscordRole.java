@@ -4,6 +4,7 @@ import com.ugcleague.ops.domain.util.PermissionProvider;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
+import sx.blah.discord.handle.obj.IRole;
 
 import java.util.*;
 
@@ -25,6 +26,11 @@ public class DiscordRole extends AbstractAuditingEntity implements PermissionPro
 
     public DiscordRole(String id) {
         this.id = id;
+    }
+
+    public DiscordRole(IRole role) {
+        this.id = role.getID();
+        this.name = role.getName();
     }
 
     public String getId() {
