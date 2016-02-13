@@ -415,7 +415,7 @@ public class DiscordService implements DiscordSubscriber {
         String id = channel.getID();
         String name = channel.getName();
         String topic = channel.isPrivate() ? "<private channel>" : channel.getTopic();
-        String permissions = channel.getModifiedPermissions(user).toString();
+        String permissions = channel.isPrivate() ? "<private channel>" : channel.getModifiedPermissions(user).toString();
         return "Channel ["
             + "id='" + id
             + "', name='" + name

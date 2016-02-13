@@ -41,7 +41,7 @@ public class RosterCheckService {
     private void configure() {
         commandService.register(CommandBuilder.startsWith(".check")
             .description("Check UGC rosters from a status command output").unrestricted().originReplies().mention()
-            .queued().command(this::checkRosters).build());
+            .queued().noParser().command(this::checkRosters).build());
     }
 
     private String checkRosters(IMessage message, OptionSet optionSet) {

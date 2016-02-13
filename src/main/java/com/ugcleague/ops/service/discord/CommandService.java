@@ -81,6 +81,7 @@ public class CommandService implements DiscordSubscriber {
     public static OptionParser newParser() {
         OptionParser parser = new OptionParser();
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
+        parser.allowsUnrecognizedOptions();
         return parser;
     }
 

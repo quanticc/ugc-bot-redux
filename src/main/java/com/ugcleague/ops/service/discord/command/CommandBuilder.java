@@ -61,7 +61,7 @@ public class CommandBuilder {
     private boolean experimental = false;
 
     private CommandBuilder() {
-
+        parser.allowsUnrecognizedOptions();
     }
 
     private CommandBuilder matchType(MatchType matchType) {
@@ -93,6 +93,16 @@ public class CommandBuilder {
      */
     public CommandBuilder parser(OptionParser parser) {
         this.parser = parser;
+        return this;
+    }
+
+    /**
+     * Do not use a parser with this command.
+     *
+     * @return this builder
+     */
+    public CommandBuilder noParser() {
+        this.parser = null;
         return this;
     }
 

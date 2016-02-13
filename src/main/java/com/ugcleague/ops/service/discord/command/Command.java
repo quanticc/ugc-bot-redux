@@ -34,7 +34,6 @@ public class Command implements Comparable<Command> {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
-        Objects.requireNonNull(parser, "Parser must not be null");
         Objects.requireNonNull(command, "Command must not be null");
         Objects.requireNonNull(permission, "Permission must not be null");
         Objects.requireNonNull(replyMode, "Reply mode must not be null");
@@ -152,7 +151,7 @@ public class Command implements Comparable<Command> {
     }
 
     public String execute(IMessage message, String args) throws OptionException {
-        if (parser.recognizedOptions().isEmpty()) {
+        if (parser == null || parser.recognizedOptions().isEmpty()) {
             return command.apply(message, null);
         } else {
             return command.apply(message, args != null ? parser.parse(split(args)) : parser.parse());
