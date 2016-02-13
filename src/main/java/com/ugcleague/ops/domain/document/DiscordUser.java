@@ -34,6 +34,10 @@ public class DiscordUser extends AbstractAuditingEntity implements PermissionPro
 
     }
 
+    public DiscordUser(String id) {
+        this.id = id;
+    }
+
     public DiscordUser(IUser user) {
         this.id = user.getID();
         this.name = user.getName();

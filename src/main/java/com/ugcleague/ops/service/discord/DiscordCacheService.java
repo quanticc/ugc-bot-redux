@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -240,5 +241,41 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         dc.getProperties().put("millis_connected", Duration.between(u.getLastConnect(), u.getLastDisconnect()).toMillis());
         u.getEvents().add(dc);
         return u;
+    }
+
+    public List<DiscordGuild> findAllGuilds() {
+        return guildRepository.findAll();
+    }
+
+    public List<DiscordChannel> findAllChannels() {
+        return channelRepository.findAll();
+    }
+
+    public List<DiscordUser> findAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public Optional<DiscordUser> findUserById(String id) {
+        return userRepository.findById(id);
+    }
+
+    public DiscordUser saveUser(DiscordUser u) {
+        return userRepository.save(u);
+    }
+
+    public Optional<DiscordGuild> findGuildById(String id) {
+        return guildRepository.findById(id);
+    }
+
+    public DiscordGuild saveGuild(DiscordGuild g) {
+        return guildRepository.save(g);
+    }
+
+    public Optional<DiscordChannel> findChannelById(String id) {
+        return channelRepository.findById(id);
+    }
+
+    public DiscordChannel saveChannel(DiscordChannel ch) {
+        return channelRepository.save(ch);
     }
 }

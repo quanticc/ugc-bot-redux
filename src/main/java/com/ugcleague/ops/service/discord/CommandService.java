@@ -1,6 +1,7 @@
 package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordService;
+import com.ugcleague.ops.service.PermissionService;
 import com.ugcleague.ops.service.discord.command.*;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import com.ugcleague.ops.service.discord.util.StatusWrapper;

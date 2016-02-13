@@ -6,6 +6,7 @@ import com.ugcleague.ops.domain.Subscriber;
 import com.ugcleague.ops.repository.PublisherRepository;
 import com.ugcleague.ops.repository.SubscriberRepository;
 import com.ugcleague.ops.service.DiscordService;
+import com.ugcleague.ops.service.PermissionService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import joptsimple.OptionParser;

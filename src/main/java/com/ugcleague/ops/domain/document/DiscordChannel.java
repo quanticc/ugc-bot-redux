@@ -33,6 +33,10 @@ public class DiscordChannel extends AbstractAuditingEntity implements Permission
 
     }
 
+    public DiscordChannel(String id) {
+        this.id = id;
+    }
+
     public DiscordChannel(IChannel channel) {
         this.id = channel.getID();
         this.name = channel.getName();
