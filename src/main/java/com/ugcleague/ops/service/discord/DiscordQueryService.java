@@ -23,6 +23,7 @@ import sx.blah.discord.handle.impl.obj.Channel;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.json.responses.MessageResponse;
 import sx.blah.discord.util.HTTP429Exception;
+import sx.blah.discord.util.Image;
 import sx.blah.discord.util.Requests;
 
 import javax.annotation.PostConstruct;
@@ -199,17 +200,25 @@ public class DiscordQueryService {
             return null;
         }
         Optional<String> name = Optional.ofNullable(o.valueOf(profileNameSpec));
-        Optional<IDiscordClient.Image> avatar = Optional.ofNullable(o.valueOf(profileAvatarSpec)).map(s -> IDiscordClient.Image.forUrl("jpeg", s));
+        Optional<Image> avatar = Optional.ofNullable(o.valueOf(profileAvatarSpec)).map(s -> Image.forUrl("jpeg", s));
         Optional<String> game = Optional.ofNullable(o.valueOf(profileGameSpec));
         IDiscordClient client = discordService.getClient();
         client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE), game);
         try {
-            discordService.changeAccountInfo(name, avatar);
-            return "Account info changed";
+            if (name.isPresent()) {
+                discordService.changeUsername(name.get());
+            }
         } catch (DiscordException | InterruptedException e) {
             log.warn("Could not change account info", e);
-            return "Could not change account info";
         }
+        try {
+            if (avatar.isPresent()) {
+                discordService.changeAvatar(avatar.get());
+            }
+        } catch (DiscordException | InterruptedException e) {
+            log.warn("Could not change account info", e);
+        }
+        return "";
     }
 
     private String executeClearCommand(IMessage m, OptionSet optionSet) {

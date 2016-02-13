@@ -20,13 +20,13 @@ import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.HTTP429Exception;
+import sx.blah.discord.util.Image;
 
 import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -315,10 +315,22 @@ public class DiscordService implements DiscordSubscriber {
     }
 
     @Async
-    public void changeAccountInfo(Optional<String> name, Optional<IDiscordClient.Image> image) throws DiscordException, InterruptedException {
+    public void changeUsername(String name) throws DiscordException, InterruptedException {
         while (true) {
             try {
-                client.changeAccountInfo(name, Optional.empty(), Optional.empty(), image);
+                client.changeUsername(name);
+                return;
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+    }
+
+    @Async
+    public void changeAvatar(Image avatar) throws DiscordException, InterruptedException {
+        while (true) {
+            try {
+                client.changeAvatar(avatar);
                 return;
             } catch (HTTP429Exception e) {
                 sleep(e.getRetryDelay());
