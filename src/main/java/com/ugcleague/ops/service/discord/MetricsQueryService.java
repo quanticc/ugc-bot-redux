@@ -158,9 +158,9 @@ public class MetricsQueryService {
             HealthCheck.Result result = entry.getValue();
             String msg = result.getMessage();
             Throwable t = result.getError();
-            response.append("**").append(entry.getKey()).append("** ")
-                .append(result.isHealthy() ? "Healthy" : "**Unhealthy**")
-                .append(msg != null ? " *" + msg + "*" : "")
+            response.append(result.isHealthy() ? "[Healthy]" : "[Caution]")
+                .append(" **").append(entry.getKey()).append("** ")
+                .append(msg != null ? msg : "")
                 .append(t != null ? " and exception: *" + t.getMessage() + "*" : "").append("\n");
         }
         return response.toString();

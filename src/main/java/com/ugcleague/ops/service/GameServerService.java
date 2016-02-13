@@ -84,7 +84,7 @@ public class GameServerService {
                     return Result.healthy("All " + count + " game servers are OK");
                 } else {
                     String result = nonResponsiveServers.stream()
-                        .map(GameServer::getName).collect(Collectors.joining(", "));
+                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
                     return Result.unhealthy("Unresponsive: " + result);
                 }
             }
@@ -97,8 +97,8 @@ public class GameServerService {
                     return Result.healthy("All servers have a valid RCON password");
                 } else {
                     String result = rconlessServers.stream()
-                        .map(GameServer::getName).collect(Collectors.joining(", "));
-                    return Result.unhealthy("Missing passwords: " + result);
+                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
+                    return Result.unhealthy("Missing RCON passwords: " + result);
                 }
             }
         });
@@ -110,7 +110,7 @@ public class GameServerService {
                     return Result.healthy("All servers have the latest TF2 version");
                 } else {
                     String result = outdatedServers.stream()
-                        .map(GameServer::getName).collect(Collectors.joining(", "));
+                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
                     return Result.unhealthy("Outdated: " + result);
                 }
             }
