@@ -1,5 +1,8 @@
 package com.ugcleague.ops.service;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SlidingTimeWindowReservoir;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.discord.command.SplitMessage;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
@@ -7,12 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.api.ClientBuilder;
-import sx.blah.discord.api.DiscordException;
-import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.api.MissingPermissionsException;
+import sx.blah.discord.api.*;
 import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
@@ -30,8 +31,11 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
 
 @Service
 @Transactional
@@ -41,18 +45,23 @@ public class DiscordService implements DiscordSubscriber {
     private static final int LENGTH_LIMIT = 2000;
 
     private final LeagueProperties properties;
+    private final MetricRegistry metricRegistry;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
 
+    private Histogram responseTime;
+
     @Autowired
-    public DiscordService(LeagueProperties properties) {
+    public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry) {
         this.properties = properties;
+        this.metricRegistry = metricRegistry;
     }
 
     @PostConstruct
     private void configure() {
+        responseTime = metricRegistry.register("discord.ws.responseTime", new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.HOURS)));
         if (properties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
@@ -338,6 +347,39 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    @Async
+    public CompletableFuture<List<DiscordStatus.Maintenance>> getActiveMaintenances() throws DiscordException, InterruptedException {
+        DiscordStatus.Maintenance[] response = null;
+        while (response == null) {
+            try {
+                response = DiscordStatus.getActiveMaintenances();
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(asList(response));
+    }
+
+    @Async
+    public CompletableFuture<List<DiscordStatus.Maintenance>> getUpcomingMaintenances() throws DiscordException, InterruptedException {
+        DiscordStatus.Maintenance[] response = null;
+        while (response == null) {
+            try {
+                response = DiscordStatus.getUpcomingMaintenances();
+            } catch (HTTP429Exception e) {
+                sleep(e.getRetryDelay());
+            }
+        }
+        return CompletableFuture.completedFuture(asList(response));
+    }
+
+    @Scheduled(cron = "*/10 * * * * *")
+    void checkResponseTime() {
+        if (client != null && client.isReady()) {
+            responseTime.update(client.getResponseTime());
+        }
+    }
+
     public static String guildString(IGuild guild, IUser user) {
         String id = guild.getID();
         String name = guild.getName();
@@ -372,7 +414,7 @@ public class DiscordService implements DiscordSubscriber {
     public static String channelString(IChannel channel, IUser user) {
         String id = channel.getID();
         String name = channel.getName();
-        String topic = channel.getTopic();
+        String topic = channel.isPrivate() ? "<private channel>" : channel.getTopic();
         String permissions = channel.getModifiedPermissions(user).toString();
         return "Channel ["
             + "id='" + id

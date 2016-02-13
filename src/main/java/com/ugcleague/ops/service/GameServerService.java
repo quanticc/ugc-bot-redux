@@ -1,5 +1,10 @@
 package com.ugcleague.ops.service;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SlidingTimeWindowReservoir;
+import com.codahale.metrics.health.HealthCheck;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
@@ -29,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -44,6 +50,8 @@ public class GameServerService {
     private final GameServerRepository gameServerRepository;
     private final FlagRepository flagRepository;
     private final ApplicationEventPublisher publisher;
+    private final MetricRegistry metricRegistry;
+    private final HealthCheckRegistry healthCheckRegistry;
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
     private final DeadServerMap deadServerMap = new DeadServerMap();
@@ -51,18 +59,67 @@ public class GameServerService {
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
                              AdminPanelService adminPanelService, FlagRepository flagRepository,
-                             ApplicationEventPublisher publisher) {
+                             ApplicationEventPublisher publisher, MetricRegistry metricRegistry,
+                             HealthCheckRegistry healthCheckRegistry) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
         this.flagRepository = flagRepository;
         this.publisher = publisher;
+        this.metricRegistry = metricRegistry;
+        this.healthCheckRegistry = healthCheckRegistry;
     }
 
     @PostConstruct
     private void configure() {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
+        }
+        healthCheckRegistry.register("gameServers.pingCheck", new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                long count = gameServerRepository.count();
+                List<GameServer> nonResponsiveServers = gameServerRepository.findByPingLessThanEqual(0);
+                if (nonResponsiveServers.isEmpty()) {
+                    return Result.healthy("All " + count + " game servers are OK");
+                } else {
+                    String result = nonResponsiveServers.stream()
+                        .map(GameServer::getName).collect(Collectors.joining(", "));
+                    return Result.unhealthy("Unresponsive: " + result);
+                }
+            }
+        });
+        healthCheckRegistry.register("gameServers.validRconCheck", new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                List<GameServer> rconlessServers = gameServerRepository.findByRconPasswordIsNull();
+                if (rconlessServers.isEmpty()) {
+                    return Result.healthy("All servers have a valid RCON password");
+                } else {
+                    String result = rconlessServers.stream()
+                        .map(GameServer::getName).collect(Collectors.joining(", "));
+                    return Result.unhealthy("Missing passwords: " + result);
+                }
+            }
+        });
+        healthCheckRegistry.register("gameServers.version", new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                List<GameServer> outdatedServers = findOutdatedServers();
+                if (outdatedServers.isEmpty()) {
+                    return Result.healthy("All servers have the latest TF2 version");
+                } else {
+                    String result = outdatedServers.stream()
+                        .map(GameServer::getName).collect(Collectors.joining(", "));
+                    return Result.unhealthy("Outdated: " + result);
+                }
+            }
+        });
+        for (GameServer server : gameServerRepository.findAll()) {
+            metricRegistry.register("gameServers." + server.getShortName() + ".ping",
+                new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
+            metricRegistry.register("gameServers." + server.getShortName() + ".players",
+                new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
         }
     }
 
@@ -120,8 +177,8 @@ public class GameServerService {
         log.debug("Refreshing RCON password data: {}", server.getName());
         try {
             Map<String, String> result = adminPanelService.getServerConfig(server.getSubId());
-            server.setRconPassword(result.get("rcon_password"));
-            server.setSvPassword(result.get("sv_password"));
+            server.setRconPassword(result.get("rcon_password")); // can be null if the server is bugged
+            server.setSvPassword(result.get("sv_password")); // can be null if the server is bugged
             server.setLastRconDate(ZonedDateTime.now());
             return gameServerRepository.save(server);
         } catch (RemoteAccessException | IOException e) {
@@ -189,6 +246,8 @@ public class GameServerService {
             } else {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
             }
+            metricRegistry.histogram("gameServers." + server.getShortName() + ".ping").update(server.getPing());
+            metricRegistry.histogram("gameServers." + server.getShortName() + ".players").update(server.getPlayers());
         }
         return server;
     }

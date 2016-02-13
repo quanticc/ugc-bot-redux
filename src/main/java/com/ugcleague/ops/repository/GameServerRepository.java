@@ -38,4 +38,7 @@ public interface GameServerRepository extends JpaRepository<GameServer, Long> {
 
     Stream<GameServer> findByLastGameUpdateBeforeAndVersionLessThan(ZonedDateTime date, Integer version);
 
+    List<GameServer> findByPingLessThanEqual(Integer ping);
+
+    List<GameServer> findByRconPasswordIsNull();
 }

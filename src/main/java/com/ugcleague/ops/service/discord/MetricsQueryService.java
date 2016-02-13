@@ -56,7 +56,7 @@ public class MetricsQueryService {
         metricsNonOptionSpec = parser.nonOptions("Metric, list of metrics or metric types to display. " +
             "For instance: \"jvm\" would match all metrics starting with that key. If you enter a metric type " +
             "(meter, counter, timer, gauge, histogram) you will get a list of possible metrics of that kind.").ofType(String.class);
-        commandService.register(CommandBuilder.combined(".metrics").master().parser(parser)
+        commandService.register(CommandBuilder.combined(".metrics").master().originReplies().mention().parser(parser)
             .description("Show metrics about the application").command(this::metricsCommand).build());
     }
 
@@ -143,7 +143,7 @@ public class MetricsQueryService {
     }
 
     private void initHealthCommand() {
-        commandService.register(CommandBuilder.equalsTo(".health").master().queued()
+        commandService.register(CommandBuilder.equalsTo(".health").support().permissionReplies().mention().queued()
             .description("Show health checks about the application").command(this::healthCheckCommand).build());
     }
 
@@ -153,14 +153,15 @@ public class MetricsQueryService {
             return "No health checks registered";
         }
         Map<String, HealthCheck.Result> resultMap = healthCheckRegistry.runHealthChecks();
+        response.append("*Health check results*\n");
         for (Map.Entry<String, HealthCheck.Result> entry : resultMap.entrySet()) {
             HealthCheck.Result result = entry.getValue();
             String msg = result.getMessage();
             Throwable t = result.getError();
             response.append("**").append(entry.getKey()).append("** ")
-                .append(result.isHealthy() ? "[Healthy]" : "[**Error**]")
-                .append(msg != null ? " with message: " + msg : "")
-                .append(t != null ? " and exception: " + t.toString() : "").append("\n");
+                .append(result.isHealthy() ? "Healthy" : "**Unhealthy**")
+                .append(msg != null ? " *" + msg + "*" : "")
+                .append(t != null ? " and exception: *" + t.getMessage() + "*" : "").append("\n");
         }
         return response.toString();
     }
