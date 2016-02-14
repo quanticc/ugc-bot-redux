@@ -101,7 +101,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         userRepository.save(message.getAuthor());
         messageRepository.save(message);
         message.getChannel().getMessages().add(message);
-        message.getAuthor().getMessages().add(message);
+        //message.getAuthor().getMessages().add(message);
         channelRepository.save(message.getChannel());
         userRepository.save(message.getAuthor());
     }

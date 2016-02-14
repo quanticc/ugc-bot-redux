@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sx.blah.discord.handle.obj.IMessage;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -40,10 +41,21 @@ public class ScriptService {
         this.permissionService = permissionService;
     }
 
-    public Map<String, Object> executeScript(String script) {
+    private GroovyShell createShell(Map<String, Object> bindingValues) {
+        bindingValues.put("context", context);
+        bindingValues.put("entityManager", entityManager);
+        bindingValues.put("discord", discordService);
+        bindingValues.put("gameServer", gameServerService);
+        bindingValues.put("permission", permissionService);
+        bindingValues.put("client", discordService.getClient());
+        bindingValues.put("bot", discordService.getClient().getOurUser());
+        return new GroovyShell(this.getClass().getClassLoader(), new Binding(bindingValues));
+    }
+
+    public Map<String, Object> executeScript(String script, IMessage message) {
         log.info("Executing Script: " + script);
         try {
-            return eval(script);
+            return eval(script, message);
         } catch (Throwable t) {
             log.warn("Error while evaluating script", t);
             Map<String, Object> resultMap = new LinkedHashMap<>();
@@ -52,7 +64,7 @@ public class ScriptService {
         }
     }
 
-    public Map<String, Object> eval(String script) {
+    public Map<String, Object> eval(String script, IMessage message) {
         Map<String, Object> resultMap = new LinkedHashMap<>();
         resultMap.put("script", script);
         resultMap.put("startTime", ZonedDateTime.now());
@@ -62,8 +74,11 @@ public class ScriptService {
         systemOutputInterceptor.start();
 
         try {
-            Map<String, Object> bindingValues = new LinkedHashMap<>();
-            resultMap.put("result", eval(script, bindingValues));
+            Map<String, Object> scope = new LinkedHashMap<>();
+            scope.put("message", message);
+            scope.put("channel", message.getChannel());
+            scope.put("author", message.getAuthor());
+            resultMap.put("result", evalWithScope(script, scope));
         } catch (Throwable t) {
             log.error("Could not bind result", t);
             resultMap.put("error", t.getMessage());
@@ -74,30 +89,20 @@ public class ScriptService {
         String output = outputCollector.getStringBuffer().toString().trim();
         StringBuilder builder = new StringBuilder();
         for (String line : output.split("\n")) {
-            String[] tokens = line.split("\\[0;39m ");
-            builder.append(tokens[tokens.length - 1]).append("\n");
+            if (!line.isEmpty()) {
+                String[] tokens = line.split("\\[0;39m ");
+                builder.append(tokens[tokens.length - 1]).append("\n");
+            }
         }
         resultMap.put("output", builder.toString());
         resultMap.put("endTime", ZonedDateTime.now());
         return resultMap;
     }
 
-    public String eval(String script, Map<String, Object> bindingValues) {
-        GroovyShell shell = createShell(bindingValues);
-        Object result = shell.evaluate(script);
+    public String evalWithScope(String script, Map<String, Object> scope) {
+        Object result = createShell(scope).evaluate(script);
         String resultString = result != null ? result.toString() : "null";
         log.trace("eval() result: " + resultString);
         return resultString;
-    }
-
-    private GroovyShell createShell(Map<String, Object> bindingValues) {
-        bindingValues.put("context", context);
-        bindingValues.put("entityManager", entityManager);
-        bindingValues.put("discord", discordService);
-        bindingValues.put("gameServer", gameServerService);
-        bindingValues.put("permission", permissionService);
-        bindingValues.put("client", discordService.getClient());
-        bindingValues.put("bot", discordService.getClient().getOurUser());
-        return new GroovyShell(this.getClass().getClassLoader(), new Binding(bindingValues));
     }
 }

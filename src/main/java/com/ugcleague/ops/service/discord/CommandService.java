@@ -148,41 +148,52 @@ public class CommandService implements DiscordSubscriber {
         Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
         if (match.isPresent()) {
             Command command = match.get();
-            if (canExecute(command, m.getAuthor(), m.getChannel())) {
-                // cut away the "command" portion of the message
-                String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
-                args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
-                // add gatekeeper logic
-                log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
-                    command.getKey(), args);
-                if (command.isQueued()) {
-                    CommandJob job = new CommandJob(command, m, args);
-                    String key = m.getAuthor().getID();
-                    if (gatekeeper.getQueuedJobCount(key) > 0) {
-                        tryReplyFrom(m, command, "Please wait until your previous command finishes running");
-                    } else {
-                        statusReplyFrom(m, command, "Your command will be executed shortly...");
-                        CompletableFuture<String> future = gatekeeper.queue(key, job);
-                        // handle response and then delete status command
-                        future.thenAccept(response -> handleResponse(m, command, response))
-                            .thenRun(() -> statusReplyFrom(m, command, (String) null));
-                    }
+            log.debug("Preparing to check {}, {}, {}", command.getPermission().getKey(), m.getAuthor().getID(), m.getChannel().getID());
+            CompletableFuture.runAsync(() -> tryExecute(event, command))
+                .exceptionally(t -> {
+                    log.warn("Something happened while trying to execute command", t);
+                    return null;
+                });
+        }
+    }
+
+    private void tryExecute(MessageReceivedEvent event, Command command) {
+        IMessage m = event.getMessage();
+        String content = m.getContent();
+        if (canExecute(command, m.getAuthor(), m.getChannel())) {
+            // cut away the "command" portion of the message
+            String args = content.substring(content.indexOf(command.getKey()) + command.getKey().length());
+            args = args.startsWith(" ") ? args.split(" ", 2)[1] : null;
+            // add gatekeeper logic
+            log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
+                command.getKey(), args);
+            if (command.isQueued()) {
+                CommandJob job = new CommandJob(command, m, args);
+                String key = m.getAuthor().getID();
+                if (gatekeeper.getQueuedJobCount(key) > 0) {
+                    tryReplyFrom(m, command, "Please wait until your previous command finishes running");
                 } else {
-                    try {
-                        String response = command.execute(m, args);
-                        handleResponse(m, command, response);
-                        // ignore empty responses (no action)
-                    } catch (OptionException e) {
-                        log.warn("Invalid call: {}", e.toString());
-                        helpReplyFrom(m, command, e.getMessage());
-                    }
-                    invokerToStatusMap.remove(m.getID());
+                    statusReplyFrom(m, command, "Your command will be executed shortly...");
+                    CompletableFuture<String> future = gatekeeper.queue(key, job);
+                    // handle response and then delete status command
+                    future.thenAccept(response -> handleResponse(m, command, response))
+                        .thenRun(() -> statusReplyFrom(m, command, (String) null));
                 }
             } else {
-                // fail silently
-                log.debug("User {} has no permission to run {} (requires {})", format(m.getAuthor()),
-                    command.getKey(), command.getPermission());
+                try {
+                    String response = command.execute(m, args);
+                    handleResponse(m, command, response);
+                    // ignore empty responses (no action)
+                } catch (OptionException e) {
+                    log.warn("Invalid call: {}", e.toString());
+                    helpReplyFrom(m, command, e.getMessage());
+                }
+                invokerToStatusMap.remove(m.getID());
             }
+        } else {
+            // fail silently
+            log.debug("User {} has no permission to run {} (requires {})", format(m.getAuthor()),
+                command.getKey(), command.getPermission());
         }
     }
 

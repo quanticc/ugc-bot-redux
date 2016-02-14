@@ -34,16 +34,12 @@ public class ScriptCommand {
 
     private String eval(IMessage message, OptionSet optionSet) {
         String script = message.getContent().split(" ", 2)[1];
-        Map<String, Object> result = scriptService.executeScript(script);
+        Map<String, Object> result = scriptService.executeScript(script, message);
         log.debug("eval result: {}", result);
-        String response = "";
-        if (message.getChannel().isPrivate()) {
-            response += result.get("output");
-        }
         if (result.containsKey("error")) {
-            return response + sanitize("```\n" + result.get("error") + "\n```");
+            return sanitize("```\n" + result.get("error") + "\n```");
         } else {
-            return response + sanitize((response.isEmpty() ? "" : "\n") + result.get("result"));
+            return sanitize("" + result.get("result"));
         }
     }
 

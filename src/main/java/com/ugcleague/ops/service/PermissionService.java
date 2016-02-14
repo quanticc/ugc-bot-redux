@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service;
 
+import com.codahale.metrics.annotation.Timed;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.domain.util.PermissionProvider;
@@ -161,15 +162,16 @@ public class PermissionService {
      * @param channel        action location
      * @return <code>true</code> if the user is allowed to perform the action, <code>false</code> otherwise.
      */
+    @Timed
     public boolean canPerform(String permissionName, IUser user, IChannel channel) {
-        Triple<String, String, String> triple = Triple.of(permissionName, user.getID(), channel.getID());
-        Boolean cached = permissionCache.get(triple);
+        Triple<String, String, String> key = Triple.of(permissionName, user.getID(), channel.getID());
+        Boolean cached = permissionCache.get(key);
         if (cached != null) {
             return cached;
         } else {
             boolean result = slowCanPerform(permissionName, user, channel);
-            log.debug("Caching result of {} -> {}", triple, result);
-            permissionCache.put(triple, result);
+            log.debug("Caching result of {} -> {}", key, result);
+            permissionCache.put(key, result);
             return result;
         }
     }

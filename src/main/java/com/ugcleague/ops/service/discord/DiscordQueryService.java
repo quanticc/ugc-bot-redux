@@ -37,6 +37,7 @@ import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -102,6 +103,20 @@ public class DiscordQueryService {
             }).build());
         initRateTestCommand();
         initProfileCommand();
+        commandService.register(CommandBuilder.equalsTo(".beep gc")
+            .description("Run GC").master().command((message, optionSet) -> {
+                CompletableFuture.runAsync(System::gc);
+                return "";
+            }).build());
+        commandService.register(CommandBuilder.equalsTo(".beep guilds")
+            .description("Display the currently saved guilds").master().command((message, optionSet) -> {
+                List<IGuild> guildList = discordService.getClient().getGuilds();
+                StringBuilder builder = new StringBuilder();
+                for (IGuild guild : guildList) {
+                    builder.append(DiscordService.guildString(guild, discordService.getClient().getOurUser())).append("\n");
+                }
+                return builder.toString();
+            }).build());
     }
 
     private void initRateTestCommand() {
