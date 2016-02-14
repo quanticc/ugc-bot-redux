@@ -28,6 +28,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -414,14 +415,24 @@ public class DiscordService implements DiscordSubscriber {
     public static String channelString(IChannel channel, IUser user) {
         String id = channel.getID();
         String name = channel.getName();
-        String topic = channel.isPrivate() ? "<private channel>" : channel.getTopic();
-        String permissions = channel.isPrivate() ? "<private channel>" : channel.getModifiedPermissions(user).toString();
+        String topic = channel.getTopic();
+        String roleOverrides = channel.getRoleOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
+        String userOverrides = channel.getUserOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
+        String userModifiedPermissions = channel.getModifiedPermissions(user).toString();
         return "Channel ["
-            + "id='" + id
-            + "', name='" + name
-            + "', topic='" + topic
-            + "', permissions=" + permissions
+            + "id='" + id + '\''
+            + ", name='" + name + '\''
+            + ", topic='" + topic + '\''
+            + ", roleOverrides=" + roleOverrides
+            + ", userOverrides=" + userOverrides
+            + ", userModifiedPermissions=" + userModifiedPermissions
+            //+ ", roleModifiedPermissionsPerRole=" + channel.getGuild().getRoles().stream()
+            //.map(r -> "{" + r.getName() + " -> " + channel.getModifiedPermissions(r).toString() + "}").collect(Collectors.joining(", "))
             + "']";
+    }
+
+    private static String permOverrideEntryToString(Map.Entry<String, IChannel.PermissionOverride> e) {
+        return "{" + e.getKey() + " -> allow=" + e.getValue().allow() + ", deny=" + e.getValue().deny() + "}";
     }
 
     public static String userString(IUser user) {
