@@ -74,18 +74,21 @@ public class DiscordQueryService {
         commandService.register(CommandBuilder.equalsTo(".beep info")
             .description("Get Discord information about the bot").unrestricted().originReplies()
             .command(this::executeInfoCommand).build());
-        commandService.register(CommandBuilder.equalsTo(".beep clear")
+        commandService.register(CommandBuilder.equalsTo(".clear")
             .description("Remove all of bot's messages from this channel").unrestricted()
             .command(this::executeClearCommand).build());
+        commandService.register(CommandBuilder.startsWith(".prune")
+            .description("Remove bot's last N messages").unrestricted()
+            .command(this::executePruneCommand).build());
         commandService.register(CommandBuilder.equalsTo(".beep boop")
             .description("Test command please ignore").unrestricted()
             .command(this::executePMCommand).build());
-        commandService.register(CommandBuilder.equalsTo(".beep load")
-            .description("Load more messages in this channel").master().experimental()
-            .command((message, optionSet) -> {
-                message.getChannel().getMessages().load(50);
-                return "";
-            }).build());
+//        commandService.register(CommandBuilder.equalsTo(".beep load")
+//            .description("Load more messages in this channel").master().experimental()
+//            .command((message, optionSet) -> {
+//                message.getChannel().getMessages().load(50);
+//                return "";
+//            }).build());
         commandService.register(CommandBuilder.equalsTo(".beep exit")
             .description("Exit discord").master().experimental()
             .command((message, optionSet) -> {
@@ -239,10 +242,25 @@ public class DiscordQueryService {
     }
 
     private String executeClearCommand(IMessage m, OptionSet optionSet) {
+        deleteLastMessages(m, Long.MAX_VALUE);
+        return "";
+    }
+
+    private String executePruneCommand(IMessage m, OptionSet optionSet) {
+        String arg = m.getContent().split(" ", 2)[1];
+        long limit = Long.MAX_VALUE;
+        if (arg.matches("[0-9]+")) {
+            limit = Long.parseLong(arg);
+        }
+        deleteLastMessages(m, limit);
+        return "";
+    }
+
+    private void deleteLastMessages(IMessage m , long limit) {
         IDiscordClient client = discordService.getClient();
         IChannel c = client.getChannelByID(m.getChannel().getID());
         if (c != null) {
-            c.getMessages().stream().filter(message -> message.getAuthor().getID()
+            c.getMessages().stream().limit(limit).filter(message -> message.getAuthor().getID()
                 .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
                 try {
                     discordService.deleteMessage(message);
@@ -255,7 +273,6 @@ public class DiscordQueryService {
                 }
             });
         }
-        return "";
     }
 
     private String executeInfoCommand(IMessage m, OptionSet o) {
