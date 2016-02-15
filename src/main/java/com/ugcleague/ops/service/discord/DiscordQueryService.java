@@ -8,25 +8,22 @@ import com.ugcleague.ops.service.util.GitProperties;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
-import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestOperations;
+import org.springframework.xml.xpath.XPathOperations;
+import org.w3c.dom.Element;
 import sx.blah.discord.Discord4J;
-import sx.blah.discord.api.DiscordEndpoints;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.MissingPermissionsException;
-import sx.blah.discord.api.internal.DiscordUtils;
-import sx.blah.discord.handle.impl.obj.Channel;
 import sx.blah.discord.handle.obj.*;
-import sx.blah.discord.json.responses.MessageResponse;
-import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Image;
-import sx.blah.discord.util.Requests;
 
 import javax.annotation.PostConstruct;
+import javax.xml.transform.Source;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -36,7 +33,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +48,8 @@ public class DiscordQueryService {
 
     private final CommandService commandService;
     private final DiscordService discordService;
+    private final RestOperations restTemplate;
+    private final XPathOperations xPathTemplate;
 
     private OptionSpec<String> profileNameSpec;
     private OptionSpec<String> profileAvatarSpec;
@@ -63,9 +61,12 @@ public class DiscordQueryService {
     private Command rateCommand;
 
     @Autowired
-    public DiscordQueryService(CommandService commandService, DiscordService discordService) {
+    public DiscordQueryService(CommandService commandService, DiscordService discordService,
+                               RestOperations restTemplate, XPathOperations xPathTemplate) {
         this.commandService = commandService;
         this.discordService = discordService;
+        this.restTemplate = restTemplate;
+        this.xPathTemplate = xPathTemplate;
     }
 
     @PostConstruct
@@ -82,11 +83,7 @@ public class DiscordQueryService {
         commandService.register(CommandBuilder.equalsTo(".beep load")
             .description("Load more messages in this channel").master().experimental()
             .command((message, optionSet) -> {
-                try {
-                    loadChannelMessages(discordService.getClient(), (Channel) message.getChannel());
-                } catch (IOException | HTTP429Exception | DiscordException e) {
-                    log.warn("Could not load messages", e);
-                }
+                message.getChannel().getMessages().load(50);
                 return "";
             }).build());
         commandService.register(CommandBuilder.equalsTo(".beep exit")
@@ -116,6 +113,31 @@ public class DiscordQueryService {
                     builder.append(DiscordService.guildString(guild, discordService.getClient().getOurUser())).append("\n");
                 }
                 return builder.toString();
+            }).build());
+        commandService.register(CommandBuilder.equalsTo(".cat")
+            .description("(=ↀωↀ=)✧").support().originReplies().command((message, optionSet) -> {
+                String url = "http://thecatapi.com/api/images/get?format=xml";
+                CompletableFuture.supplyAsync(() -> {
+                    Source source = restTemplate.getForObject(url, Source.class);
+                    List<String> images = xPathTemplate.evaluate("//image", source, (node, i) -> {
+                        Element image = (Element) node;
+                        return image.getElementsByTagName("url").item(0).getTextContent();
+                    });
+                    if (images != null && !images.isEmpty()) {
+                        return images.get(0);
+                    } else {
+                        return "";
+                    }
+                }).thenAccept(s -> {
+                    if (!s.isEmpty()) {
+                        try {
+                            discordService.sendMessage(message.getChannel(), s);
+                        } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
+                            log.warn("Could not send cat response: {}", e.toString());
+                        }
+                    }
+                });
+                return "";
             }).build());
     }
 
@@ -164,26 +186,6 @@ public class DiscordQueryService {
             log.warn("Could not send PM to user: {}", e.toString());
         }
         return "";
-    }
-
-    public static void loadChannelMessages(IDiscordClient client, Channel channel) throws IOException, HTTP429Exception, DiscordException {
-        try {
-            if (!(channel instanceof IPrivateChannel) && !(channel instanceof IVoiceChannel))
-                DiscordUtils.checkPermissions(client, channel, EnumSet.of(Permissions.READ_MESSAGE_HISTORY));
-        } catch (MissingPermissionsException e) {
-            Discord4J.LOGGER.warn("Error getting messages for channel " + channel.getName() + ": {}", e.getErrorMessage());
-            return;
-        }
-
-        IMessage oldest = channel.getMessages().get(channel.getMessages().size() - 1);
-        String before = oldest.getID();
-        String response = Requests.GET.makeRequest(DiscordEndpoints.CHANNELS + channel.getID() + "/messages?limit=50&before=" + before,
-            new BasicNameValuePair("authorization", client.getToken()));
-        MessageResponse[] messages = DiscordUtils.GSON.fromJson(response, MessageResponse[].class);
-
-        for (MessageResponse message : messages) {
-            channel.addMessage(DiscordUtils.getMessageFromJSON(client, channel, message));
-        }
     }
 
     public static String randomMessage() {
