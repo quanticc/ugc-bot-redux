@@ -68,7 +68,7 @@ public class ServerQueryService {
         initRconCommand();
         initDeadCommand();
         initInsecureCommand();
-        commandService.register(CommandBuilder.startsWith(".servers")
+        commandService.register(CommandBuilder.equalsTo(".servers")
             .description("Show UGC game servers").support().permissionReplies()
             .queued().command((message, optionSet) -> gameServerService.findAll().stream()
                 .map(g -> String.format("[**%s**] %s %s", g.getShortName(), g.getName(), g.getAddress()))
