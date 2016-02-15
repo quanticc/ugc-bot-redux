@@ -68,6 +68,11 @@ public class ServerQueryService {
         initRconCommand();
         initDeadCommand();
         initInsecureCommand();
+        commandService.register(CommandBuilder.startsWith(".servers")
+            .description("Show UGC game servers").support().permissionReplies()
+            .queued().command((message, optionSet) -> gameServerService.findAll().stream()
+                .map(g -> String.format("[**%s**] %s %s", g.getShortName(), g.getName(), g.getAddress()))
+                .collect(Collectors.joining("\n"))).build());
     }
 
     private void initConnectCommand() {
