@@ -22,8 +22,6 @@ public class DiscordChannel extends AbstractAuditingEntity implements Permission
     @DBRef
     private DiscordGuild guild;
     @DBRef
-    private Set<DiscordMessage> messages = new LinkedHashSet<>();
-    @DBRef
     private Set<Permission> allowed = new LinkedHashSet<>();
     @DBRef
     private Set<Permission> denied = new LinkedHashSet<>();
@@ -75,14 +73,6 @@ public class DiscordChannel extends AbstractAuditingEntity implements Permission
         this.guild = guild;
     }
 
-    public Set<DiscordMessage> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(Set<DiscordMessage> messages) {
-        this.messages = messages;
-    }
-
     public Set<Permission> getAllowed() {
         return allowed;
     }
@@ -127,7 +117,6 @@ public class DiscordChannel extends AbstractAuditingEntity implements Permission
             ", name='" + name + '\'' +
             ", isPrivate=" + isPrivate +
             ", guild=" + (guild != null ? guild.getId() : "null") +
-            ", messages=" + messages +
             ", allowed=" + allowed +
             ", denied=" + denied +
             //", events=" + events +

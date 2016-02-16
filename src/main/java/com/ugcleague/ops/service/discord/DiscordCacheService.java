@@ -20,7 +20,6 @@ import sx.blah.discord.handle.obj.*;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -100,8 +99,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         }
         userRepository.save(message.getAuthor());
         messageRepository.save(message);
-        message.getChannel().getMessages().add(message);
-        //message.getAuthor().getMessages().add(message);
         channelRepository.save(message.getChannel());
         userRepository.save(message.getAuthor());
     }
@@ -109,7 +106,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     @EventSubscriber
     public void onMessageDeleted(MessageDeleteEvent event) {
         IMessage message = event.getMessage();
-        if (message.getContent().startsWith(".")) {
+        if (message != null && message.getContent() != null && message.getContent().startsWith(".")) {
             messageRepository.findById(message.getID()).ifPresent(msg -> {
                 msg.setDeleted(true);
                 msg.getEvents().add(new Event("deleted_message"));
@@ -120,7 +117,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
 
     @EventSubscriber
     public void onUserJoin(UserJoinEvent event) {
-        LocalDateTime timestamp = event.getJoinTime();
         IUser user = event.getUser();
         DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> newDiscordUser(user));
         Event joined = new Event();
