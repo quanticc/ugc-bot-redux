@@ -34,16 +34,13 @@ public class ScriptCommand {
 
     private String eval(IMessage message, OptionSet optionSet) {
         String script = message.getContent().split(" ", 2)[1];
+        script = script.replace("`", "").replace("\n", "");
         Map<String, Object> result = scriptService.executeScript(script, message);
         log.debug("eval result: {}", result);
         if (result.containsKey("error")) {
-            return sanitize("```\n" + result.get("error") + "\n```");
+            return "```\n" + result.get("error") + "\n```";
         } else {
-            return sanitize("" + result.get("result"));
+            return "" + result.get("result");
         }
-    }
-
-    private String sanitize(String s) {
-        return s.replace("@everyone", "everyone");
     }
 }
