@@ -206,7 +206,7 @@ public class DiscordService implements DiscordSubscriber {
     public void leaveGuild(IGuild guild) throws DiscordException, InterruptedException {
         while (true) {
             try {
-                guild.deleteOrLeaveGuild();
+                guild.leaveGuild();
                 return;
             } catch (HTTP429Exception e) {
                 sleep(e.getRetryDelay());

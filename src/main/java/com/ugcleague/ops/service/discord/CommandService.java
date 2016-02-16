@@ -29,10 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.Util.padRight;
@@ -47,18 +44,21 @@ public class CommandService implements DiscordSubscriber {
 
     private final DiscordService discordService;
     private final PermissionService permissionService;
-    private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Gatekeeper gatekeeper;
+    private final Executor taskExecutor;
+    private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
 
     private OptionSpec<String> helpNonOptionSpec;
     private OptionSpec<Boolean> helpFullSpec;
 
     @Autowired
-    public CommandService(DiscordService discordService, PermissionService permissionService, Gatekeeper gatekeeper) {
+    public CommandService(DiscordService discordService, PermissionService permissionService,
+                          Gatekeeper gatekeeper, Executor taskExecutor) {
         this.discordService = discordService;
         this.permissionService = permissionService;
         this.gatekeeper = gatekeeper;
+        this.taskExecutor = taskExecutor;
     }
 
     @PostConstruct
@@ -148,8 +148,7 @@ public class CommandService implements DiscordSubscriber {
         Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
         if (match.isPresent()) {
             Command command = match.get();
-            log.debug("Preparing to check {}, {}, {}", command.getPermission().getKey(), m.getAuthor().getID(), m.getChannel().getID());
-            CompletableFuture.runAsync(() -> tryExecute(event, command))
+            CompletableFuture.runAsync(() -> tryExecute(event, command), taskExecutor)
                 .exceptionally(t -> {
                     log.warn("Something happened while trying to execute command", t);
                     return null;
