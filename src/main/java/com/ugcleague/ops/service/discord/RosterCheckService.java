@@ -14,8 +14,13 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -84,6 +89,7 @@ public class RosterCheckService {
             .append(rightPad("Division", divWidth)).append(rightPad("Mode", formatWidth))
             .append("\n")
             .append(repeat('-', nameWidth + teamWidth + divWidth + formatWidth)).append("\n");
+        StringBuilder recentJoinsBuilder = new StringBuilder();
         for (RosterData player : result) {
             if (player.getUgcData() == null || player.getUgcData().getTeam() == null || player.getUgcData().getTeam().isEmpty()) {
                 builder.append(rightPad(player.getServerName(), nameWidth)).append("\n");
@@ -94,13 +100,25 @@ public class RosterCheckService {
                         builder.append(rightPad(first ? player.getServerName() : "", nameWidth))
                             .append(rightPad(team.getName(), teamWidth))
                             .append(rightPad(team.getDivision(), divWidth))
-                            .append(rightPad(team.getFormat(), formatWidth))
+                            .append(rightPad(team.getFormat().equals("9v9") ? "HL" : team.getFormat(), formatWidth))
                             .append("\n");
                         first = false;
+                        if (isRecentJoin(team.getJoined())) {
+                            recentJoinsBuilder.append("\n*Warning* ")
+                                .append(player.getServerName())
+                                .append(" joined ").append(team.getName())
+                                .append(" less than 18 hours ago!");
+                        }
                     }
                 }
             }
         }
-        return builder.append("```").toString();
+        return builder.append("```").append(recentJoinsBuilder.toString()).toString();
+    }
+
+    private boolean isRecentJoin(String ugcFormatDate) {
+        LocalDateTime date = LocalDateTime.parse(ugcFormatDate, DateTimeFormatter.ofPattern("MMMM, dd yyyy HH:mm:ss", Locale.ENGLISH));
+        ZonedDateTime join = date.atZone(ZoneId.of("America/New_York"));
+        return ZonedDateTime.now().minusHours(18).isBefore(join);
     }
 }
