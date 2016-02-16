@@ -34,7 +34,7 @@ public class ScriptCommand {
 
     private String eval(IMessage message, OptionSet optionSet) {
         String script = message.getContent().split(" ", 2)[1];
-        script = script.replace("`", "").replace("\n", "");
+        script = script.replace("`", "");
         Map<String, Object> result = scriptService.executeScript(script, message);
         log.debug("eval result: {}", result);
         if (result.containsKey("error")) {
