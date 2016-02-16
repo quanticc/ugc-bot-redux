@@ -262,7 +262,7 @@ public class PermissionQueryService {
         DiscordUser u = cacheService.findUserById(user.getID()).orElseGet(() -> new DiscordUser(user));
         changePermission(op, permission, u);
         u = cacheService.saveUser(u);
-        log.info("Saving new permission data: {}", u);
+        log.info("Saving new user permission settings: {}", u);
         permissionService.evict();
         return String.format("Modified user %s: %s permission %s", u.getName(), op.name().toLowerCase(), permission.getName());
     }
@@ -271,7 +271,7 @@ public class PermissionQueryService {
         DiscordGuild g = cacheService.findGuildById(guild.getID()).orElseGet(() -> new DiscordGuild(guild));
         changePermission(op, permission, g);
         g = cacheService.saveGuild(g);
-        log.info("Saving new permission data: {}", g);
+        log.info("Saving new guild permission settings: {}", g);
         permissionService.evict();
         return String.format("Modified server %s: %s permission %s", g.getName(), op.name().toLowerCase(), permission.getName());
     }
@@ -290,9 +290,12 @@ public class PermissionQueryService {
             edit = new DiscordRole(role);
             g.getRoles().add(edit);
         }
+        if (edit.getName() == null) {
+            edit.setName(role.getName());
+        }
         changePermission(op, permission, edit);
         g = cacheService.saveGuild(g);
-        log.info("Saving new permission data: {}", g);
+        log.info("Saving new guild/role permission settings: {}", g);
         permissionService.evict();
         return String.format("Modified role %s: %s permission %s", edit.getName(), op.name().toLowerCase(), permission.getName());
     }
