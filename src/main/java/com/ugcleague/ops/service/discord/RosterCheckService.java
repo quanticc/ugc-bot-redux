@@ -117,7 +117,7 @@ public class RosterCheckService {
     }
 
     private boolean isRecentJoin(String ugcFormatDate) {
-        LocalDateTime date = LocalDateTime.parse(ugcFormatDate, DateTimeFormatter.ofPattern("MMMM, dd yyyy HH:mm:ss", Locale.ENGLISH));
+        LocalDateTime date = LocalDateTime.parse(ugcFormatDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH));
         ZonedDateTime join = date.atZone(ZoneId.of("America/New_York"));
         return ZonedDateTime.now().minusHours(18).isBefore(join);
     }
