@@ -205,11 +205,15 @@ public class ServerQueryService {
 
     private String formatPlayer(SteamPlayer p) {
         if (p.isExtended()) {
-            return "#" + p.getRealId() + " **\"" + p.getName() + "\"** " + p.getSteamId() +
+            return "#" + p.getRealId() + " **\"" + demarkdown(p.getName()) + "\"** " + p.getSteamId() +
                 " connected from " + p.getIpAddress() + " for " + formatElapsed(p.getConnectTime());
         } else {
-            return "#" + p.getId() + " **\"" + p.getName() + "\"** connected for " + formatElapsed(p.getConnectTime());
+            return "#" + p.getId() + " **\"" + demarkdown(p.getName()) + "\"** connected for " + formatElapsed(p.getConnectTime());
         }
+    }
+
+    private String demarkdown(String input) {
+        return input.replace("*", "\\*").replace("`", "\\`").replace("~", "\\~").replace("_", "\\_");
     }
 
     private String formatConnectString(String address, String password) {
