@@ -12,14 +12,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StatusParserTest {
 
@@ -192,6 +194,16 @@ public class StatusParserTest {
             assertEquals("[U:1:90257875]", players.get(10));
             assertEquals("[U:1:183189726]", players.get(11));
         }
+    }
+
+    @Test
+    public void parseJoinDates() {
+        // 2013-12-23 14:29:50
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
+        String text = LocalDateTime.now().minusHours(10).format(formatter);
+        LocalDateTime date = LocalDateTime.parse(text, formatter);
+        ZonedDateTime join = date.atZone(ZoneId.of("America/New_York"));
+        assertTrue(ZonedDateTime.now().minusHours(18).isBefore(join));
     }
 
 }
