@@ -70,6 +70,8 @@ public class LeagueProperties {
         private boolean autologin;
         private String email;
         private String password;
+        private long timeoutDelay = 10000;
+        private int maxMissedPings = 50;
         private List<String> invites = new ArrayList<>();
         private String master;
         private List<String> quitting = new ArrayList<>();

@@ -1,8 +1,11 @@
 package com.ugcleague.ops.service;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SlidingTimeWindowReservoir;
+import com.codahale.metrics.health.HealthCheck;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.discord.command.SplitMessage;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
@@ -27,6 +30,7 @@ import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -46,23 +50,41 @@ public class DiscordService implements DiscordSubscriber {
     private static final int LENGTH_LIMIT = 2000;
 
     private final LeagueProperties properties;
-    private final MetricRegistry metricRegistry;
+    private final HealthCheckRegistry healthCheckRegistry;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
-
-    private Histogram responseTime;
+    private final Histogram responseTime;
+    private final Counter restartCounter;
+    private volatile DiscordDisconnectedEvent lastDisconnectEvent = null;
+    private volatile ZonedDateTime lastRestartTime = null;
 
     @Autowired
-    public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry) {
+    public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry,
+                          HealthCheckRegistry healthCheckRegistry) {
         this.properties = properties;
-        this.metricRegistry = metricRegistry;
+        this.healthCheckRegistry = healthCheckRegistry;
+        this.responseTime = metricRegistry.register("discord.ws.responseTime",
+            new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.HOURS)));
+        this.restartCounter = metricRegistry.register("discord.ws.restarts", new Counter());
     }
 
     @PostConstruct
     private void configure() {
-        responseTime = metricRegistry.register("discord.ws.responseTime", new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.HOURS)));
+        healthCheckRegistry.register("Discord.WebSocket", new HealthCheck() {
+            @Override
+            protected Result check() throws Exception {
+                long mean = (long) responseTime.getSnapshot().getMean();
+                long restarts = restartCounter.getCount();
+                if (restarts > 0) {
+                    return Result.unhealthy(String.format("%d restarts, last one on %s (%s). Mean response time: %dms",
+                        restarts, lastRestartTime, lastDisconnectEvent.getReason().toString(), mean));
+                } else {
+                    return Result.healthy("Mean response time: " + mean + "ms");
+                }
+            }
+        });
         if (properties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
@@ -77,9 +99,11 @@ public class DiscordService implements DiscordSubscriber {
 
     public void login() throws DiscordException {
         LeagueProperties.Discord discord = properties.getDiscord();
-        String email = discord.getEmail();
-        String password = discord.getPassword();
-        client = new ClientBuilder().withLogin(email, password).login();
+        client = new ClientBuilder()
+            .withLogin(discord.getEmail(), discord.getPassword())
+            .withTimeout(discord.getTimeoutDelay())
+            .withPingTimeout(discord.getMaxMissedPings())
+            .login();
         log.debug("Registering {} Discord event subscribers", queuedListeners.size() + queuedSubscribers.size());
         queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
         queuedSubscribers.forEach(subscriber -> client.getDispatcher().registerListener(subscriber));
@@ -129,7 +153,10 @@ public class DiscordService implements DiscordSubscriber {
     @EventSubscriber
     public void onDisconnect(DiscordDisconnectedEvent event) {
         if (reconnect.get()) {
-            log.info("Reconnecting bot");
+            log.info("Reconnecting bot: {}", event.getReason().toString());
+            restartCounter.inc();
+            lastDisconnectEvent = event;
+            lastRestartTime = ZonedDateTime.now();
             try {
                 login();
             } catch (DiscordException e) {
