@@ -75,7 +75,7 @@ public class GameServerService {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
         }
-        healthCheckRegistry.register("gameServers.pingCheck", new HealthCheck() {
+        healthCheckRegistry.register("GameServers.PingCheck", new HealthCheck() {
             @Override
             protected Result check() throws Exception {
                 long count = gameServerRepository.count();
@@ -89,7 +89,7 @@ public class GameServerService {
                 }
             }
         });
-        healthCheckRegistry.register("gameServers.validRconCheck", new HealthCheck() {
+        healthCheckRegistry.register("GameServers.ValidRconCheck", new HealthCheck() {
             @Override
             protected Result check() throws Exception {
                 List<GameServer> rconlessServers = gameServerRepository.findByRconPasswordIsNull();
@@ -102,7 +102,7 @@ public class GameServerService {
                 }
             }
         });
-        healthCheckRegistry.register("gameServers.version", new HealthCheck() {
+        healthCheckRegistry.register("GameServers.GameVersionCheck", new HealthCheck() {
             @Override
             protected Result check() throws Exception {
                 List<GameServer> outdatedServers = findOutdatedServers();
@@ -116,9 +116,9 @@ public class GameServerService {
             }
         });
         for (GameServer server : gameServerRepository.findAll()) {
-            metricRegistry.register("gameServers." + server.getShortName() + ".ping",
+            metricRegistry.register("gs.ping." + server.getShortName(),
                 new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
-            metricRegistry.register("gameServers." + server.getShortName() + ".players",
+            metricRegistry.register("gs.players." + server.getShortName(),
                 new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
         }
     }
