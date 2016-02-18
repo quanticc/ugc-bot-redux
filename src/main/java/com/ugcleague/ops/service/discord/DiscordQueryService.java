@@ -90,7 +90,7 @@ public class DiscordQueryService {
 //                return "";
 //            }).build());
         commandService.register(CommandBuilder.equalsTo(".beep exit")
-            .description("Exit discord").master().experimental()
+            .description("Exit discord").master()
             .command((message, optionSet) -> {
                 CompletableFuture.runAsync(() -> {
                     try {
@@ -153,7 +153,7 @@ public class DiscordQueryService {
         rateStatusSpec = parser.acceptsAll(asList("s", "status"), "display progress as status mode (successive edits)")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         rateCommand = CommandBuilder.startsWith(".test")
-            .description("Test API rate limits").master().experimental().queued().parser(parser)
+            .description("Test API rate limits").master().queued().parser(parser)
             .command((message, optionSet) -> {
                 if (optionSet.has("?")) {
                     return null;

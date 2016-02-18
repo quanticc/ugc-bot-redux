@@ -68,7 +68,7 @@ public class CommandService implements DiscordSubscriber {
         helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
         helpFullSpec = parser.acceptsAll(asList("f", "full"), "display all commands in a list with their description")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        commandList.add(CommandBuilder.combined(".beep help").description("Show help about commands")
+        commandList.add(CommandBuilder.anyMatch(".beep help").description("Show help about commands")
             .command(this::showCommandList).unrestricted().parser(parser).build());
         discordService.subscribe(this);
     }
@@ -143,6 +143,9 @@ public class CommandService implements DiscordSubscriber {
 
     @EventSubscriber
     public void onMessageReceived(MessageReceivedEvent event) {
+        if (discordService.isOwnUser(event.getMessage().getAuthor())) {
+            return;
+        }
         IMessage m = event.getMessage();
         String content = m.getContent();
         Optional<Command> match = commandList.stream().filter(c -> c.matches(content)).findFirst();
@@ -227,9 +230,8 @@ public class CommandService implements DiscordSubscriber {
             if (comment != null) {
                 response.append(comment).append("\n");
             }
-            response.append(String.format("• Help for **%s**: %s%s%s\n", command.getKey(), command.getDescription(),
-                command.getPermission() != CommandPermission.NONE ? " (requires `" + command.getPermission() + "` permission)" : "",
-                command.isExperimental() ? " -- Warning, this command is **experimental** and not well tested yet." : ""))
+            response.append(String.format("• Help for **%s**: %s%s\n", command.getKey(), command.getDescription(),
+                command.getPermission() != CommandPermission.NONE ? " (requires `" + command.getPermission() + "` permission)" : ""))
                 .append(new String(stream.toByteArray(), "UTF-8"));
             replyFrom(message, command, response.toString());
         } catch (Exception e) {
@@ -319,7 +321,7 @@ public class CommandService implements DiscordSubscriber {
         } else if (replyMode == ReplyMode.ORIGIN) {
             // use the same channel as invocation
             return answer(message, response, command.isMention(), file);
-        } else if (replyMode == ReplyMode.WITH_PERMISSION) {
+        } else if (replyMode == ReplyMode.PERMISSION_BASED) {
             // the channel must have the needed permission, otherwise fallback to a private message
             if (permissionService.canDisplayResult(command, message.getChannel())) {
                 return answer(message, response, command.isMention(), file);
@@ -377,8 +379,7 @@ public class CommandService implements DiscordSubscriber {
             opt(command.getReplyMode(), "", " replies" +
                 opt(command.isMention(), " with mention", "", false, true).orElse(""), null),
             opt(command.isQueued(), "queued", "", false, true),
-            opt(command.isPersistStatus(), "persisted status", "", false, true),
-            opt(command.isExperimental(), "experimental", "", false, true))
+            opt(command.isPersistStatus(), "persisted status", "", false, true))
             .stream().filter(Optional::isPresent).map(Optional::get).collect(Collectors.joining(", "));
         log.info("Command {} [{}] {}", padRight(command.getKey(), 20),
             command.getPermission().name().charAt(0), description);

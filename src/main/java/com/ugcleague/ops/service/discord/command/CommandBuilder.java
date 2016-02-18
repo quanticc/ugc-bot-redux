@@ -4,6 +4,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import sx.blah.discord.handle.obj.IMessage;
 
+import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
@@ -14,7 +15,7 @@ public class CommandBuilder {
     /**
      * This command will react to all messages starting with the given key. Note that if a user sends exactly the key as
      * input, it will not be recognized as command, so this is used for commands that explicitly require arguments and
-     * are not falling through a help reply on a no argument invocation. Use {@link CommandBuilder#combined(String)} for
+     * are not falling through a help reply on a no argument invocation. Use {@link CommandBuilder#anyMatch(String)} for
      * a more permissive invocation way.
      *
      * @param key the key used to trigger the command
@@ -43,9 +44,9 @@ public class CommandBuilder {
      * @param key the key used to trigger the command
      * @return a builder to incrementally define a command
      */
-    public static CommandBuilder combined(String key) {
+    public static CommandBuilder anyMatch(String key) {
         CommandBuilder builder = new CommandBuilder();
-        return builder.key(key).matchType(MatchType.COMBINED);
+        return builder.key(key).matchType(MatchType.ANY);
     }
 
     private MatchType matchType = MatchType.STARTS_WITH;
@@ -58,7 +59,7 @@ public class CommandBuilder {
     private boolean mention = false;
     private ReplyMode replyMode = ReplyMode.PRIVATE; // by default
     private boolean persistStatus = false;
-    private boolean experimental = false;
+    private Map<String, String> optionAliases = null;
 
     private CommandBuilder() {
         parser.allowsUnrecognizedOptions();
@@ -97,7 +98,8 @@ public class CommandBuilder {
     }
 
     /**
-     * Do not use a parser with this command.
+     * Do not use a parser with this command. Actual argument parsing will have to be performed in the command
+     * execution method.
      *
      * @return this builder
      */
@@ -198,7 +200,7 @@ public class CommandBuilder {
      * @return this builder
      */
     public CommandBuilder permissionReplies() {
-        this.replyMode = ReplyMode.WITH_PERMISSION;
+        this.replyMode = ReplyMode.PERMISSION_BASED;
         return this;
     }
 
@@ -223,13 +225,8 @@ public class CommandBuilder {
         return this;
     }
 
-    /**
-     * Marks this command as experimental for command users.
-     *
-     * @return this builder
-     */
-    public CommandBuilder experimental() {
-        this.experimental = true;
+    public CommandBuilder withOptionAliases(Map<String, String> optionAliases) {
+        this.optionAliases = optionAliases;
         return this;
     }
 
@@ -240,6 +237,6 @@ public class CommandBuilder {
      */
     public Command build() {
         return new Command(matchType, key, description, parser, command, permission,
-            queued, replyMode, mention, persistStatus, experimental);
+            queued, replyMode, mention, persistStatus, optionAliases);
     }
 }

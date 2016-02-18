@@ -97,7 +97,7 @@ public class SyncQueryService {
         addRemoteSpec = parser.acceptsAll(asList("r", "remote"), "path to the remote directory")
             .withRequiredArg().required();
         commandService.register(CommandBuilder.startsWith(".sync add")
-            .description("Add a file group").permission("support").permissionReplies().experimental()
+            .description("Add a file group").permission("support").permissionReplies()
             .parser(parser).command(this::syncGroupAdd).build());
     }
 
@@ -126,7 +126,7 @@ public class SyncQueryService {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         infoNonOptionSpec = parser.nonOptions("Numeric ID or local name of the sync groups").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".sync info")
-            .description("Get info about a sync group").permission("support").permissionReplies().experimental()
+            .description("Get info about a sync group").permission("support").permissionReplies()
             .parser(parser).command(this::syncGroupInfo).build());
     }
 
@@ -171,7 +171,7 @@ public class SyncQueryService {
             .withOptionalArg().withValuesSeparatedBy(",");
         commandService.register(CommandBuilder.startsWith(".sync refresh")
             .description("Refresh the given file groups locally and/or remotely").permission("support").permissionReplies().mention()
-            .experimental().parser(parser).command(this::syncGroupRefresh).queued().build());
+            .parser(parser).command(this::syncGroupRefresh).queued().build());
     }
 
     private String syncGroupRefresh(IMessage m, OptionSet o) {

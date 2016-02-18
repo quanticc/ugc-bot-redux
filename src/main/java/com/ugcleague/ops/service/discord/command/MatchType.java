@@ -17,7 +17,7 @@ public enum MatchType {
     /**
      * Allows combined behavior between EQUALS and STARTS_WITH, allowing null arg invocations as valid.
      */
-    COMBINED;
+    ANY;
 
     @Override
     public String toString() {

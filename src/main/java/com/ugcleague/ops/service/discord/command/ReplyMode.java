@@ -16,7 +16,7 @@ public enum ReplyMode {
      * permission level, in which case reply back to invocation origin channel. This avoids leaking output on sensitive
      * command invoked on public (or unrestricted join, lower permission) channels.
      */
-    WITH_PERMISSION,
+    PERMISSION_BASED,
     /**
      * Reply back to the same channel used to invoke the command. Use this for non-sensitive outputs. For the user to
      * keep track of the answers in a busy channel, combine this with mention on reply.

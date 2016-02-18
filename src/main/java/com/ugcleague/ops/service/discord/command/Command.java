@@ -7,10 +7,12 @@ import sx.blah.discord.handle.obj.IMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Command implements Comparable<Command> {
 
@@ -26,11 +28,11 @@ public class Command implements Comparable<Command> {
     private ReplyMode replyMode;
     private boolean mention;
     private boolean persistStatus;
-    private boolean experimental;
+    private Map<String, String> optionAliases;
 
     public Command(MatchType matchType, String key, String description, OptionParser parser,
                    BiFunction<IMessage, OptionSet, String> command, CommandPermission permission, boolean queued,
-                   ReplyMode replyMode, boolean mention, boolean persistStatus, boolean experimental) {
+                   ReplyMode replyMode, boolean mention, boolean persistStatus, Map<String, String> optionAliases) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
@@ -47,7 +49,7 @@ public class Command implements Comparable<Command> {
         this.replyMode = replyMode;
         this.mention = mention;
         this.persistStatus = persistStatus;
-        this.experimental = experimental;
+        this.optionAliases = optionAliases;
     }
 
     public MatchType getMatchType() {
@@ -130,17 +132,17 @@ public class Command implements Comparable<Command> {
         this.persistStatus = persistStatus;
     }
 
-    public boolean isExperimental() {
-        return experimental;
+    public Map<String, String> getOptionAliases() {
+        return optionAliases;
     }
 
-    public void setExperimental(boolean experimental) {
-        this.experimental = experimental;
+    public void setOptionAliases(Map<String, String> optionAliases) {
+        this.optionAliases = optionAliases;
     }
 
     public boolean matches(String message) {
         switch (matchType) {
-            case COMBINED:
+            case ANY:
                 return message.startsWith(key + " ") || message.equals(key);
             case STARTS_WITH:
                 return message.startsWith(key + " ");
@@ -164,7 +166,12 @@ public class Command implements Comparable<Command> {
         while (matcher.find()) {
             matches.add(matcher.group().replaceAll("\"|'", ""));
         }
-        return matches.toArray(new String[matches.size()]);
+        if (optionAliases != null && !optionAliases.isEmpty()) {
+            return matches.stream().map(s -> optionAliases.getOrDefault(s, s))
+                .collect(Collectors.toList()).toArray(new String[matches.size()]);
+        } else {
+            return matches.toArray(new String[matches.size()]);
+        }
     }
 
     @Override
@@ -191,7 +198,7 @@ public class Command implements Comparable<Command> {
             ", replyMode=" + replyMode +
             ", mention=" + mention +
             ", persistStatus=" + persistStatus +
-            ", experimental=" + experimental +
+            ", optionAliases=" + optionAliases +
             '}';
     }
 

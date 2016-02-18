@@ -76,10 +76,10 @@ public class SupportPingService implements DiscordSubscriber {
             " Examples of permitted time expressions are \"midnight\", \"8am UTC+12\" or \"16:00 PST\". Expressions must" +
             " be wrapped within quotes if containing spaces so they are picked up as a single argument.")
             .ofType(String.class);
-        commandService.register(CommandBuilder.combined(".sub on")
+        commandService.register(CommandBuilder.anyMatch(".sub on")
             .description("Enable support PMs during the given hours")
             .support().parser(parser).command(this::subOnTimeCommand).build());
-        commandService.register(CommandBuilder.combined(".sub off")
+        commandService.register(CommandBuilder.anyMatch(".sub off")
             .description("Disable support PMs during the given hours")
             .support().parser(parser).command(this::subOffTimeCommand).build());
         commandService.register(CommandBuilder.equalsTo(".sub status")

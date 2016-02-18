@@ -56,7 +56,7 @@ public class MetricsQueryService {
         metricsNonOptionSpec = parser.nonOptions("Metric, list of metrics or metric types to display. " +
             "For instance: \"jvm\" would match all metrics starting with that key. If you enter a metric type " +
             "(meter, counter, timer, gauge, histogram) you will get a list of possible metrics of that kind.").ofType(String.class);
-        commandService.register(CommandBuilder.combined(".metrics").master().originReplies().mention().parser(parser)
+        commandService.register(CommandBuilder.anyMatch(".metrics").master().originReplies().mention().parser(parser)
             .description("Show metrics about the application").command(this::metricsCommand).build());
     }
 
@@ -177,7 +177,7 @@ public class MetricsQueryService {
         String subCommandKeys = subCommandMap.keySet().stream().collect(Collectors.joining(", "));
         OptionParser parser = new OptionParser();
         jvmNonOptionSpec = parser.nonOptions("Requested information: " + subCommandKeys).ofType(String.class);
-        commandService.register(CommandBuilder.combined(".jvm").master().parser(parser)
+        commandService.register(CommandBuilder.anyMatch(".jvm").master().parser(parser)
             .description("Show information about the JVM").command(this::executeJvmCommand).build());
     }
 

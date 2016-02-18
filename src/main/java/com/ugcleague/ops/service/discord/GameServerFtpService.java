@@ -22,9 +22,7 @@ import javax.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -60,6 +58,8 @@ public class GameServerFtpService {
     private OptionSpec<Boolean> getExactDateSpec;
     private OptionSpec<Integer> getLengthFilterSpec;
     private OptionSpec<Boolean> getZipSpec;
+    private OptionSpec<String> nonOptionSpec;
+    private Map<String, String> getOptionAliases;
 
     @Autowired
     public GameServerFtpService(CommandService commandService, GameServerService gameServerService, SyncGroupService syncGroupService) {
@@ -79,29 +79,34 @@ public class GameServerFtpService {
     private void initCommonParser() {
         parser = newParser();
         getNonOptionSpec = parser.nonOptions("exact filenames to download from the server, separated by spaces").ofType(String.class);
-        getServerSpec = parser.acceptsAll(asList("s", "server"), "a GS server identifier (dal5, chi3), name (\"Miami 4\" **with** quotes) or IP address")
+        getServerSpec = parser.acceptsAll(asList("s", "server", "from"), "a GS server identifier (dal5, chi3), name (\"Miami 4\" **with** quotes) or IP address")
             .withRequiredArg().required();
-        getFilenameFilterSpec = parser.acceptsAll(asList("f", "filename"), "only display files containing this filename").withRequiredArg();
-        getAfterFilterSpec = parser.acceptsAll(asList("a", "after"), "only display files last modified after this date").withRequiredArg();
-        getBeforeFilterSpec = parser.acceptsAll(asList("b", "before"), "only display files last modified before this date").withRequiredArg();
+        getFilenameFilterSpec = parser.acceptsAll(asList("f", "filename", "like"), "only display files containing this filename").withRequiredArg();
+        getAfterFilterSpec = parser.acceptsAll(asList("a", "after", "since"), "only display files last modified after this date").withRequiredArg();
+        getBeforeFilterSpec = parser.acceptsAll(asList("b", "before", "until"), "only display files last modified before this date").withRequiredArg();
         getLengthFilterSpec = parser.acceptsAll(asList("l", "length"), "only display files with size (in bytes) greater than this")
             .withRequiredArg().ofType(Integer.class).defaultsTo(100000); // 100 KB
         getZipSpec = parser.acceptsAll(asList("z", "zip"), "try to put all files into a zip archive")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         getExactDateSpec = parser.accepts("absolute-date", "display last modified date in absolute terms")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
+        getOptionAliases = new HashMap<>();
+        getOptionAliases.put("from", "-s");
+        getOptionAliases.put("since", "-a");
+        getOptionAliases.put("until", "-b");
+        getOptionAliases.put("like", "-f");
     }
 
     private void initGetLogsCommand() {
-        getLogsCommand = commandService.register(CommandBuilder.combined(".get logs")
+        getLogsCommand = commandService.register(CommandBuilder.anyMatch(".get logs")
             .description("List or retrieve log files from a game server").support().permissionReplies().mention()
-            .parser(parser).command(this::executeGetLogs).queued().persistStatus().build());
+            .parser(parser).withOptionAliases(getOptionAliases).command(this::executeGetLogs).queued().persistStatus().build());
     }
 
     private void initGetStvCommand() {
-        getStvCommand = commandService.register(CommandBuilder.combined(".get stv")
+        getStvCommand = commandService.register(CommandBuilder.anyMatch(".get stv")
             .description("List or retrieve SourceTV demos from a game server").support().permissionReplies().mention()
-            .parser(parser).command(this::executeGetStv).queued().persistStatus().build());
+            .parser(parser).withOptionAliases(getOptionAliases).command(this::executeGetStv).queued().persistStatus().build());
     }
 
     private String executeGetLogs(IMessage message, OptionSet optionSet) {
