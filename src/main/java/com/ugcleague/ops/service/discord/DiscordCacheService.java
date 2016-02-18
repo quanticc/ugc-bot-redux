@@ -57,7 +57,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     public void onReady(ReadyEvent event) {
         IDiscordClient client = event.getClient();
         IUser ourUser = client.getOurUser();
-        DiscordUser me = userRepository.findById(ourUser.getID()).orElseGet(() -> newDiscordUser(ourUser));
+        DiscordUser me = userRepository.findById(ourUser.getID()).orElseGet(() -> new DiscordUser(ourUser));
         me.setLastConnect(ZonedDateTime.now());
         userRepository.save(me);
         userRepository.findCurrentlyConnected().parallelStream()
@@ -118,7 +118,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     @EventSubscriber
     public void onUserJoin(UserJoinEvent event) {
         IUser user = event.getUser();
-        DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> newDiscordUser(user));
+        DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
         Event joined = new Event();
         joined.setType("guild_join");
         joined.getProperties().put("guild_id", event.getGuild().getID());
@@ -131,7 +131,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     public void onUserUpdate(UserUpdateEvent event) {
         IUser oldUser = event.getOldUser();
         IUser newUser = event.getNewUser();
-        DiscordUser u = userRepository.findById(oldUser.getID()).orElseGet(() -> newDiscordUser(oldUser));
+        DiscordUser u = userRepository.findById(oldUser.getID()).orElseGet(() -> new DiscordUser(oldUser));
         u.setName(newUser.getName());
         userRepository.save(u);
     }
@@ -139,7 +139,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     @EventSubscriber
     public void onUserLeave(UserLeaveEvent event) {
         IUser user = event.getUser();
-        DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> newDiscordUser(user));
+        DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
         Event left = new Event();
         left.setType("guild_leave");
         left.getProperties().put("guild_id", event.getGuild().getID());
@@ -153,11 +153,11 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         Presences oldStatus = event.getOldPresence();
         Presences newStatus = event.getNewPresence();
         if (oldStatus == Presences.OFFLINE && newStatus == Presences.ONLINE) {
-            DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> newDiscordUser(user));
+            DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
             u.setLastConnect(ZonedDateTime.now());
             userRepository.save(u);
         } else if (oldStatus == Presences.ONLINE && newStatus == Presences.OFFLINE) {
-            DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> newDiscordUser(user));
+            DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
             checkout(u);
             userRepository.save(u);
         }
@@ -172,7 +172,7 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         IChannel channel = message.getChannel();
 
         DiscordUser discordUser = userRepository.findById(author.getID())
-            .orElseGet(() -> newDiscordUser(author));
+            .orElseGet(() -> new DiscordUser(author));
         DiscordChannel discordChannel = channelRepository.findById(channel.getID())
             .orElseGet(() -> newDiscordChannel(channel));
 
@@ -214,18 +214,11 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         return null;
     }
 
-    private DiscordUser newDiscordUser(IUser user) {
-        DiscordUser u = new DiscordUser();
-        u.setId(user.getID());
-        u.setName(user.getName());
-        return u;
-    }
-
     @Override
     public void destroy() throws Exception {
         log.info("Disposing of cache service");
         IUser ourUser = discordService.getClient().getOurUser();
-        DiscordUser me = userRepository.findById(ourUser.getID()).orElseGet(() -> newDiscordUser(ourUser));
+        DiscordUser me = userRepository.findById(ourUser.getID()).orElseGet(() -> new DiscordUser(ourUser));
         checkout(me);
         userRepository.save(me);
     }
@@ -253,6 +246,14 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
 
     public Optional<DiscordUser> findUserById(String id) {
         return userRepository.findById(id);
+    }
+
+    public DiscordUser getOrCreateUser(IUser user) {
+        DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
+        if (u.getName() == null) {
+            u.setName(user.getName());
+        }
+        return userRepository.save(u);
     }
 
     public DiscordUser saveUser(DiscordUser u) {
