@@ -23,10 +23,18 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 
+/**
+ * Commands to retrieve info about application and external services metrics.
+ * <ul>
+ * <li>jvm</li>
+ * <li>metrics</li>
+ * <li>health</li>
+ * </ul>
+ */
 @Service
-public class MetricsQueryService {
+public class MetricsPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(MetricsQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(MetricsPresenter.class);
 
     private final CommandService commandService;
     private final MetricRegistry metricRegistry;
@@ -37,8 +45,8 @@ public class MetricsQueryService {
     private OptionSpec<String> metricsNonOptionSpec;
 
     @Autowired
-    public MetricsQueryService(CommandService commandService, MetricRegistry metricRegistry,
-                               HealthCheckRegistry healthCheckRegistry) {
+    public MetricsPresenter(CommandService commandService, MetricRegistry metricRegistry,
+                            HealthCheckRegistry healthCheckRegistry) {
         this.commandService = commandService;
         this.metricRegistry = metricRegistry;
         this.healthCheckRegistry = healthCheckRegistry;

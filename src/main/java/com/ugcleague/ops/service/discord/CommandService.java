@@ -35,6 +35,12 @@ import java.util.stream.Collectors;
 import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
 
+/**
+ * Main point of contact to register commands.
+ * <ul>
+ * <li>beep help</li>
+ * </ul>
+ */
 @Service
 @Transactional
 public class CommandService implements DiscordSubscriber {

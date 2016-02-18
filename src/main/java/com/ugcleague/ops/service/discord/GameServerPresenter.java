@@ -32,10 +32,22 @@ import static com.ugcleague.ops.util.Util.padLeft;
 import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
 
+/**
+ * Commands to perform operations over the registered game servers.
+ * <ul>
+ * <li>servers</li>
+ * <li>server connect</li>
+ * <li>server restart</li>
+ * <li>server issues</li>
+ * <li>server insecure</li>
+ * <li>status</li>
+ * <li>rcon</li>
+ * </ul>
+ */
 @Service
-public class ServerQueryService {
+public class GameServerPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(ServerQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(GameServerPresenter.class);
     private static final String nonOptDesc = "multiple search by ID (chi1, dal5, mia3), address (68.115.23.245:27015) or" +
         " region groups (chicago, dallas, amsterdam). Also supports GS groups like claimed, unclaimed.";
     private static final ZonedDateTime EPOCH = ZonedDateTime.ofInstant(Instant.ofEpochMilli(0L), ZoneId.systemDefault());
@@ -55,7 +67,7 @@ public class ServerQueryService {
     private OptionSpec<Boolean> rconQuietSpec;
 
     @Autowired
-    public ServerQueryService(GameServerService gameServerService, CommandService commandService) {
+    public GameServerPresenter(GameServerService gameServerService, CommandService commandService) {
         this.gameServerService = gameServerService;
         this.commandService = commandService;
     }

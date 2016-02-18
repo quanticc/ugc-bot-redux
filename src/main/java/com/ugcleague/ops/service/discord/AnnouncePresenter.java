@@ -34,11 +34,19 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
+/**
+ * Manages announcement handling.
+ * <ul>
+ * <li>announce start</li>
+ * <li>announce stop</li>
+ * <li>announce test</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class AnnouncerService {
+public class AnnouncePresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(AnnouncerService.class);
+    private static final Logger log = LoggerFactory.getLogger(AnnouncePresenter.class);
     private static final String nonOptDesc = "announcement publishers: updates, issues";
     private static final String SUPPORT = "support";
 
@@ -53,8 +61,8 @@ public class AnnouncerService {
     private OptionSpec<String> testMessageSpec;
 
     @Autowired
-    public AnnouncerService(DiscordService discordService, PublisherRepository publisherRepository,
-                            SubscriberRepository subscriberRepository, CommandService commandService) {
+    public AnnouncePresenter(DiscordService discordService, PublisherRepository publisherRepository,
+                             SubscriberRepository subscriberRepository, CommandService commandService) {
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;
         this.subscriberRepository = subscriberRepository;

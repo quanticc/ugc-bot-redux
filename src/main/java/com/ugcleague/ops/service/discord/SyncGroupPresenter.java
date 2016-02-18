@@ -30,9 +30,9 @@ import static java.util.Arrays.asList;
 
 @Service
 @Transactional
-public class SyncQueryService {
+public class SyncGroupPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(SyncQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(SyncGroupPresenter.class);
 
     private final CommandService commandService;
     private final SyncGroupService syncGroupService;
@@ -48,9 +48,9 @@ public class SyncQueryService {
     private OptionSpec<String> refreshRemoteSpec;
 
     @Autowired
-    public SyncQueryService(CommandService commandService, SyncGroupService syncGroupService,
-                            ServerFileService serverFileService, DiscordService discordService,
-                            GameServerService gameServerService) {
+    public SyncGroupPresenter(CommandService commandService, SyncGroupService syncGroupService,
+                              ServerFileService serverFileService, DiscordService discordService,
+                              GameServerService gameServerService) {
         this.commandService = commandService;
         this.syncGroupService = syncGroupService;
         this.serverFileService = serverFileService;

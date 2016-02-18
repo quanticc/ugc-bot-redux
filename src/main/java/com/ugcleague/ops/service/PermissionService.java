@@ -5,7 +5,6 @@ import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.domain.util.PermissionProvider;
 import com.ugcleague.ops.repository.mongo.PermissionRepository;
-import com.ugcleague.ops.service.discord.DiscordCacheService;
 import com.ugcleague.ops.service.discord.command.Command;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;

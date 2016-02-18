@@ -165,8 +165,8 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    public void terminate() {
-        reconnect.set(false);
+    public void logout(boolean thenReconnect) {
+        reconnect.set(thenReconnect);
         try {
             client.logout();
         } catch (HTTP429Exception | DiscordException e) {

@@ -18,9 +18,15 @@ import java.util.Set;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
+/**
+ * Commands to handle UGC cached data.
+ * <ul>
+ * <li>ugc results</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class UgcQueryService {
+public class UgcPresenter {
 
     private final CommandService commandService;
     private final UgcDataService ugcDataService;
@@ -31,7 +37,7 @@ public class UgcQueryService {
     private OptionSpec<String> resultsNonOptionSpec;
 
     @Autowired
-    public UgcQueryService(CommandService commandService, UgcDataService ugcDataService) {
+    public UgcPresenter(CommandService commandService, UgcDataService ugcDataService) {
         this.commandService = commandService;
         this.ugcDataService = ugcDataService;
     }
@@ -51,7 +57,7 @@ public class UgcQueryService {
         resultsWeekSpec = parser.acceptsAll(asList("w", "week"), "HL week number").withRequiredArg().ofType(Integer.class);
         resultsRefreshSpec = parser.acceptsAll(asList("r", "refresh"), "forces a cache refresh").withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.startsWith(".ugc results")
-            .description("Get HL match results for the given season/week").permission("master")
+            .description("Get HL match results for the given season/week").master()
             .parser(parser).command(this::results).queued().build());
     }
 

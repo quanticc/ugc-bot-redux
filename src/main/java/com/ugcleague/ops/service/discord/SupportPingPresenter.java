@@ -1,6 +1,5 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.Publisher;
 import com.ugcleague.ops.domain.Subscriber;
 import com.ugcleague.ops.repository.PublisherRepository;
@@ -34,11 +33,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 
+/**
+ * Commands to handle support ping or "PM on incoming user message" feature.
+ * <ul>
+ * <li>sub</li>
+ * <li>unsub</li>
+ * <li>sub on</li>
+ * <li>sub off</li>
+ * <li>sub status</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class SupportPingService implements DiscordSubscriber {
+public class SupportPingPresenter implements DiscordSubscriber {
 
-    private static final Logger log = LoggerFactory.getLogger(SupportPingService.class);
+    private static final Logger log = LoggerFactory.getLogger(SupportPingPresenter.class);
     private static final String KEY = "support";
 
     private final DiscordService discordService;
@@ -51,9 +60,9 @@ public class SupportPingService implements DiscordSubscriber {
     private OptionSpec<String> subNonOptionSpec;
 
     @Autowired
-    public SupportPingService(LeagueProperties properties, DiscordService discordService,
-                              PermissionService permissionService, PublisherRepository publisherRepository,
-                              SubscriberRepository subscriberRepository, CommandService commandService) {
+    public SupportPingPresenter(DiscordService discordService, PermissionService permissionService,
+                                PublisherRepository publisherRepository, SubscriberRepository subscriberRepository,
+                                CommandService commandService) {
         this.permissionService = permissionService;
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;

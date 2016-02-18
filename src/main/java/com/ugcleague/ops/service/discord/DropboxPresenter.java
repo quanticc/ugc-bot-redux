@@ -23,10 +23,19 @@ import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatRelativeBetweenNowAnd;
 import static com.ugcleague.ops.util.Util.humanizeBytes;
 
+/**
+ * Commands to manage saved Dropbox files.
+ * <ul>
+ * <li>db list</li>
+ * <li>db share</li>
+ * <li>db exists</li>
+ * <li>db delete</li>
+ * </ul>
+ */
 @Service
-public class DropboxQueryService {
+public class DropboxPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(DropboxQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(DropboxPresenter.class);
 
     private final CommandService commandService;
     private final DropboxService dropboxService;
@@ -38,8 +47,8 @@ public class DropboxQueryService {
     private String uploadsDir;
 
     @Autowired
-    public DropboxQueryService(CommandService commandService, DropboxService dropboxService,
-                               LeagueProperties leagueProperties) {
+    public DropboxPresenter(CommandService commandService, DropboxService dropboxService,
+                            LeagueProperties leagueProperties) {
         this.commandService = commandService;
         this.dropboxService = dropboxService;
         this.leagueProperties = leagueProperties;

@@ -2,6 +2,7 @@ package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.domain.document.Tag;
 import com.ugcleague.ops.repository.mongo.TagRepository;
+import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -22,10 +23,16 @@ import java.util.stream.Collectors;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
+/**
+ * Commands to manage tagged messages.
+ * <ul>
+ * <li>tag</li>
+ * </ul>
+ */
 @Service
-public class TagCommand {
+public class TagPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(TagCommand.class);
+    private static final Logger log = LoggerFactory.getLogger(TagPresenter.class);
 
     private final CommandService commandService;
     private final DiscordCacheService cacheService;
@@ -37,7 +44,7 @@ public class TagCommand {
     private OptionSpec<String> tagNonOptionSpec;
 
     @Autowired
-    public TagCommand(CommandService commandService, DiscordCacheService cacheService, TagRepository tagRepository) {
+    public TagPresenter(CommandService commandService, DiscordCacheService cacheService, TagRepository tagRepository) {
         this.commandService = commandService;
         this.cacheService = cacheService;
         this.tagRepository = tagRepository;
@@ -67,17 +74,6 @@ public class TagCommand {
         if (optionSet.has("?")) {
             return null;
         }
-
-        /*
-        valid invocations:
-            .tag add <key> <message....>
-                non-options must be collapsed into one
-            .tag remove <key>
-            .tag info <key>
-                non-options will be ignored
-            .tag <key>
-                rest of non-options will be ignored
-         */
 
         if (optionSet.has(tagAddSpec)) {
             String key = optionSet.valueOf(tagAddSpec);

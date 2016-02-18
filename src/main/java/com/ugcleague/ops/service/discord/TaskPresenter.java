@@ -19,22 +19,29 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
+/**
+ * Commands to handle scheduled tasks
+ * <ul>
+ *     <li>task list</li>
+ *     <li>task run</li>
+ *     <li>task config</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class TaskQueryService {
+public class TaskPresenter {
 
     private final TaskService taskService;
     private final CommandService commandService;
 
     private OptionSpec<String> nameSpec;
     private OptionSpec<Boolean> enableSpec;
-    private OptionSpec<Void> listSpec;
     private OptionSpec<String> patternSpec;
     private OptionSpec<String> runNonOptionSpec;
     private OptionSpec<Integer> runDelaySpec;
 
     @Autowired
-    public TaskQueryService(TaskService taskService, CommandService commandService) {
+    public TaskPresenter(TaskService taskService, CommandService commandService) {
         this.taskService = taskService;
         this.commandService = commandService;
     }

@@ -1,11 +1,10 @@
-package com.ugcleague.ops.service.discord;
+package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.repository.mongo.DiscordChannelRepository;
 import com.ugcleague.ops.repository.mongo.DiscordGuildRepository;
 import com.ugcleague.ops.repository.mongo.DiscordMessageRepository;
 import com.ugcleague.ops.repository.mongo.DiscordUserRepository;
-import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

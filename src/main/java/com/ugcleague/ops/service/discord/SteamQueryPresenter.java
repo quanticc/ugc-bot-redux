@@ -24,9 +24,9 @@ import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static org.apache.commons.lang3.StringUtils.leftPad;
 
 @Service
-public class SteamQueryCommand {
+public class SteamQueryPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(SteamQueryCommand.class);
+    private static final Logger log = LoggerFactory.getLogger(SteamQueryPresenter.class);
     private static final Pattern STEAM_URL = Pattern.compile("(https?:\\/\\/steamcommunity\\.com\\/)(id|profiles)\\/([\\w-]+)\\/?");
 
     private final CommandService commandService;
@@ -34,7 +34,7 @@ public class SteamQueryCommand {
     private OptionSpec<String> steamNonOptionSpec;
 
     @Autowired
-    public SteamQueryCommand(CommandService commandService) {
+    public SteamQueryPresenter(CommandService commandService) {
         this.commandService = commandService;
     }
 

@@ -2,6 +2,7 @@ package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.domain.util.PermissionProvider;
+import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.PermissionService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
@@ -23,11 +24,17 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 
+/**
+ * Commands to perform operations about command permissions.
+ * <ul>
+ * <li>perm</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class PermissionQueryService {
+public class PermissionPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(PermissionQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(PermissionPresenter.class);
 
     private final PermissionService permissionService;
     private final DiscordService discordService;
@@ -37,8 +44,8 @@ public class PermissionQueryService {
     private OptionSpec<String> permNonOptionSpec;
 
     @Autowired
-    public PermissionQueryService(PermissionService permissionService, DiscordService discordService,
-                                  DiscordCacheService cacheService, CommandService commandService) {
+    public PermissionPresenter(PermissionService permissionService, DiscordService discordService,
+                               DiscordCacheService cacheService, CommandService commandService) {
         this.permissionService = permissionService;
         this.discordService = discordService;
         this.cacheService = cacheService;

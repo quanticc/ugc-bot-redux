@@ -24,11 +24,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
+/**
+ * Commands to manage SyncFiles or game server files.
+ * <ul>
+ * <li>file list</li>
+ * <li>file add</li>
+ * <li>file info</li>
+ * <li>file edit</li>
+ * <li>file refresh</li>
+ * </ul>
+ */
 @Service
 @Transactional
-public class FileQueryService {
+public class SyncFilePresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(FileQueryService.class);
+    private static final Logger log = LoggerFactory.getLogger(SyncFilePresenter.class);
 
     private final CommandService commandService;
     private final ServerFileService serverFileService;
@@ -48,7 +58,7 @@ public class FileQueryService {
     private OptionSpec<Boolean> editClearSpec;
 
     @Autowired
-    public FileQueryService(CommandService commandService, ServerFileService serverFileService, SyncGroupService syncGroupService) {
+    public SyncFilePresenter(CommandService commandService, ServerFileService serverFileService, SyncGroupService syncGroupService) {
         this.commandService = commandService;
         this.serverFileService = serverFileService;
         this.syncGroupService = syncGroupService;
@@ -60,7 +70,6 @@ public class FileQueryService {
         initFileAddCommand();
         initFileInfoCommand();
         initFileEditCommand();
-        initFileDeleteCommand(); // TODO
         initFileRefreshCommand();
     }
 
@@ -234,11 +243,6 @@ public class FileQueryService {
             }
         }
         return null;
-    }
-
-    private void initFileDeleteCommand() {
-        // .file delete --id <group_id>
-        // TODO implement .file delete command
     }
 
     private void initFileRefreshCommand() {

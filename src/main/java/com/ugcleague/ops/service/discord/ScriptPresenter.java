@@ -12,16 +12,22 @@ import sx.blah.discord.handle.obj.IMessage;
 import javax.annotation.PostConstruct;
 import java.util.Map;
 
+/**
+ * Commands to perform script operations.
+ * <ul>
+ * <li>eval</li>
+ * </ul>
+ */
 @Service
-public class ScriptCommand {
+public class ScriptPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(ScriptCommand.class);
+    private static final Logger log = LoggerFactory.getLogger(ScriptPresenter.class);
 
     private final CommandService commandService;
     private final ScriptService scriptService;
 
     @Autowired
-    public ScriptCommand(CommandService commandService, ScriptService scriptService) {
+    public ScriptPresenter(CommandService commandService, ScriptService scriptService) {
         this.commandService = commandService;
         this.scriptService = scriptService;
     }

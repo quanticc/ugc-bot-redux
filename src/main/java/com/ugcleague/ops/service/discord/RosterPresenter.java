@@ -28,16 +28,16 @@ import static org.apache.commons.lang3.StringUtils.repeat;
 import static org.apache.commons.lang3.StringUtils.rightPad;
 
 @Service
-public class RosterCheckService {
+public class RosterPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(RosterCheckService.class);
+    private static final Logger log = LoggerFactory.getLogger(RosterPresenter.class);
     private final Pattern INDIVIDUAL_PATTERN = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);
 
     private final CommandService commandService;
     private final UgcDataService ugcDataService;
 
     @Autowired
-    public RosterCheckService(CommandService commandService, UgcDataService ugcDataService) {
+    public RosterPresenter(CommandService commandService, UgcDataService ugcDataService) {
         this.commandService = commandService;
         this.ugcDataService = ugcDataService;
     }

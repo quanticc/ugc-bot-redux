@@ -146,16 +146,31 @@ public class CommandBuilder {
         return this;
     }
 
+    /**
+     * Equivalent to {@link #permission(String)} using "master" as argument.
+     *
+     * @return this builder
+     */
     public CommandBuilder master() {
         this.permission = CommandPermission.MASTER;
         return this;
     }
 
+    /**
+     * Equivalent to {@link #permission(String)} using "support" as argument.
+     *
+     * @return this builder
+     */
     public CommandBuilder support() {
         this.permission = CommandPermission.SUPPORT;
         return this;
     }
 
+    /**
+     * Equivalent to {@link #permission(String)} using "none" as argument.
+     *
+     * @return this builder
+     */
     public CommandBuilder unrestricted() {
         this.permission = CommandPermission.NONE;
         return this;
@@ -225,7 +240,18 @@ public class CommandBuilder {
         return this;
     }
 
+    /**
+     * Allow this command to treat non-options as options by replacing them with the values in the given map. Contained
+     *
+     * @param optionAliases an alias map where the keys are the non-options to convert and the values the aliased options
+     *                      in the getopt form (must begin with - or --).
+     * @return this builder
+     * @throws IllegalArgumentException if the option alias map contract is not fulfilled.
+     */
     public CommandBuilder withOptionAliases(Map<String, String> optionAliases) {
+        if (optionAliases.values().stream().anyMatch(v -> !v.startsWith("-"))) {
+            throw new IllegalArgumentException("Option alias map must have all its values starting with - or --");
+        }
         this.optionAliases = optionAliases;
         return this;
     }

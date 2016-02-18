@@ -34,35 +34,37 @@ import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
 
 /**
- * Collection of operations to retrieve files from a game server's FTP server. Exposes commands to search, list, filter
- * and retrieve certain file types.
+ * Collection of operations to retrieve files from a game server's FTP server.
+ * <ul>
+ * <li>get logs</li>
+ * <li>get stv</li>
+ * </ul>
  */
 @Service
 @Transactional
-public class GameServerFtpService {
+public class FileExplorerPresenter {
 
-    private static final Logger log = LoggerFactory.getLogger(GameServerFtpService.class);
+    private static final Logger log = LoggerFactory.getLogger(FileExplorerPresenter.class);
 
     private final CommandService commandService;
     private final GameServerService gameServerService;
     private final SyncGroupService syncGroupService;
 
     private OptionParser parser;
+    private Map<String, String> getOptionAliases;
     private OptionSpec<String> getNonOptionSpec;
     private OptionSpec<String> getServerSpec;
     private OptionSpec<String> getFilenameFilterSpec;
     private OptionSpec<String> getAfterFilterSpec;
     private OptionSpec<String> getBeforeFilterSpec;
-    private Command getLogsCommand;
-    private Command getStvCommand;
     private OptionSpec<Boolean> getExactDateSpec;
     private OptionSpec<Integer> getLengthFilterSpec;
     private OptionSpec<Boolean> getZipSpec;
-    private OptionSpec<String> nonOptionSpec;
-    private Map<String, String> getOptionAliases;
+    private Command getLogsCommand;
+    private Command getStvCommand;
 
     @Autowired
-    public GameServerFtpService(CommandService commandService, GameServerService gameServerService, SyncGroupService syncGroupService) {
+    public FileExplorerPresenter(CommandService commandService, GameServerService gameServerService, SyncGroupService syncGroupService) {
         this.commandService = commandService;
         this.gameServerService = gameServerService;
         this.syncGroupService = syncGroupService;

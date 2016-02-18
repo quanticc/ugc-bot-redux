@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service.discord;
 
+import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import joptsimple.OptionParser;
@@ -21,8 +22,14 @@ import java.util.stream.Collectors;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static org.apache.commons.lang3.StringUtils.leftPad;
 
+/**
+ * Commands to retrieve info and general operation over Discord users
+ * <ul>
+ *     <li>userinfo</li>
+ * </ul>
+ */
 @Service
-public class WhoCommand {
+public class UserPresenter {
 
     private static final int TIMESTAMP_BITSHIFT = 22;
     private static final long DISCORD_EPOCH = 1420070400000L;
@@ -34,7 +41,7 @@ public class WhoCommand {
     private OptionSpec<String> whoNonOptionSpec;
 
     @Autowired
-    public WhoCommand(CommandService commandService, DiscordCacheService cacheService, DiscordService discordService) {
+    public UserPresenter(CommandService commandService, DiscordCacheService cacheService, DiscordService discordService) {
         this.commandService = commandService;
         this.cacheService = cacheService;
         this.discordService = discordService;
@@ -61,7 +68,7 @@ public class WhoCommand {
             String id = key.replaceAll("<@([0-9]+)>", "$1");
             List<IUser> matching = users.stream()
                 .filter(u -> u.getID().equals(id) || u.getName().equalsIgnoreCase(key))
-                .collect(Collectors.toList());
+                .distinct().collect(Collectors.toList());
             if (matching.size() == 1) {
                 IUser user = matching.get(0);
                 cacheService.getOrCreateUser(user); // refresh cached value
