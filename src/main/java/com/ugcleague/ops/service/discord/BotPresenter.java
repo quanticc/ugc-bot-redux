@@ -56,6 +56,7 @@ public class BotPresenter {
     private OptionSpec<String> profileAvatarSpec;
     private OptionSpec<String> profileGameSpec;
     private GitProperties gitProperties;
+    private OptionSpec<String> unsayNonOptionSpec;
 
     @Autowired
     public BotPresenter(CommandService commandService, DiscordService discordService) {
@@ -68,9 +69,11 @@ public class BotPresenter {
         commandService.register(CommandBuilder.equalsTo(".beep info")
             .description("Get Discord information about the bot").unrestricted().originReplies()
             .command(this::info).build());
+        OptionParser parser = newParser();
+        unsayNonOptionSpec = parser.nonOptions("# of messages to delete").ofType(String.class);
         commandService.register(CommandBuilder.anyMatch(".beep unsay")
             .description("Remove bot's last messages").unrestricted()
-            .command(this::unsay).build());
+            .parser(parser).command(this::unsay).build());
         commandService.register(CommandBuilder.equalsTo(".beep exit")
             .description("Exit discord").master()
             .command((message, optionSet) -> {
@@ -137,9 +140,13 @@ public class BotPresenter {
     }
 
     private String unsay(IMessage m, OptionSet optionSet) {
+        List<String> nonOptions = optionSet.valuesOf(unsayNonOptionSpec);
+        if (optionSet.has("?")) {
+            return null;
+        }
         long limit = 1;
-        if (m.getContent().contains(" ")) {
-            String arg = m.getContent().split(" ", 2)[1];
+        if (!nonOptions.isEmpty()) {
+            String arg = nonOptions.get(0);
             if (arg.matches("[0-9]+")) {
                 limit = Long.parseLong(arg);
             }
