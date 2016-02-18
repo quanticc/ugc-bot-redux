@@ -21,8 +21,12 @@ import sx.blah.discord.handle.obj.Presences;
 import sx.blah.discord.util.Image;
 
 import javax.annotation.PostConstruct;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +61,7 @@ public class BotPresenter {
     private OptionSpec<String> profileGameSpec;
     private GitProperties gitProperties;
     private OptionSpec<String> unsayNonOptionSpec;
+    private OptionSpec<String> execNonOptionSpec;
 
     @Autowired
     public BotPresenter(CommandService commandService, DiscordService discordService) {
@@ -74,14 +79,21 @@ public class BotPresenter {
         commandService.register(CommandBuilder.anyMatch(".beep unsay")
             .description("Remove bot's last messages").unrestricted()
             .parser(parser).command(this::unsay).build());
-        commandService.register(CommandBuilder.equalsTo(".beep exit")
-            .description("Exit discord").master()
+        initExecCommand();
+        commandService.register(CommandBuilder.equalsTo(".beep shutdown")
+            .description("Exit the application").master()
+            .command((message, optionSet) -> {
+                Runtime.getRuntime().exit(0);
+                return "";
+            }).build());
+        commandService.register(CommandBuilder.equalsTo(".beep logout")
+            .description("Logout from discord").master()
             .command((message, optionSet) -> {
                 discordService.logout(false);
                 return "";
             }).build());
         commandService.register(CommandBuilder.equalsTo(".beep retry")
-            .description("Exit discord").master()
+            .description("Reconnect to Discord").master()
             .command((message, optionSet) -> {
                 discordService.logout(true);
                 return "";
@@ -101,6 +113,41 @@ public class BotPresenter {
                 }
                 return builder.toString();
             }).build());
+    }
+
+    private void initExecCommand() {
+        OptionParser parser = newParser();
+        execNonOptionSpec = parser.nonOptions("Command to run").ofType(String.class);
+        commandService.register(CommandBuilder.startsWith(".beep exec")
+            .description("Invoke a command line process").master().queued().parser(parser)
+            .command(this::exec).build());
+    }
+
+    private String exec(IMessage message, OptionSet optionSet) {
+        List<String> commands = optionSet.valuesOf(execNonOptionSpec);
+        if (optionSet.has("?") || commands.isEmpty()) {
+            return null;
+        }
+        ProcessBuilder builder = new ProcessBuilder(commands);
+        //StringBuilder lines = new StringBuilder();
+        String line;
+        try {
+            Process process = builder.start();
+            try (BufferedReader input = newProcessReader(process)) {
+                while ((line = input.readLine()) != null) {
+                    log.debug("[{}] {}", builder.command().get(0), line);
+                    //lines.append("[").append(builder.command().get(0)).append("] ").append(line).append("\n");
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to start process: {}", e.toString());
+            return "Failed to run command";
+        }
+        return "Done";
+    }
+
+    private BufferedReader newProcessReader(Process p) {
+        return new BufferedReader(new InputStreamReader(p.getInputStream(), Charset.forName("UTF-8")));
     }
 
     private void initProfileCommand() {
