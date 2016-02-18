@@ -99,11 +99,11 @@ public class EtcCommands {
         rateNumberSpec = parser.acceptsAll(asList("n", "number"), "Number of messages to send")
             .withRequiredArg().ofType(Integer.class);
         rateWaitSpec = parser.acceptsAll(asList("w", "wait"), "Milliseconds before each message")
-            .withRequiredArg().ofType(Integer.class).defaultsTo(250);
+            .withRequiredArg().ofType(Integer.class).defaultsTo(1000);
         rateStatusSpec = parser.acceptsAll(asList("s", "status"), "Display progress with successive edits to the initial reply")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         rateNonOptionSpec = parser.nonOptions("Messages to be displayed").ofType(String.class);
-        rateCommand = CommandBuilder.startsWith(".echo")
+        rateCommand = CommandBuilder.anyMatch(".echo")
             .description("Echo a series of messages").support().originReplies().queued().parser(parser)
             .command(this::echo).build();
         commandService.register(rateCommand);
