@@ -206,8 +206,8 @@ public class BotPresenter {
         IDiscordClient client = discordService.getClient();
         IChannel c = client.getChannelByID(m.getChannel().getID());
         if (c != null) {
-            c.getMessages().stream().limit(limit).filter(message -> message.getAuthor().getID()
-                .equalsIgnoreCase(client.getOurUser().getID())).forEach(message -> {
+            c.getMessages().stream().filter(message -> message.getAuthor().getID()
+                .equalsIgnoreCase(client.getOurUser().getID())).limit(limit).forEach(message -> {
                 try {
                     discordService.deleteMessage(message);
                 } catch (MissingPermissionsException e) {
