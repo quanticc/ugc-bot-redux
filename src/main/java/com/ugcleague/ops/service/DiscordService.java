@@ -1,14 +1,12 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.SlidingTimeWindowReservoir;
+import com.codahale.metrics.*;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.discord.command.SplitMessage;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
+import com.ugcleague.ops.service.util.MetricNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +34,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -65,14 +62,18 @@ public class DiscordService implements DiscordSubscriber {
                           HealthCheckRegistry healthCheckRegistry) {
         this.properties = properties;
         this.healthCheckRegistry = healthCheckRegistry;
-        this.responseTime = metricRegistry.register("discord.ws.responseTime",
-            new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.HOURS)));
-        this.restartCounter = metricRegistry.register("discord.ws.restarts", new Counter());
+        this.responseTime = metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM,
+            new Histogram(new UniformReservoir()));
+        metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE, (Gauge<Long>) this::getMeanResponseTime);
+        metricRegistry.register(MetricNames.DISCORD_USERS_JOINED, (Gauge<Long>) this::getUserCount);
+        metricRegistry.register(MetricNames.DISCORD_USERS_CONNECTED, (Gauge<Long>) this::getConnectedUserCount);
+        metricRegistry.register(MetricNames.DISCORD_USERS_ONLINE, (Gauge<Long>) this::getOnlineUserCount);
+        this.restartCounter = metricRegistry.register(MetricNames.DISCORD_WS_RESTARTS, new Counter());
     }
 
     @PostConstruct
     private void configure() {
-        healthCheckRegistry.register("Discord.WebSocket", new HealthCheck() {
+        healthCheckRegistry.register(MetricNames.HEALTH_DISCORD_WS, new HealthCheck() {
             @Override
             protected Result check() throws Exception {
                 long mean = (long) responseTime.getSnapshot().getMean();
@@ -401,10 +402,38 @@ public class DiscordService implements DiscordSubscriber {
         return CompletableFuture.completedFuture(asList(response));
     }
 
+    public Long getUserCount() {
+        if (client == null || !client.isReady()) {
+            return 0L;
+        }
+        return client.getGuilds().stream().flatMap(g -> g.getUsers().stream()).count();
+    }
+
+    public Long getConnectedUserCount() {
+        if (client == null || !client.isReady()) {
+            return 0L;
+        }
+        return client.getGuilds().stream().flatMap(g -> g.getUsers().stream())
+            .filter(u -> !u.getPresence().equals(Presences.OFFLINE)).count();
+    }
+
+    public Long getOnlineUserCount() {
+        if (client == null || !client.isReady()) {
+            return 0L;
+        }
+        return client.getGuilds().stream().flatMap(g -> g.getUsers().stream())
+            .filter(u -> u.getPresence().equals(Presences.ONLINE)).count();
+    }
+
+    public long getMeanResponseTime() {
+        return (long) responseTime.getSnapshot().getMean();
+    }
+
     @Scheduled(cron = "*/10 * * * * *")
-    void checkResponseTime() {
+    void checkResponseTime() { // scheduled each 10 seconds
         if (client != null && client.isReady()) {
-            responseTime.update(client.getResponseTime());
+            long ms = client.getResponseTime();
+            responseTime.update(ms);
         }
     }
 

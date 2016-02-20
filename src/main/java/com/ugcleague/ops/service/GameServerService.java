@@ -1,8 +1,7 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.SlidingTimeWindowReservoir;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
@@ -34,7 +33,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -116,10 +114,10 @@ public class GameServerService {
             }
         });
         for (GameServer server : gameServerRepository.findAll()) {
-            metricRegistry.register("gs.ping." + server.getShortName(),
-                new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
-            metricRegistry.register("gs.players." + server.getShortName(),
-                new Histogram(new SlidingTimeWindowReservoir(1, TimeUnit.DAYS)));
+            metricRegistry.register(MetricNames.gameServerPing(server),
+                (Gauge<Integer>) () -> getServerPing(server));
+            metricRegistry.register(MetricNames.gameServerPlayers(server),
+                (Gauge<Integer>) () -> getServerPlayerCount(server));
         }
     }
 
@@ -246,10 +244,28 @@ public class GameServerService {
             } else {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
             }
-            metricRegistry.histogram("gameServers." + server.getShortName() + ".ping").update(server.getPing());
-            metricRegistry.histogram("gameServers." + server.getShortName() + ".players").update(server.getPlayers());
         }
         return server;
+    }
+
+    public int getServerPing(GameServer server) {
+        // refresh ping and player count but don't save to DB
+        SourceServer source = getSourceServer(server);
+        if (source != null) {
+            return steamCondenserService.ping(source);
+        } else {
+            return 0;
+        }
+    }
+
+    public int getServerPlayerCount(GameServer server) {
+        // refresh ping and player count but don't save to DB
+        SourceServer source = getSourceServer(server);
+        if (source != null) {
+            return steamCondenserService.players(source);
+        } else {
+            return 0;
+        }
     }
 
     public DeadServerMap getDeadServerMap() {

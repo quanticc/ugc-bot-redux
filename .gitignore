@@ -12,6 +12,8 @@ users.csv
 users.*.csv
 liquibase.properties
 release.sh
+chart*.png
+/metrics
 /prod.yml
 
 ######################

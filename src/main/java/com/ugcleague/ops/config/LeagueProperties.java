@@ -118,6 +118,7 @@ public class LeagueProperties {
         private final Jmx jmx = new Jmx();
         private final Spark spark = new Spark();
         private final Graphite graphite = new Graphite();
+        private final Mongo mongo = new Mongo();
 
         @Data
         public static class Jmx {
@@ -137,6 +138,13 @@ public class LeagueProperties {
             private String host = "localhost";
             private int port = 2003;
             private String prefix = "ugc";
+        }
+
+        @Data
+        public static class Mongo {
+            private boolean enabled = true;
+            private String prefix = "";
+            private List<String> includedMetrics = new ArrayList<>();
         }
     }
 }

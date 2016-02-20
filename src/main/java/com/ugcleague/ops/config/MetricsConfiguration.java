@@ -6,6 +6,7 @@ import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.codahale.metrics.jvm.*;
+import com.mongodb.Mongo;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import com.ryantenney.metrics.spring.config.annotation.MetricsConfigurerAdapter;
 import fr.ippon.spark.metrics.SparkReporter;
@@ -13,9 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.mongo.MongoProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import se.maypril.metrics.MongoDBReporter;
 
 import javax.annotation.PostConstruct;
 import java.lang.management.ManagementFactory;
@@ -123,6 +126,40 @@ public class MetricsConfiguration extends MetricsConfigurerAdapter {
                     .convertDurationsTo(TimeUnit.MILLISECONDS)
                     .build(sparkHost, sparkPort);
                 sparkReporter.start(1, TimeUnit.MINUTES);
+            }
+        }
+    }
+
+    @Configuration
+    @Profile("!" + Constants.SPRING_PROFILE_FAST)
+    public static class MongoRegistry {
+
+        private final Logger log = LoggerFactory.getLogger(MongoRegistry.class);
+
+        @Autowired
+        private MetricRegistry metricRegistry;
+
+        @Autowired
+        private LeagueProperties properties;
+
+        @Autowired
+        private Mongo mongo;
+
+        @Autowired
+        private MongoProperties mongoProperties;
+
+        @PostConstruct
+        private void init() {
+            if (properties.getMetrics().getMongo().isEnabled()) {
+                log.info("Initializing Metrics Mongo reporting");
+                MongoDBReporter mongoDBReporter = MongoDBReporter.forRegistry(metricRegistry)
+                    .convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS)
+                    .prefixedWith(properties.getMetrics().getMongo().getPrefix())
+                    .filter(((name, metric) -> properties.getMetrics().getMongo().getIncludedMetrics().stream()
+                        .anyMatch(name::startsWith))) // only report if it matches any included metric
+                    .build(mongo.getDB(mongoProperties.getDatabase()));
+                mongoDBReporter.start(1, TimeUnit.MINUTES);
             }
         }
     }
