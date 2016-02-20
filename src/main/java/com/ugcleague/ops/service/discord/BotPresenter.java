@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
@@ -62,6 +63,7 @@ public class BotPresenter {
     private GitProperties gitProperties;
     private OptionSpec<String> unsayNonOptionSpec;
     private OptionSpec<String> execNonOptionSpec;
+    private OptionSpec<String> loadNonOptionSpec;
 
     @Autowired
     public BotPresenter(CommandService commandService, DiscordService discordService) {
@@ -74,11 +76,8 @@ public class BotPresenter {
         commandService.register(CommandBuilder.equalsTo(".beep info")
             .description("Get Discord information about the bot").unrestricted().originReplies()
             .command(this::info).build());
-        OptionParser parser = newParser();
-        unsayNonOptionSpec = parser.nonOptions("# of messages to delete").ofType(String.class);
-        commandService.register(CommandBuilder.anyMatch(".beep unsay")
-            .description("Remove bot's last messages").unrestricted()
-            .parser(parser).command(this::unsay).build());
+        initLoadCommand();
+        initUnsayCommand();
         initExecCommand();
         commandService.register(CommandBuilder.equalsTo(".beep shutdown")
             .description("Exit the application").master()
@@ -113,6 +112,41 @@ public class BotPresenter {
                 }
                 return builder.toString();
             }).build());
+    }
+
+    private void initLoadCommand() {
+        OptionParser parser = newParser();
+        loadNonOptionSpec = parser.nonOptions("# of new messages to load").ofType(String.class);
+        commandService.register(CommandBuilder.anyMatch(".beep load")
+            .description("Cache more messages from this channel").support()
+            .parser(parser).command(this::load).build());
+    }
+
+    private String load(IMessage message, OptionSet optionSet) {
+        List<String> nonOptions = optionSet.valuesOf(loadNonOptionSpec).stream().distinct().collect(Collectors.toList());
+        if (optionSet.has("?")) {
+            return null;
+        }
+        int count = 50;
+        if (!nonOptions.isEmpty()) {
+            String arg = nonOptions.get(0);
+            if (arg.matches("[0-9]+")) {
+                count = Math.max(1, Math.min(100, Integer.parseInt(arg)));
+            }
+        }
+        IChannel channel = message.getChannel();
+        boolean result = channel.getMessages().load(count);
+        log.debug("Could load {} messages from channel {} ({}) into cache: {}",
+            count, channel.getName(), channel.getID(), result);
+        return ""; // silent
+    }
+
+    private void initUnsayCommand() {
+        OptionParser parser = newParser();
+        unsayNonOptionSpec = parser.nonOptions("# of messages to delete").ofType(String.class);
+        commandService.register(CommandBuilder.anyMatch(".beep unsay")
+            .description("Remove bot's last messages").unrestricted()
+            .parser(parser).command(this::unsay).build());
     }
 
     private void initExecCommand() {
