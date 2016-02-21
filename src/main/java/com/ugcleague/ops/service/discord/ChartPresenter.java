@@ -252,9 +252,11 @@ public class ChartPresenter {
         XYChart.Series<Long, Number> series = new XYChart.Series<>();
         series.setName(seriesName);
         for (GaugeEntity data : dataList) {
-            long value = (long) data.getValue();
-            long millis = data.getTimestamp().getTime();
-            series.getData().add(new XYChart.Data<>(millis, value));
+            if (data.getValue() != null) {
+                long value = (long) data.getValue();
+                long millis = data.getTimestamp().getTime();
+                series.getData().add(new XYChart.Data<>(millis, value));
+            }
         }
         chart.getData().add(series);
         chart.setPrefSize(400, 250); // ideal before Discord starts reducing thumbnail size

@@ -248,24 +248,22 @@ public class GameServerService {
         return server;
     }
 
-    public int getServerPing(GameServer server) {
+    public Integer getServerPing(GameServer server) {
         // refresh ping and player count but don't save to DB
-        SourceServer source = getSourceServer(server);
-        if (source != null) {
+        if (steamCondenserService.containsSourceServer(server.getAddress())) {
+            SourceServer source = getSourceServer(server);
             return steamCondenserService.ping(source);
-        } else {
-            return 0;
         }
+        return null;
     }
 
-    public int getServerPlayerCount(GameServer server) {
+    public Integer getServerPlayerCount(GameServer server) {
         // refresh ping and player count but don't save to DB
-        SourceServer source = getSourceServer(server);
-        if (source != null) {
+        if (steamCondenserService.containsSourceServer(server.getAddress())) {
+            SourceServer source = getSourceServer(server);
             return steamCondenserService.players(source);
-        } else {
-            return 0;
         }
+        return null;
     }
 
     public DeadServerMap getDeadServerMap() {

@@ -183,6 +183,10 @@ public class SteamCondenserService {
         return sourceServers.computeIfAbsent(address, this::createSourceServer);
     }
 
+    public boolean containsSourceServer(String address) {
+        return sourceServers.containsKey(address);
+    }
+
     private SourceServer createSourceServer(String address) {
         log.debug("Creating server socket at {}", address);
         try {
