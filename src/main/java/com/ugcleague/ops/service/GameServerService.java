@@ -1,6 +1,6 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.Gauge;
+import com.codahale.metrics.CachedGauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -114,10 +115,18 @@ public class GameServerService {
             }
         });
         for (GameServer server : gameServerRepository.findAll()) {
-            metricRegistry.register(MetricNames.gameServerPing(server),
-                (Gauge<Integer>) () -> getServerPing(server));
-            metricRegistry.register(MetricNames.gameServerPlayers(server),
-                (Gauge<Integer>) () -> getServerPlayerCount(server));
+            metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+                @Override
+                protected Integer loadValue() {
+                    return getServerPing(server);
+                }
+            });
+            metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+                @Override
+                protected Integer loadValue() {
+                    return getServerPlayerCount(server);
+                }
+            });
         }
     }
 
@@ -231,10 +240,10 @@ public class GameServerService {
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
-            Integer ping = steamCondenserService.ping(source);
+            Integer ping = pingGaugeValue(server);
             server.setPing(ping);
             if (ping >= 0) {
-                server.setPlayers(steamCondenserService.players(source));
+                server.setPlayers(playersGaugeValue(server));
                 Map<String, Object> info = steamCondenserService.info(source);
                 Optional.ofNullable(info.get("maxPlayers")).map(this::safeParse).ifPresent(server::setMaxPlayers);
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
@@ -246,6 +255,16 @@ public class GameServerService {
             }
         }
         return server;
+    }
+
+    private Integer pingGaugeValue(GameServer server) {
+        Object value = metricRegistry.getGauges().get(MetricNames.gameServerPing(server)).getValue();
+        return value == null ? -1 : (Integer) value;
+    }
+
+    private Integer playersGaugeValue(GameServer server) {
+        Object value = metricRegistry.getGauges().get(MetricNames.gameServerPlayers(server)).getValue();
+        return value == null ? -1 : (Integer) value;
     }
 
     public Integer getServerPing(GameServer server) {
