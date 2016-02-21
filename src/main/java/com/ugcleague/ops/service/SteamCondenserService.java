@@ -39,7 +39,6 @@ public class SteamCondenserService {
 
     private Integer cachedLatestVersion = 0;
     private boolean invalid = true;
-    private String apiKey;
 
     @Autowired
     public SteamCondenserService(LeagueProperties leagueProperties) throws WebApiException {
@@ -48,9 +47,8 @@ public class SteamCondenserService {
 
     @PostConstruct
     private void configure() {
-        apiKey = leagueProperties.getGameServers().getSteamApiKey();
         try {
-            WebApi.setApiKey(apiKey);
+            WebApi.setApiKey(leagueProperties.getGameServers().getSteamApiKey());
         } catch (WebApiException e) {
             log.error("Invalid Steam API key", e);
         }
