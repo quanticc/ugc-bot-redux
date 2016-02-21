@@ -4,8 +4,6 @@ import org.junit.Test;
 import org.ocpsoft.prettytime.PrettyTime;
 import org.ocpsoft.prettytime.nlp.PrettyTimeParser;
 import org.ocpsoft.prettytime.nlp.parse.DateGroup;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -16,8 +14,6 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public class PrettyTimeNLPTest {
-
-    private static final Logger log = LoggerFactory.getLogger(PrettyTimeNLPTest.class);
 
     @Test
     public void testBasicStringsParse() {
@@ -36,19 +32,12 @@ public class PrettyTimeNLPTest {
     @Test
     public void testSimpleTimeStrings() {
         LocalDateTime now = LocalDateTime.now();
-        log.info("now: {}", now);
         Date yesterday = new PrettyTimeParser().parse("yesterday").get(0);
-        log.info("yesterday -> {}", yesterday);
         Date twoHoursAgo = new PrettyTimeParser().parse("2 hours ago").get(0);
-        log.info("2 hours ago -> {}", twoHoursAgo);
         Date lastWeek = new PrettyTimeParser().parse("last week").get(0);
-        log.info("last week -> {}", lastWeek);
-        Date aug122015 = new PrettyTimeParser().parse("august 12th 2015").get(0);
-        log.info("august 12th 2015 -> {}", aug122015);
+        //Date aug122015 = new PrettyTimeParser().parse("august 12th 2015").get(0);
         Date yesterday10pm = new PrettyTimeParser().parse("yesterday at 10PM").get(0);
-        log.info("yesterday at 10PM -> {}", yesterday10pm);
         Date real = new PrettyTimeParser().parse("2016-01-01 15:00:00").get(0);
-        log.info("2016-01-01 15:00:00 -> {}", real);
         assertTrue(LocalDateTime.ofInstant(yesterday.toInstant(), ZoneId.systemDefault()).isAfter(now.minusDays(1)));
         assertTrue(LocalDateTime.ofInstant(twoHoursAgo.toInstant(), ZoneId.systemDefault()).isAfter(now.minusHours(2)));
         assertTrue(LocalDateTime.ofInstant(lastWeek.toInstant(), ZoneId.systemDefault()).isAfter(now.minusWeeks(1)));

@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 
 public class StatusParserTest {
 
-    private static final Logger log = LoggerFactory.getLogger(StatusParserTest.class);
     private final Pattern FULL_PATTERN = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$");
     private final Pattern SHORT_PATTERN = Pattern.compile("^.+\\s+(\\[U:([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$");
     private final Pattern FULL_PATTERN_MULTILINE = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);

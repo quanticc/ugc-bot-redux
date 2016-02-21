@@ -1,19 +1,15 @@
 package com.ugcleague.ops.service.discord;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.time.*;
+import java.time.Period;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SupportTimeTest {
-
-    private static final Logger log = LoggerFactory.getLogger(SupportTimeTest.class);
 
     @Test
     public void testCrossDayPeriod() throws Exception {

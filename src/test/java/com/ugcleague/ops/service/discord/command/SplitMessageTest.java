@@ -2,14 +2,10 @@ package com.ugcleague.ops.service.discord.command;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class SplitMessageTest {
-
-    private static final Logger log = LoggerFactory.getLogger(SplitMessageTest.class);
 
     @Test
     public void testNewlineSplits() throws InterruptedException {
