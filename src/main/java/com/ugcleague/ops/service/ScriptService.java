@@ -76,6 +76,7 @@ public class ScriptService {
         try {
             Map<String, Object> scope = new LinkedHashMap<>();
             scope.put("message", message);
+            scope.put("server", message.getChannel().isPrivate() ? null : message.getChannel().getGuild());
             scope.put("channel", message.getChannel());
             scope.put("author", message.getAuthor());
             resultMap.put("result", evalWithScope(script, scope));
