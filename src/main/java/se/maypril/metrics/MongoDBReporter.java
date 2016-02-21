@@ -216,6 +216,11 @@ public class MongoDBReporter extends ScheduledReporter {
         final DBCollection coll = db.getCollection("metric_gauge");
         final Object value = gauge.getValue();
 
+        if (value == null) {
+            // skip report
+            return;
+        }
+
         if (!String.class.equals(value.getClass())) {
             final GaugeEntity entity = new GaugeEntity();
             entity.setName(prefix(name));
