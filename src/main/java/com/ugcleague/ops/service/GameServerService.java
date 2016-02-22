@@ -1,6 +1,7 @@
 package com.ugcleague.ops.service;
 
 import com.codahale.metrics.CachedGauge;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
@@ -29,10 +30,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -114,20 +112,84 @@ public class GameServerService {
                 }
             }
         });
+        Map<String, List<Gauge<Integer>>> pingGaugesPerRegion = new LinkedHashMap<>();
+        Map<String, List<Gauge<Integer>>> playersGaugesPerRegion = new LinkedHashMap<>();
         for (GameServer server : gameServerRepository.findAll()) {
-            metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     return getServerPing(server);
                 }
             });
-            metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     return getServerPlayerCount(server);
                 }
             });
+            String region = server.getShortName().substring(0, 3);
+            pingGaugesPerRegion.computeIfAbsent(region, k -> new ArrayList<>()).add(ping);
+            playersGaugesPerRegion.computeIfAbsent(region, k -> new ArrayList<>()).add(players);
         }
+
+        // compute gs.ping.* for average region-wide ping
+        for (Map.Entry<String, List<Gauge<Integer>>> entry : pingGaugesPerRegion.entrySet()) {
+            String region = entry.getKey();
+            metricRegistry.register("gs.ping." + region, new CachedGauge<Double>(1, TimeUnit.MINUTES) {
+                @Override
+                protected Double loadValue() {
+                    return entry.getValue().stream()
+                        .map(Gauge::getValue)
+                        .filter(v -> v != null)
+                        .collect(Collectors.averagingInt(v -> v));
+                }
+            });
+        }
+
+        // compute gs.players.count.* and avg.* for player total and average per region
+        List<Gauge<Integer>> playerCounts = new ArrayList<>();
+        List<Gauge<Double>> playerAverages = new ArrayList<>();
+        for (Map.Entry<String, List<Gauge<Integer>>> entry : pingGaugesPerRegion.entrySet()) {
+            String region = entry.getKey();
+            Gauge<Integer> sum = metricRegistry.register("gs.players.count." + region, new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+                @Override
+                protected Integer loadValue() {
+                    return entry.getValue().stream()
+                        .map(Gauge::getValue)
+                        .filter(v -> v != null)
+                        .collect(Collectors.summingInt(v -> v));
+                }
+            });
+            Gauge<Double> average = metricRegistry.register("gs.players.avg." + region, new CachedGauge<Double>(1, TimeUnit.MINUTES) {
+                @Override
+                protected Double loadValue() {
+                    return entry.getValue().stream()
+                        .map(Gauge::getValue)
+                        .filter(v -> v != null)
+                        .collect(Collectors.averagingInt(v -> v));
+                }
+            });
+            playerCounts.add(sum);
+            playerAverages.add(average);
+        }
+
+        // compute gs.players.count and avg for worldwide player count and average player count
+        metricRegistry.register("gs.players.count", new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+            @Override
+            protected Integer loadValue() {
+                return playerCounts.stream().map(Gauge::getValue)
+                    .filter(v -> v != null)
+                    .collect(Collectors.summingInt(v -> v));
+            }
+        });
+        metricRegistry.register("gs.players.avg", new CachedGauge<Double>(1, TimeUnit.MINUTES) {
+            @Override
+            protected Double loadValue() {
+                return playerAverages.stream().map(Gauge::getValue)
+                    .filter(v -> v != null)
+                    .collect(Collectors.averagingDouble(v -> v));
+            }
+        });
     }
 
     public void refreshServerDetails() {
