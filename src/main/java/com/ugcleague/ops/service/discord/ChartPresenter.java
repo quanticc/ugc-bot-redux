@@ -420,7 +420,7 @@ public class ChartPresenter {
                 if (!metric.isPresent()) {
                     return "You must define the metric bound to this series!";
                 }
-                Series newSeries = seriesRepository.save(updateSeries(new Series(), add.get(), metric.get(),
+                Series newSeries = seriesRepository.save(updateSeries(new Series(), add.get(), metric,
                     Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
                 return "New series '" + newSeries.getName() + "' created";
             }
@@ -432,11 +432,8 @@ public class ChartPresenter {
             if (!series.isPresent()) {
                 return "No series found by that name, create it first";
             } else {
-                Optional<String> metric = Optional.ofNullable(optionSet.valueOf(seriesMetricSpec));
-                if (!metric.isPresent()) {
-                    return "No changes done if metric is not changing";
-                }
-                Series updatedSeries = seriesRepository.save(updateSeries(series.get(), edit.get(), metric.get(),
+                Series updatedSeries = seriesRepository.save(updateSeries(series.get(), edit.get(),
+                    Optional.ofNullable(optionSet.valueOf(seriesMetricSpec)),
                     Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
                 return "Series '" + updatedSeries.getName() + "' updated";
             }
@@ -445,9 +442,11 @@ public class ChartPresenter {
         return "";
     }
 
-    private Series updateSeries(Series series, String name, String metric, Optional<String> title) {
+    private Series updateSeries(Series series, String name, Optional<String> metric, Optional<String> title) {
         series.setName(name);
-        series.setMetric(metric);
+        if (metric.isPresent()) {
+            series.setMetric(metric.get());
+        }
         if (title.isPresent()) {
             series.setTitle(title.get());
         }
