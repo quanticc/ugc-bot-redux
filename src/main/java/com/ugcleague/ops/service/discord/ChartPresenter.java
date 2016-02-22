@@ -282,8 +282,9 @@ public class ChartPresenter {
                 series.setName(title);
             }
             for (GaugeEntity data : points) {
-                if (data.getValue() != null) {
-                    long value = (long) data.getValue();
+                Object object = data.getValue();
+                if (object != null && object instanceof Number) {
+                    Number value = (Number) object;
                     long millis = data.getTimestamp().getTime();
                     series.getData().add(new XYChart.Data<>(millis, value));
                 }
