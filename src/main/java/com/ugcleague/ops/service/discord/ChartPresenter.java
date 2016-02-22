@@ -224,7 +224,11 @@ public class ChartPresenter {
         int height = optionSet.valueOf(chartHeightSpec);
 
         // snapshot the chart and send it as a file to the origin channel
-        takeSnapshot(generateChart(chart.get(), since, until, width, height), file -> {
+        Node node = generateChart(chart.get(), since, until, width, height);
+        if (node == null) {
+            return "Data set is empty!";
+        }
+        takeSnapshot(node, file -> {
             try {
                 commandService.fileReplyFrom(message, chartCommand, file);
             } catch (InterruptedException | DiscordException | MissingPermissionsException e) {
@@ -236,8 +240,9 @@ public class ChartPresenter {
     }
 
     private Node generateChart(Chart chartSpec, String since, String until, int width, int height) {
-        ZonedDateTime after = Optional.ofNullable(DateUtil.parseTimeDate(since)).orElse(ZonedDateTime.now().minusHours(1));
-        ZonedDateTime before = Optional.ofNullable(DateUtil.parseTimeDate(until)).orElse(ZonedDateTime.now());
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime after = Optional.ofNullable(DateUtil.parseTimeDate(since)).orElse(now.minusHours(1));
+        ZonedDateTime before = Optional.ofNullable(DateUtil.parseTimeDate(until)).orElse(now);
         log.debug("Generating '{}' ({}x{}) from {} to {}", chartSpec.getName(), width, height, after, before);
         DateAxis x = new DateAxis();
         NumberAxis y = new NumberAxis();
@@ -246,6 +251,7 @@ public class ChartPresenter {
         x.setAnimated(false);
         y.setAnimated(false);
         LineChart<Long, Number> chart = new LineChart<>(x, y);
+        int pointCount = 0;
         for (Series seriesSpec : chartSpec.getSeriesList()) {
             List<GaugeEntity> points = mongoTemplate.find(
                 query(where(NAME).is(seriesSpec.getName())
@@ -253,6 +259,7 @@ public class ChartPresenter {
                         Criteria.where(TIMESTAMP).gte(Date.from(after.toInstant())),
                         Criteria.where(TIMESTAMP).lte(Date.from(before.toInstant()))
                     )), GaugeEntity.class, GAUGES_COLLECTION);
+            pointCount += points.size();
             log.debug("Adding {} data points from series {} (metric: {})",
                 points.size(), seriesSpec.getName(), seriesSpec.getMetric());
             XYChart.Series<Long, Number> series = new XYChart.Series<>();
@@ -269,7 +276,11 @@ public class ChartPresenter {
             }
             chart.getData().add(series);
         }
-        Optional.ofNullable(chartSpec.getName()).filter(s -> !s.isEmpty()).ifPresent(chart::setTitle);
+        if (pointCount == 0) {
+            log.warn("No data points to graph!");
+            return null;
+        }
+        Optional.ofNullable(chartSpec.getTitle()).filter(s -> !s.isEmpty()).ifPresent(chart::setTitle);
         Optional.ofNullable(chartSpec.getXAxisLabel()).filter(s -> !s.isEmpty()).ifPresent(s -> chart.getXAxis().setLabel(s));
         Optional.ofNullable(chartSpec.getYAxisLabel()).filter(s -> !s.isEmpty()).ifPresent(s -> chart.getYAxis().setLabel(s));
         // bound check within reasonable limits
