@@ -7,10 +7,10 @@ import com.ugcleague.ops.service.SyncGroupService;
 import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.FileShareTask;
+import com.ugcleague.ops.util.DateUtil;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
-import org.ocpsoft.prettytime.nlp.PrettyTimeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,9 +20,11 @@ import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
 import java.time.Duration;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -146,8 +148,8 @@ public class FileExplorerPresenter {
             // List mode
             response.append(filename.map(f -> "Files containing **" + f + "**").orElse("*Use `-f <filename>` to filter by filename*")).append("\n");
             // parse after/before filters
-            Optional<ZonedDateTime> afterTime = after.map(this::parseTimeDate);
-            Optional<ZonedDateTime> beforeTime = before.map(this::parseTimeDate);
+            Optional<ZonedDateTime> afterTime = after.map(DateUtil::parseTimeDate);
+            Optional<ZonedDateTime> beforeTime = before.map(DateUtil::parseTimeDate);
             long minLength = Math.max(0, optionSet.valueOf(getLengthFilterSpec));
             if (afterTime.isPresent() || beforeTime.isPresent()) {
                 if (afterTime.isPresent() && beforeTime.isPresent()) {
@@ -234,16 +236,6 @@ public class FileExplorerPresenter {
         }
         commandService.tryReplyFrom(message, command, response.toString());
         //commandService.deleteStatusFrom(message); // remove status
-    }
-
-    private ZonedDateTime parseTimeDate(String s) {
-        List<Date> parsed = new PrettyTimeParser().parse(s); // never null, can be empty
-        if (!parsed.isEmpty()) {
-            Date first = parsed.get(0);
-            return ZonedDateTime.ofInstant(first.toInstant(), ZoneId.systemDefault());
-        }
-        log.warn("Could not parse a valid date from input: {}", s);
-        return null;
     }
 
     private boolean isBefore(ZonedDateTime threshold, ZonedDateTime actual) {

@@ -1,6 +1,7 @@
 package com.ugcleague.ops.util;
 
 import net.redhogs.cronparser.CronExpressionDescriptor;
+import org.ocpsoft.prettytime.nlp.PrettyTimeParser;
 import org.quartz.CronExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,6 +210,16 @@ public class DateUtil {
         Instant instant = incorrect.toInstant();
         ZonedDateTime zoned = instant.atZone(ZoneId.systemDefault());
         return zoned.plusSeconds(zoned.getOffset().getTotalSeconds());
+    }
+
+    public static ZonedDateTime parseTimeDate(String s) {
+        List<Date> parsed = new PrettyTimeParser().parse(s); // never null, can be empty
+        if (!parsed.isEmpty()) {
+            Date first = parsed.get(0);
+            return ZonedDateTime.ofInstant(first.toInstant(), ZoneId.systemDefault());
+        }
+        log.warn("Could not parse a valid date from input: {}", s);
+        return null;
     }
 
     private DateUtil() {
