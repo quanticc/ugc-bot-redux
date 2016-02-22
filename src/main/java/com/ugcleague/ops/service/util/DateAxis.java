@@ -80,8 +80,8 @@ public class DateAxis extends ValueAxis<Long> {
         "HH:mm",      // 30 minutes
         "HH:mm",      // 1 hour
         "HH:mm",      // 2 hours
-        "HH:mm",      // 4 hour
-        "HH:mm",      // 6 hours
+        "EEE HH:mm",  // 4 hour
+        "EEE HH:mm",  // 6 hours
         "EEE HH:mm",  // 12 hours
         "EEE dd",     // 1 day
         "EEE dd",     // 2 days
