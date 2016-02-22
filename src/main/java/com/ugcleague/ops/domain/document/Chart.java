@@ -19,6 +19,7 @@ public class Chart extends AbstractAuditingEntity {
     private String title;
     private String xAxisLabel = "";
     private String yAxisLabel = "";
+    private boolean drawSymbols = false;
     @DBRef
     private Set<Series> seriesList = new LinkedHashSet<>();
 
@@ -62,6 +63,14 @@ public class Chart extends AbstractAuditingEntity {
         this.yAxisLabel = yAxisLabel;
     }
 
+    public boolean isDrawSymbols() {
+        return drawSymbols;
+    }
+
+    public void setDrawSymbols(boolean drawSymbols) {
+        this.drawSymbols = drawSymbols;
+    }
+
     public Set<Series> getSeriesList() {
         return seriesList;
     }
@@ -77,6 +86,7 @@ public class Chart extends AbstractAuditingEntity {
             ", title='" + title + '\'' +
             ", xLabel='" + xAxisLabel + '\'' +
             ", yLabel='" + yAxisLabel + '\'' +
+            ", drawSymbols=" + drawSymbols +
             ", seriesList=" + seriesList +
             '}';
     }

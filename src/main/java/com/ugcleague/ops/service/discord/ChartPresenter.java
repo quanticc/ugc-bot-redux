@@ -80,6 +80,7 @@ public class ChartPresenter {
     private OptionSpec<String> manageXLabelSpec;
     private OptionSpec<String> manageYLabelSpec;
     private OptionSpec<Void> manageListSpec;
+    private OptionSpec<Boolean> manageDrawSymbolsSpec;
     private OptionSpec<String> seriesAddSpec;
     private OptionSpec<String> seriesEditSpec;
     private OptionSpec<String> seriesRemoveSpec;
@@ -148,6 +149,8 @@ public class ChartPresenter {
         manageYLabelSpec = parser.acceptsAll(asList("y", "y-label"), "Name of the label for the Y axis")
             .withRequiredArg().defaultsTo("");
         manageListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available charts");
+        manageDrawSymbolsSpec = parser.accepts("draw-symbols", "Draw symbols (dots) on each data point")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
@@ -176,7 +179,7 @@ public class ChartPresenter {
             .withRequiredArg();
         seriesListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available series");
         seriesDrawLastSpec = parser.accepts("draw-last-value", "Create a numeric node on the last point show the Y-axis value")
-            .withOptionalArg().ofType(Boolean.class).defaultsTo(false);
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
@@ -302,9 +305,10 @@ public class ChartPresenter {
         Optional.ofNullable(chartSpec.getXAxisLabel()).filter(s -> !s.isEmpty()).ifPresent(s -> chart.getXAxis().setLabel(s));
         Optional.ofNullable(chartSpec.getYAxisLabel()).filter(s -> !s.isEmpty()).ifPresent(s -> chart.getYAxis().setLabel(s));
         // bound check within reasonable limits
-        width = Math.max(320, Math.min(1366, width));
-        height = Math.max(180, Math.min(768, height));
+        width = Math.max(320, Math.min(1920, width));
+        height = Math.max(180, Math.min(1080, height));
         chart.setPrefSize(width, height);
+        chart.setCreateSymbols(chartSpec.isDrawSymbols());
         return chart;
     }
 
@@ -371,10 +375,12 @@ public class ChartPresenter {
             if (chart.isPresent()) {
                 return "A chart by that name already exists!";
             } else {
+                Optional<Boolean> drawSymbols = optionSet.has(manageDrawSymbolsSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(manageDrawSymbolsSpec)) : Optional.empty();
                 Chart newChart = chartRepository.save(updateChart(new Chart(), add.get(),
                     Optional.ofNullable(optionSet.valueOf(manageTitleSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
-                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)),
+                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols,
                     optionSet.valuesOf(manageSeriesSpec)));
                 log.debug("New chart: {}", newChart);
                 return "New chart '" + newChart.getName() + "' created";
@@ -387,10 +393,12 @@ public class ChartPresenter {
             if (!chart.isPresent()) {
                 return "No chart found by that name, create it first";
             } else {
+                Optional<Boolean> drawSymbols = optionSet.has(manageDrawSymbolsSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(manageDrawSymbolsSpec)) : Optional.empty();
                 Chart updatedChart = chartRepository.save(updateChart(chart.get(), edit.get(),
                     Optional.ofNullable(optionSet.valueOf(manageTitleSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
-                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)),
+                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols,
                     optionSet.valuesOf(manageSeriesSpec)));
                 log.debug("Updated chart: {}", updatedChart);
                 return "Chart '" + updatedChart.getName() + "' updated";
@@ -401,7 +409,8 @@ public class ChartPresenter {
     }
 
     private Chart updateChart(Chart chart, String name, Optional<String> title,
-                              Optional<String> xLabel, Optional<String> yLabel, List<String> seriesList) {
+                              Optional<String> xLabel, Optional<String> yLabel, Optional<Boolean> drawSymbols,
+                              List<String> seriesList) {
         chart.setName(name);
         if (title.isPresent()) {
             chart.setTitle(title.get());
@@ -413,6 +422,9 @@ public class ChartPresenter {
         }
         if (yLabel.isPresent()) {
             chart.setYAxisLabel(yLabel.get());
+        }
+        if (drawSymbols.isPresent()) {
+            chart.setDrawSymbols(drawSymbols.get());
         }
         if (!seriesList.isEmpty()) {
             chart.getSeriesList().clear();
