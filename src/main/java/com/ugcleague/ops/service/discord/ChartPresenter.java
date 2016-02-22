@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.maypril.metrics.entity.GaugeEntity;
@@ -83,6 +84,7 @@ public class ChartPresenter {
     private OptionSpec<Void> seriesListSpec;
     private OptionSpec<Void> manageListSpec;
     private OptionSpec<String> seriesTitleSpec;
+    private OptionSpec<String> chartNonOptionSpec;
 
     @Autowired
     public ChartPresenter(CommandService commandService, MongoTemplate mongoTemplate,
@@ -103,6 +105,7 @@ public class ChartPresenter {
 
     private void initChartCommand() {
         OptionParser parser = newParser();
+        chartNonOptionSpec = parser.nonOptions("A chart name to display").ofType(String.class);
         chartGetSpec = parser.acceptsAll(asList("g", "get"), "Chart name to display")
             .withRequiredArg();
         chartSinceSpec = parser.acceptsAll(asList("a", "after", "since"), "Only display metrics after this time-expression")
@@ -197,8 +200,14 @@ public class ChartPresenter {
             }
         }
 
+        List<String> nonOptions = optionSet.valuesOf(chartNonOptionSpec);
+        if (!optionSet.has(chartGetSpec) && nonOptions.isEmpty()) {
+            return "Must define a chart name to display";
+        }
+
         // .chart get <preset> [since <timex>] [until <timex>] [width <px>] [height <px>]
-        String name = optionSet.valueOf(chartGetSpec);
+        String name = Optional.ofNullable(optionSet.valueOf(chartGetSpec))
+            .orElseGet(() -> nonOptions.get(0));
         Optional<Chart> chart = chartRepository.findByName(name);
 
         if (!chart.isPresent()) {
@@ -240,8 +249,10 @@ public class ChartPresenter {
         for (Series seriesSpec : chartSpec.getSeriesList()) {
             List<GaugeEntity> points = mongoTemplate.find(
                 query(where(NAME).is(seriesSpec.getName())
-                    .and(TIMESTAMP).gte(Date.from(after.toInstant()))
-                    .and(TIMESTAMP).lte(Date.from(before.toInstant()))), GaugeEntity.class, GAUGES_COLLECTION);
+                    .andOperator(
+                        Criteria.where(TIMESTAMP).gte(Date.from(after.toInstant())),
+                        Criteria.where(TIMESTAMP).lte(Date.from(before.toInstant()))
+                    )), GaugeEntity.class, GAUGES_COLLECTION);
             log.debug("Adding {} data points from series {} (metric: {})",
                 points.size(), seriesSpec.getName(), seriesSpec.getMetric());
             XYChart.Series<Long, Number> series = new XYChart.Series<>();
@@ -319,6 +330,7 @@ public class ChartPresenter {
             Optional<Chart> chart = chartRepository.findByName(remove.get());
             if (chart.isPresent()) {
                 chartRepository.delete(chart.get());
+                log.debug("Removed chart: {}", remove.get());
                 return "Chart '" + chart.get().getName() + "' removed";
             } else {
                 return "No chart found by that name";
@@ -336,6 +348,7 @@ public class ChartPresenter {
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)),
                     optionSet.valuesOf(manageSeriesSpec)));
+                log.debug("New chart: {}", newChart);
                 return "New chart '" + newChart.getName() + "' created";
             }
         }
@@ -351,6 +364,7 @@ public class ChartPresenter {
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)),
                     optionSet.valuesOf(manageSeriesSpec)));
+                log.debug("Updated chart: {}", updatedChart);
                 return "Chart '" + updatedChart.getName() + "' updated";
             }
         }
@@ -404,6 +418,7 @@ public class ChartPresenter {
             Optional<Series> series = seriesRepository.findByName(remove.get());
             if (series.isPresent()) {
                 seriesRepository.delete(series.get());
+                log.debug("Removed series: {}", remove.get());
                 return "Series '" + series.get().getName() + "' removed";
             } else {
                 return "No series found by that name";
@@ -422,6 +437,7 @@ public class ChartPresenter {
                 }
                 Series newSeries = seriesRepository.save(updateSeries(new Series(), add.get(), metric,
                     Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
+                log.debug("New series: {}", newSeries);
                 return "New series '" + newSeries.getName() + "' created";
             }
         }
@@ -435,6 +451,7 @@ public class ChartPresenter {
                 Series updatedSeries = seriesRepository.save(updateSeries(series.get(), edit.get(),
                     Optional.ofNullable(optionSet.valueOf(seriesMetricSpec)),
                     Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
+                log.debug("Updated series: {}", updatedSeries);
                 return "Series '" + updatedSeries.getName() + "' updated";
             }
         }
