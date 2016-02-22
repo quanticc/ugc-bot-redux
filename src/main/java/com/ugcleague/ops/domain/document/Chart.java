@@ -20,6 +20,7 @@ public class Chart extends AbstractAuditingEntity {
     private String xAxisLabel = "";
     private String yAxisLabel = "";
     private boolean drawSymbols = false;
+    private String format = "";
     @DBRef
     private Set<Series> seriesList = new LinkedHashSet<>();
 
@@ -79,6 +80,14 @@ public class Chart extends AbstractAuditingEntity {
         this.seriesList = seriesList;
     }
 
+    public String getFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
+    }
+
     @Override
     public String toString() {
         return "Chart{" +
@@ -86,6 +95,7 @@ public class Chart extends AbstractAuditingEntity {
             ", title='" + title + '\'' +
             ", xLabel='" + xAxisLabel + '\'' +
             ", yLabel='" + yAxisLabel + '\'' +
+            ", format='" + format + '\'' +
             ", drawSymbols=" + drawSymbols +
             ", seriesList=" + seriesList +
             '}';

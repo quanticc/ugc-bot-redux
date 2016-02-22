@@ -8,6 +8,7 @@ import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.DateAxis;
 import com.ugcleague.ops.util.DateUtil;
+import com.ugcleague.ops.util.Util;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.Node;
@@ -19,6 +20,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -81,6 +83,7 @@ public class ChartPresenter {
     private OptionSpec<String> manageYLabelSpec;
     private OptionSpec<Void> manageListSpec;
     private OptionSpec<Boolean> manageDrawSymbolsSpec;
+    private OptionSpec<String> manageFormatSpec;
     private OptionSpec<String> seriesAddSpec;
     private OptionSpec<String> seriesEditSpec;
     private OptionSpec<String> seriesRemoveSpec;
@@ -151,6 +154,8 @@ public class ChartPresenter {
         manageListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available charts");
         manageDrawSymbolsSpec = parser.accepts("draw-symbols", "Draw symbols (dots) on each data point")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
+        manageFormatSpec = parser.acceptsAll(asList("f", "format"), "Define a special format of the Y-axis")
+            .withOptionalArg().defaultsTo("");
         Map<String, String> aliases = new HashMap<>();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
@@ -160,6 +165,7 @@ public class ChartPresenter {
         aliases.put("x", "-x");
         aliases.put("y", "-y");
         aliases.put("list", "--list");
+        aliases.put("format", "--format");
         commandService.register(CommandBuilder.startsWith(".beep chart")
             .description("Manage chart definitions").master().originReplies().queued()
             .parser(parser).withOptionAliases(aliases).command(this::manage).build());
@@ -258,6 +264,37 @@ public class ChartPresenter {
         x.setMinorTickCount(4);
         x.setAnimated(false);
         y.setAnimated(false);
+        if (chartSpec.getFormat().equals("bytes")) {
+            y.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    if (object == null) {
+                        return null;
+                    }
+                    return Util.humanizeBytes(object.longValue());
+                }
+
+                @Override
+                public Number fromString(String string) {
+                    return null;
+                }
+            });
+        } else if (chartSpec.getFormat().equals("percent")) {
+            y.setTickLabelFormatter(new StringConverter<Number>() {
+                @Override
+                public String toString(Number object) {
+                    if (object == null) {
+                        return null;
+                    }
+                    return (long) (object.doubleValue() * 100) + "%";
+                }
+
+                @Override
+                public Number fromString(String string) {
+                    return null;
+                }
+            });
+        }
         LineChart<Long, Number> chart = new LineChart<>(x, y);
         int pointCount = 0;
         int i = 0;
@@ -378,10 +415,12 @@ public class ChartPresenter {
             } else {
                 Optional<Boolean> drawSymbols = optionSet.has(manageDrawSymbolsSpec) ?
                     Optional.ofNullable(optionSet.valueOf(manageDrawSymbolsSpec)) : Optional.empty();
+                Optional<String> format = optionSet.has(manageFormatSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(manageFormatSpec)) : Optional.empty();
                 Chart newChart = chartRepository.save(updateChart(new Chart(), add.get(),
                     Optional.ofNullable(optionSet.valueOf(manageTitleSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
-                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols,
+                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols, format,
                     optionSet.valuesOf(manageSeriesSpec)));
                 log.debug("New chart: {}", newChart);
                 return "New chart '" + newChart.getName() + "' created";
@@ -396,10 +435,12 @@ public class ChartPresenter {
             } else {
                 Optional<Boolean> drawSymbols = optionSet.has(manageDrawSymbolsSpec) ?
                     Optional.ofNullable(optionSet.valueOf(manageDrawSymbolsSpec)) : Optional.empty();
+                Optional<String> format = optionSet.has(manageFormatSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(manageFormatSpec)) : Optional.empty();
                 Chart updatedChart = chartRepository.save(updateChart(chart.get(), edit.get(),
                     Optional.ofNullable(optionSet.valueOf(manageTitleSpec)),
                     Optional.ofNullable(optionSet.valueOf(manageXLabelSpec)),
-                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols,
+                    Optional.ofNullable(optionSet.valueOf(manageYLabelSpec)), drawSymbols, format,
                     optionSet.valuesOf(manageSeriesSpec)));
                 log.debug("Updated chart: {}", updatedChart);
                 return "Chart '" + updatedChart.getName() + "' updated";
@@ -411,6 +452,7 @@ public class ChartPresenter {
 
     private Chart updateChart(Chart chart, String name, Optional<String> title,
                               Optional<String> xLabel, Optional<String> yLabel, Optional<Boolean> drawSymbols,
+                              Optional<String> format,
                               List<String> seriesList) {
         chart.setName(name);
         if (title.isPresent()) {
@@ -426,6 +468,9 @@ public class ChartPresenter {
         }
         if (drawSymbols.isPresent()) {
             chart.setDrawSymbols(drawSymbols.get());
+        }
+        if (format.isPresent()) {
+            chart.setFormat(format.get());
         }
         if (!seriesList.isEmpty()) {
             chart.getSeriesList().clear();
