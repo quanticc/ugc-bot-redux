@@ -247,7 +247,7 @@ public class ChartPresenter {
         DateAxis x = new DateAxis();
         NumberAxis y = new NumberAxis();
         x.setForceZeroInRange(false);
-        x.setMinorTickCount(2);
+        x.setMinorTickCount(4);
         x.setAnimated(false);
         y.setAnimated(false);
         LineChart<Long, Number> chart = new LineChart<>(x, y);
