@@ -241,7 +241,7 @@ public class CommandBuilder {
     }
 
     /**
-     * Allow this command to treat non-options as options by replacing them with the values in the given map. Contained
+     * Allow this command to treat non-options as options by replacing them with the values in the given map.
      *
      * @param optionAliases an alias map where the keys are the non-options to convert and the values the aliased options
      *                      in the getopt form (must begin with - or --).
