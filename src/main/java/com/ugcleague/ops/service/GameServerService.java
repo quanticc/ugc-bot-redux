@@ -149,7 +149,7 @@ public class GameServerService {
         // compute gs.players.count.* and avg.* for player total and average per region
         List<Gauge<Integer>> playerCounts = new ArrayList<>();
         List<Gauge<Double>> playerAverages = new ArrayList<>();
-        for (Map.Entry<String, List<Gauge<Integer>>> entry : pingGaugesPerRegion.entrySet()) {
+        for (Map.Entry<String, List<Gauge<Integer>>> entry : playersGaugesPerRegion.entrySet()) {
             String region = entry.getKey();
             Gauge<Integer> sum = metricRegistry.register("gs.players.count." + region, new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
                 @Override
