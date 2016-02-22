@@ -254,7 +254,7 @@ public class ChartPresenter {
         int pointCount = 0;
         for (Series seriesSpec : chartSpec.getSeriesList()) {
             List<GaugeEntity> points = mongoTemplate.find(
-                query(where(NAME).is(seriesSpec.getName())
+                query(where(NAME).is(seriesSpec.getMetric())
                     .andOperator(
                         Criteria.where(TIMESTAMP).gte(Date.from(after.toInstant())),
                         Criteria.where(TIMESTAMP).lte(Date.from(before.toInstant()))
