@@ -63,28 +63,28 @@ public class ChartPresenter {
     private final ChartRepository chartRepository;
     private final SeriesRepository seriesRepository;
 
+    private Command chartCommand;
     private OptionSpec<String> chartGetSpec;
     private OptionSpec<String> chartSinceSpec;
     private OptionSpec<String> chartUntilSpec;
     private OptionSpec<Integer> chartWidthSpec;
     private OptionSpec<Integer> chartHeightSpec;
+    private OptionSpec<Void> chartListSpec;
+    private OptionSpec<String> chartNonOptionSpec;
     private OptionSpec<String> manageAddSpec;
     private OptionSpec<String> manageEditSpec;
     private OptionSpec<String> manageRemoveSpec;
+    private OptionSpec<String> manageTitleSpec;
+    private OptionSpec<String> manageSeriesSpec;
+    private OptionSpec<String> manageXLabelSpec;
+    private OptionSpec<String> manageYLabelSpec;
+    private OptionSpec<Void> manageListSpec;
     private OptionSpec<String> seriesAddSpec;
     private OptionSpec<String> seriesEditSpec;
     private OptionSpec<String> seriesRemoveSpec;
-    private OptionSpec<String> manageTitleSpec;
-    private OptionSpec<String> manageSeriesSpec;
     private OptionSpec<String> seriesMetricSpec;
-    private OptionSpec<String> manageXLabelSpec;
-    private Command chartCommand;
-    private OptionSpec<String> manageYLabelSpec;
-    private OptionSpec<Void> chartListSpec;
     private OptionSpec<Void> seriesListSpec;
-    private OptionSpec<Void> manageListSpec;
     private OptionSpec<String> seriesTitleSpec;
-    private OptionSpec<String> chartNonOptionSpec;
 
     @Autowired
     public ChartPresenter(CommandService commandService, MongoTemplate mongoTemplate,
@@ -331,8 +331,7 @@ public class ChartPresenter {
             if (list.isEmpty()) {
                 return "No charts defined";
             } else {
-                return "Available charts: " + list.stream()
-                    .map(Chart::toString).collect(Collectors.joining(", "));
+                return "Available charts: " + list.toString();
             }
         }
 
@@ -419,8 +418,7 @@ public class ChartPresenter {
             if (list.isEmpty()) {
                 return "No series defined";
             } else {
-                return "Available series: " + list.stream()
-                    .map(s -> s.getName() + " (" + s.getMetric() + ")").collect(Collectors.joining(", "));
+                return "Available series: " + list.toString();
             }
         }
 
