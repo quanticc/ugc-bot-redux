@@ -30,12 +30,16 @@ public class DateAxis extends ValueAxis<Long> {
      */
     private static final double[] TICK_UNIT_DEFAULTS = {
         1000,           // 1 second
-        10000,           // 10 seconds
-        30000,           // 30 seconds
+        10000,          // 10 seconds
+        30000,          // 30 seconds
         60000,          // 1 minute
         600000,         // 10 minutes
         1800000,        // 30 minutes
         3600000,        // 1 hour
+        7200000,        // 2 hours
+        14400000,       // 4 hours
+        21600000,       // 6 hours
+        43200000,       // 12 hours
         86400000,       // 1 day
         172800000,      // 2 days
         259200000,      // 3 days
@@ -75,6 +79,10 @@ public class DateAxis extends ValueAxis<Long> {
         "HH:mm",      // 10 minutes
         "HH:mm",      // 30 minutes
         "HH:mm",      // 1 hour
+        "HH:mm",      // 2 hours
+        "HH:mm",      // 4 hour
+        "HH:mm",      // 6 hours
+        "EEE HH:mm",  // 12 hours
         "EEE dd",     // 1 day
         "EEE dd",     // 2 days
         "EEE dd",     // 3 days

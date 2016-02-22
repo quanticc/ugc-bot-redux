@@ -118,13 +118,17 @@ public class GameServerService {
             Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
-                    return getServerPing(server);
+                    // truncate negative values that signal abnormal conditions
+                    Integer value = getServerPing(server);
+                    return value != null && value > 0 ? value : null;
                 }
             });
             Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
-                    return getServerPlayerCount(server);
+                    // truncate negative values that signal abnormal conditions
+                    Integer value = getServerPlayerCount(server);
+                    return value != null && value >= 0 ? value : null;
                 }
             });
             String region = server.getShortName().substring(0, 3);
@@ -302,7 +306,7 @@ public class GameServerService {
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
-            Integer ping = pingGaugeValue(server);
+            Integer ping = steamCondenserService.ping(source);
             server.setPing(ping);
             if (ping >= 0) {
                 server.setPlayers(playersGaugeValue(server));
