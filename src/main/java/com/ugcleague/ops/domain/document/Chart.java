@@ -74,9 +74,9 @@ public class Chart extends AbstractAuditingEntity {
     public String toString() {
         return "Chart{" +
             "name='" + name + '\'' +
-            "title='" + title + '\'' +
-            "xLabel='" + xAxisLabel + '\'' +
-            "yLabel='" + yAxisLabel + '\'' +
+            ", title='" + title + '\'' +
+            ", xLabel='" + xAxisLabel + '\'' +
+            ", yLabel='" + yAxisLabel + '\'' +
             ", seriesList=" + seriesList +
             '}';
     }

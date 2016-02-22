@@ -17,6 +17,7 @@ public class Series extends AbstractAuditingEntity {
     private String title;
     @NotNull
     private String metric;
+    private boolean drawLastValue = false;
 
     public String getId() {
         return id;
@@ -50,11 +51,20 @@ public class Series extends AbstractAuditingEntity {
         this.metric = metric;
     }
 
+    public boolean isDrawLastValue() {
+        return drawLastValue;
+    }
+
+    public void setDrawLastValue(boolean drawLastValue) {
+        this.drawLastValue = drawLastValue;
+    }
+
     @Override
     public String toString() {
         return "Series{" +
             "name='" + name + '\'' +
-            "title='" + title + '\'' +
+            ", title='" + title + '\'' +
+            ", drawLastValue=" + drawLastValue +
             ", metric='" + metric + '\'' +
             '}';
     }

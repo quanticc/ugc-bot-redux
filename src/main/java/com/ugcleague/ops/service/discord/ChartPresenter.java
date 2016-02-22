@@ -16,6 +16,7 @@ import javafx.scene.SnapshotParameters;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import joptsimple.OptionParser;
@@ -85,6 +86,7 @@ public class ChartPresenter {
     private OptionSpec<String> seriesMetricSpec;
     private OptionSpec<Void> seriesListSpec;
     private OptionSpec<String> seriesTitleSpec;
+    private OptionSpec<Boolean> seriesDrawLastSpec;
 
     @Autowired
     public ChartPresenter(CommandService commandService, MongoTemplate mongoTemplate,
@@ -109,7 +111,7 @@ public class ChartPresenter {
         chartGetSpec = parser.acceptsAll(asList("g", "get"), "Chart name to display")
             .withRequiredArg();
         chartSinceSpec = parser.acceptsAll(asList("a", "after", "since"), "Only display metrics after this time-expression")
-            .withRequiredArg().defaultsTo("an hour ago");
+            .withRequiredArg().defaultsTo("1 hour ago");
         chartUntilSpec = parser.acceptsAll(asList("b", "before", "until"), "Only display metrics before this time-expression")
             .withRequiredArg().defaultsTo("now");
         chartWidthSpec = parser.acceptsAll(asList("w", "width"), "Width of the chart")
@@ -173,6 +175,8 @@ public class ChartPresenter {
         seriesTitleSpec = parser.acceptsAll(asList("t", "title"), "Series title to be displayed in the chart")
             .withRequiredArg();
         seriesListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available series");
+        seriesDrawLastSpec = parser.accepts("draw-last-value", "Create a numeric node on the last point show the Y-axis value")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(false);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
@@ -180,6 +184,7 @@ public class ChartPresenter {
         aliases.put("metric", "--metric");
         aliases.put("title", "--title");
         aliases.put("list", "--list");
+        aliases.put("draw-last-value", "--draw-last-value");
         commandService.register(CommandBuilder.startsWith(".beep series")
             .description("Manage chart series").master().originReplies().queued()
             .parser(parser).withOptionAliases(aliases).command(this::series).build());
@@ -252,6 +257,7 @@ public class ChartPresenter {
         y.setAnimated(false);
         LineChart<Long, Number> chart = new LineChart<>(x, y);
         int pointCount = 0;
+        int i = 0;
         for (Series seriesSpec : chartSpec.getSeriesList()) {
             List<GaugeEntity> points = mongoTemplate.find(
                 query(where(NAME).is(seriesSpec.getMetric())
@@ -260,6 +266,11 @@ public class ChartPresenter {
                         Criteria.where(TIMESTAMP).lte(Date.from(before.toInstant()))
                     )), GaugeEntity.class, GAUGES_COLLECTION);
             pointCount += points.size();
+            if (points.isEmpty()) {
+                log.debug("No data points from series {} (metric: {})",
+                    seriesSpec.getName(), seriesSpec.getMetric());
+                continue;
+            }
             log.debug("Adding {} data points from series {} (metric: {})",
                 points.size(), seriesSpec.getName(), seriesSpec.getMetric());
             XYChart.Series<Long, Number> series = new XYChart.Series<>();
@@ -273,6 +284,13 @@ public class ChartPresenter {
                     long millis = data.getTimestamp().getTime();
                     series.getData().add(new XYChart.Data<>(millis, value));
                 }
+            }
+            if (seriesSpec.isDrawLastValue()) {
+                XYChart.Data<Long, Number> last = series.getData().get(series.getData().size() - 1);
+                final Label label = new Label(last.getYValue().toString());
+                label.getStyleClass().addAll("default-color" + (i++), "chart-line-symbol", "chart-series-line");
+                label.setStyle("-fx-font-size: 9; -fx-font-weight: bold;");
+                last.setNode(label);
             }
             chart.getData().add(series);
         }
@@ -444,8 +462,10 @@ public class ChartPresenter {
                 if (!metric.isPresent()) {
                     return "You must define the metric bound to this series!";
                 }
+                Optional<Boolean> drawLast = optionSet.has(seriesDrawLastSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(seriesDrawLastSpec)) : Optional.empty();
                 Series newSeries = seriesRepository.save(updateSeries(new Series(), add.get(), metric,
-                    Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
+                    Optional.ofNullable(optionSet.valueOf(seriesTitleSpec)), drawLast));
                 log.debug("New series: {}", newSeries);
                 return "New series '" + newSeries.getName() + "' created";
             }
@@ -457,9 +477,11 @@ public class ChartPresenter {
             if (!series.isPresent()) {
                 return "No series found by that name, create it first";
             } else {
+                Optional<Boolean> drawLast = optionSet.has(seriesDrawLastSpec) ?
+                    Optional.ofNullable(optionSet.valueOf(seriesDrawLastSpec)) : Optional.empty();
                 Series updatedSeries = seriesRepository.save(updateSeries(series.get(), edit.get(),
                     Optional.ofNullable(optionSet.valueOf(seriesMetricSpec)),
-                    Optional.ofNullable(optionSet.valueOf(seriesTitleSpec))));
+                    Optional.ofNullable(optionSet.valueOf(seriesTitleSpec)), drawLast));
                 log.debug("Updated series: {}", updatedSeries);
                 return "Series '" + updatedSeries.getName() + "' updated";
             }
@@ -468,13 +490,17 @@ public class ChartPresenter {
         return "";
     }
 
-    private Series updateSeries(Series series, String name, Optional<String> metric, Optional<String> title) {
+    private Series updateSeries(Series series, String name, Optional<String> metric, Optional<String> title,
+                                Optional<Boolean> drawLast) {
         series.setName(name);
         if (metric.isPresent()) {
             series.setMetric(metric.get());
         }
         if (title.isPresent()) {
             series.setTitle(title.get());
+        }
+        if (drawLast.isPresent()) {
+            series.setDrawLastValue(drawLast.get());
         }
         return series;
     }
