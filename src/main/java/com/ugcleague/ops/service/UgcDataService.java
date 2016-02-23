@@ -1,9 +1,9 @@
 package com.ugcleague.ops.service;
 
-import com.ugcleague.ops.domain.document.UgcResult;
-import com.ugcleague.ops.domain.document.UgcSeason;
-import com.ugcleague.ops.domain.document.UgcWeek;
+import com.ugcleague.ops.domain.document.*;
+import com.ugcleague.ops.repository.mongo.UgcPlayerRepository;
 import com.ugcleague.ops.repository.mongo.UgcSeasonRepository;
+import com.ugcleague.ops.repository.mongo.UgcTeamRepository;
 import com.ugcleague.ops.service.discord.util.RosterData;
 import com.ugcleague.ops.web.rest.UgcPlayerPage;
 import org.slf4j.Logger;
@@ -24,12 +24,18 @@ public class UgcDataService {
     private static final Logger log = LoggerFactory.getLogger(UgcDataService.class);
 
     private final UgcSeasonRepository seasonRepository;
+    private final UgcPlayerRepository playerRepository;
+    private final UgcTeamRepository teamRepository;
     private final UgcApiClient apiClient;
     private final SteamCondenserService steamCondenserService;
 
     @Autowired
-    public UgcDataService(UgcSeasonRepository seasonRepository, UgcApiClient apiClient, SteamCondenserService steamCondenserService) {
+    public UgcDataService(UgcSeasonRepository seasonRepository, UgcPlayerRepository playerRepository,
+                          UgcTeamRepository teamRepository, UgcApiClient apiClient,
+                          SteamCondenserService steamCondenserService) {
         this.seasonRepository = seasonRepository;
+        this.playerRepository = playerRepository;
+        this.teamRepository = teamRepository;
         this.apiClient = apiClient;
         this.steamCondenserService = steamCondenserService;
     }
@@ -60,5 +66,21 @@ public class UgcDataService {
         return communityIdSet.parallelStream()
             .map(apiClient::getCurrentPlayer)
             .collect(Collectors.toList());
+    }
+
+    public Optional<UgcTeam> findTeamById(int id, boolean refresh) {
+        Optional<UgcTeam> team = Optional.ofNullable(teamRepository.findOne(id));
+        if (refresh || !team.isPresent()) {
+            team = apiClient.getTeamPage(id);
+        }
+        if (team.isPresent()) {
+            if (refresh || team.get().getRoster().isEmpty()) {
+                List<UgcPlayer> roster = apiClient.getTeamRoster(id);
+                roster = playerRepository.save(roster);
+                team.get().setRoster(roster);
+            }
+            team = Optional.ofNullable(teamRepository.save(team.get()));
+        }
+        return team;
     }
 }

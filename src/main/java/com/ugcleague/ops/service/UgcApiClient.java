@@ -2,7 +2,9 @@ package com.ugcleague.ops.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ugcleague.ops.config.LeagueProperties;
+import com.ugcleague.ops.domain.document.UgcPlayer;
 import com.ugcleague.ops.domain.document.UgcResult;
+import com.ugcleague.ops.domain.document.UgcTeam;
 import com.ugcleague.ops.web.rest.JsonUgcResponse;
 import com.ugcleague.ops.web.rest.UgcPlayerPage;
 import org.slf4j.Logger;
@@ -160,5 +162,71 @@ public class UgcApiClient {
         ResponseEntity<UgcPlayerPage> response = restTemplate.exchange(playerTeamCurrentUrl, HttpMethod.GET,
             new HttpEntity<>(headers), UgcPlayerPage.class, key, steamId64);
         return response.getBody();
+    }
+
+    public Optional<UgcTeam> getTeamPage(int id) {
+        return rawTeamPage(id).map(this::mapTeamPage);
+    }
+
+    private UgcTeam mapTeamPage(JsonUgcResponse response) {
+        List<List<Object>> data = response.getData();
+        if (data.size() < 1) {
+            log.warn("Not enough data to create team page: {}", response);
+            return null;
+        }
+        List<Object> raw = data.get(0);
+        UgcTeam team = new UgcTeam();
+        team.setId((Integer) raw.get(0));
+        team.setTag((String) raw.get(1));
+        team.setName((String) raw.get(2));
+        team.setStatus((String) raw.get(3));
+        team.setSteamPage(((String) raw.get(6)).replace("\\", ""));
+        team.setAvatar(((String) raw.get(9)).replace("\\", ""));
+        team.setTimezone((String) raw.get(12));
+        team.setLadderName((String) raw.get(15));
+        team.setDivisionName((String) raw.get(16));
+        return team;
+    }
+
+    private Optional<JsonUgcResponse> rawTeamPage(int id) {
+        String url = teamPageUrl.replace("{id}", id + "");
+        try {
+            return Optional.of(mapper.readValue(clean(httpToString(url)), JsonUgcResponse.class));
+        } catch (IOException e) {
+            log.warn("Could not get team id {}. Raw results: {}", id, e.toString());
+        }
+        return Optional.empty();
+    }
+
+    private String clean(String input) {
+        return input.replaceAll("(^onLoad\\()|(\\)$)", "");
+    }
+
+    public List<UgcPlayer> getTeamRoster(int id) {
+        return rawTeamRoster(id).map(this::mapTeamRoster).orElseGet(ArrayList::new);
+    }
+
+    private List<UgcPlayer> mapTeamRoster(JsonUgcResponse response) {
+        List<UgcPlayer> list = new ArrayList<>();
+        for (List<Object> raw : response.getData()) {
+            UgcPlayer player = new UgcPlayer();
+            player.setName((String) raw.get(0));
+            player.setType((String) raw.get(1));
+            player.setAdded(parseLongDate((String) raw.get(2)));
+            player.setUpdated(parseLongDate((String) raw.get(3)));
+            player.setId((Long) raw.get(5));
+            list.add(player);
+        }
+        return list;
+    }
+
+    private Optional<JsonUgcResponse> rawTeamRoster(int id) {
+        String url = teamRosterUrl.replace("{id}", id + "");
+        try {
+            return Optional.of(mapper.readValue(httpToString(url), JsonUgcResponse.class));
+        } catch (IOException e) {
+            log.warn("Could not get roster for team id {}. Raw results: {}", id, e.toString());
+        }
+        return Optional.empty();
     }
 }

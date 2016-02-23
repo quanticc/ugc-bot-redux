@@ -4,6 +4,7 @@ import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.github.koraktor.steamcondenser.exceptions.WebApiException;
 import com.github.koraktor.steamcondenser.steam.community.SteamId;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.util.SteamIdConverter;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -60,7 +61,7 @@ public class SteamQueryPresenter {
         String steam3Id = "?";
         try {
             steamId32 = SteamId.convertCommunityIdToSteamId(steamId64);
-            steam3Id = steam2To3(steamId32);
+            steam3Id = SteamIdConverter.steam2To3(steamId32);
         } catch (SteamCondenserException e) {
             log.warn("Invalid community id: {}", e.toString());
         }
@@ -82,7 +83,7 @@ public class SteamQueryPresenter {
                 builder.append("* Profile privacy is set to ").append(steamId.getPrivacyState()).append("\n");
             } else {
                 builder.append(leftPad("Joined: ", pad)).append(steamId.getMemberSince().toInstant()).append("\n");
-                    //.append(leftPad("customURL: ", pad)).append("/id/").append(steamId.getCustomUrl()).append("\n");
+                //.append(leftPad("customURL: ", pad)).append("/id/").append(steamId.getCustomUrl()).append("\n");
             }
             if (steamId.isBanned()) {
                 builder.append("* User is VAC banned\n");
@@ -109,25 +110,6 @@ public class SteamQueryPresenter {
         return !id.isFetched() || Instant.ofEpochMilli(id.getFetchTime()).isBefore(Instant.now().minusSeconds(3600));
     }
 
-    @Scheduled(cron = "0 0 6 * * *")
-    void clearSteamIdCache() {
-        log.debug("Clearing Steam ID cache");
-        SteamId.clearCache(); // each day at 6am
-    }
-
-    private String steam2To3(String steamId32) {
-        String[] tokens = steamId32.split(":");
-        if (tokens.length != 3) {
-            return "";
-        }
-        int universe = Integer.parseInt(tokens[0].replace("STEAM_", ""));
-        if (universe == 0) {
-            universe = 1;
-        }
-        int account = Integer.parseInt(tokens[1]) + (Integer.parseInt(tokens[2]) << 1);
-        return "[U:" + universe + ":" + account + "]";
-    }
-
     private long anyToSteamId64(String key) {
         try {
             if (key.matches("[0-9]+")) {
@@ -135,6 +117,9 @@ public class SteamQueryPresenter {
             } else if (key.matches("^STEAM_[0-1]:[0-1]:[0-9]+$")) {
                 String[] tmpId = key.substring(8).split(":");
                 return Long.valueOf(tmpId[0]) + Long.valueOf(tmpId[1]) * 2 + 76561197960265728L;
+            } else if (key.matches("^U:[0-1]:[0-9]+$")) {
+                String[] tmpId = key.substring(2, key.length()).split(":");
+                return Long.valueOf(tmpId[0]) + Long.valueOf(tmpId[1]) + 76561197960265727L;
             } else if (key.matches("^\\[U:[0-1]:[0-9]+\\]+$")) {
                 String[] tmpId = key.substring(3, key.length() - 1).split(":");
                 return Long.valueOf(tmpId[0]) + Long.valueOf(tmpId[1]) + 76561197960265727L;
@@ -168,5 +153,11 @@ public class SteamQueryPresenter {
             log.warn("Could not retrieve community data for vanity url: {}", e.toString());
         }
         return 0;
+    }
+
+    @Scheduled(cron = "0 0 6 * * *")
+    void clearSteamIdCache() {
+        log.debug("Clearing Steam ID cache");
+        SteamId.clearCache(); // each day at 6am
     }
 }
