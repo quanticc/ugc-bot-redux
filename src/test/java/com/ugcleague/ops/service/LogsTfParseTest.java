@@ -29,4 +29,13 @@ public class LogsTfParseTest {
             assertEquals(1774, (long) stats.getLength());
         }
     }
+
+    @Test
+    public void testParseNewerStats() throws IOException {
+        try (InputStream input = getClass().getResourceAsStream("/logs_tf/1283315.json")) {
+            LogsTfStats stats = mapper.readValue(input, LogsTfStats.class);
+            assertTrue(stats != null);
+            assertEquals(2051, (long) stats.getLength());
+        }
+    }
 }

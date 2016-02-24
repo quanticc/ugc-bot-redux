@@ -1,13 +1,11 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.domain.document.SizzStats;
-import com.ugcleague.ops.domain.document.UgcPlayer;
-import com.ugcleague.ops.domain.document.UgcResult;
-import com.ugcleague.ops.domain.document.UgcTeam;
+import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.service.GameStatsService;
 import com.ugcleague.ops.service.UgcDataService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.SteamIdConverter;
+import com.ugcleague.ops.web.rest.LogsTfMatch;
 import com.ugcleague.ops.web.rest.SizzMatch;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -24,6 +22,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
@@ -39,6 +38,8 @@ import static java.util.Arrays.asList;
 public class UgcPresenter {
 
     private static final Logger log = LoggerFactory.getLogger(UgcPresenter.class);
+    private static final String SIZZ_STATS = "SizzStats";
+    private static final String LOGS_TF = "LogsTF";
 
     private final CommandService commandService;
     private final UgcDataService ugcDataService;
@@ -212,8 +213,20 @@ public class UgcPresenter {
                         result.getHomeTeam(), result.getAwayTeam(), result.getMapName()));
                     for (MatchInfo match : matches) {
                         response.append("\t\t").append(match.homeTeamMatches + match.awayTeamMatches)
-                            .append(" roster matches found: ").append("http://sizzlingstats.com/stats/")
-                            .append(match.stats.getId()).append("\n");
+                            .append(" roster matches found: ");
+                        switch (match.provider) {
+                            case SIZZ_STATS:
+                                response.append("http://sizzlingstats.com/stats/")
+                                    .append(match.id).append("\n");
+                                break;
+                            case LOGS_TF:
+                                response.append("http://logs.tf/")
+                                    .append(match.id).append("\n");
+                                break;
+                            default:
+                                response.append("Unknown provider with id: ").append(match.id).append("\n");
+                                break;
+                        }
                     }
                 }
             }
@@ -227,73 +240,165 @@ public class UgcPresenter {
         List<UgcPlayer> players = new ArrayList<>();
         players.addAll(home.getRoster());
         players.addAll(away.getRoster());
-        Set<Integer> sizzlingScanned = new LinkedHashSet<>();
+        Set<Long> sizzScanned = new LinkedHashSet<>();
+        Set<Long> logsTfScanned = new LinkedHashSet<>();
         for (UgcPlayer player : players) {
-            log.info("SizzStats: Finding last games for player {} ({})", player.getName(), player.getId());
-            int count = 0;
-            // define a period of time where the match is most likely to have been recorded
-            ZonedDateTime startDate = settings.startDate;
-            ZonedDateTime endDate = settings.endDate;
-            for (SizzMatch match : statsService.getSizzMatchIterable(player.getId())) {
-                int id = match.getId();
-                ZonedDateTime created = parseMatchDate(match.getCreated());
-                // ignore live matches
-                // ignore matches newer than the endDate
-                if (match.isLive() || created.isAfter(endDate)) {
-                    continue;
-                }
-                // abort when finding a match older than startDate
-                if (created.isBefore(startDate)) {
-                    log.info("SizzStats: Reached start date for player {}", player.getId());
-                    break;
-                }
-                // don't check the same match twice
-                if (sizzlingScanned.contains(id)) {
-                    count++;
-                    continue;
-                }
-                sizzlingScanned.add(id);
-                // don't check too many stats per player
-                if (count >= settings.matchDepthPerPlayer) {
-                    log.info("SizzStats: Maximum depth reached for player {}", player.getId());
-                    break;
-                }
-                log.info("SizzStats: Retrieving match stats #{}", id);
-                SizzStats stats = statsService.getSizzStats(id);
-                if (stats == null) {
-                    log.warn("SizzStats: No stats for id {}", id);
-                    continue;
-                }
-                if (stats.getMap() != null && stats.getMap().equals(settings.mapName)) {
-                    continue;
-                }
-                int homeRosterMatched = 0;
-                int awayRosterMatched = 0;
-                // Steam3 -> Player
-                Map<String, SizzStats.Player> participants = stats.getPlayers();
-                for (UgcPlayer toMatch : home.getRoster()) {
-                    String key = SteamIdConverter.steamId64To3(toMatch.getId());
-                    if (participants.containsKey(key)) {
-                        ++homeRosterMatched;
-                    }
-                }
-                for (UgcPlayer toMatch : away.getRoster()) {
-                    String key = SteamIdConverter.steamId64To3(toMatch.getId());
-                    if (participants.containsKey(key)) {
-                        ++awayRosterMatched;
-                    }
-                }
-                if (homeRosterMatched >= settings.minimumRosterMatches
-                    && awayRosterMatched >= settings.minimumRosterMatches) {
-                    log.info("SizzStats: Matched stats with league result #{} ({} home, {} away)",
-                        id, homeRosterMatched, awayRosterMatched);
-                    matches.add(new MatchInfo(stats, homeRosterMatched, awayRosterMatched));
-                } else {
-                    log.debug("SizzStats: Not enough matched players #{} ({} home, {} away)",
-                        id, homeRosterMatched, awayRosterMatched);
-                }
-                count++;
+            matches.addAll(searchSizzStats(player, sizzScanned, home, away, settings));
+            if (matches.isEmpty()) {
+                matches.addAll(searchLogsTfStats(player, logsTfScanned, home, away, settings));
+            } else {
+                log.info("Skipping search in LogsTF since a match was already found");
             }
+        }
+        return matches;
+    }
+
+    private List<MatchInfo> searchLogsTfStats(UgcPlayer player, Set<Long> scannedIds,
+                                              UgcTeam home, UgcTeam away, LookupSettings settings) {
+        List<MatchInfo> matches = new ArrayList<>();
+        log.info("LogsTF: Finding last games for player {} ({})", player.getName(), player.getId());
+        int count = 0;
+        // define a period of time where the match is most likely to have been recorded
+        ZonedDateTime startDate = settings.startDate;
+        ZonedDateTime endDate = settings.endDate;
+        int maxDepth = settings.matchDepthPerPlayer;
+        for (LogsTfMatch match : statsService.getLogsTfMatchIterable(player.getId(), maxDepth)) {
+            long id = match.getId();
+            ZonedDateTime created = Instant.ofEpochMilli(match.getDate() * 1000).atZone(ZoneId.systemDefault());
+            // logs.tf does not track live matches
+            // ignore matches newer than the endDate
+            if (created.isAfter(endDate)) {
+                continue;
+            }
+            // abort when finding a match older than startDate
+            if (created.isBefore(startDate)) {
+                log.info("LogsTF: Reached start date for player {}", player.getId());
+                break;
+            }
+            // don't check the same match twice
+            if (scannedIds.contains(id)) {
+                count++;
+                continue;
+            }
+            scannedIds.add(id);
+            // don't check too many stats per player
+            if (count >= maxDepth) {
+                log.info("LogsTF: Maximum depth reached for player {}", player.getId());
+                break;
+            }
+            log.info("LogsTF: Retrieving match stats #{}", id);
+            LogsTfStats stats = statsService.getLogsTfStats(id);
+            if (stats == null) {
+                log.warn("LogsTF: No stats for id {}", id);
+                continue;
+            }
+            // logs.tf does not save map name - can't filter for that
+            int homeRosterMatched = 0;
+            int awayRosterMatched = 0;
+            // Steam3 -> Name
+            Map<String, String> participants = stats.getNames();
+            // test for kind of steam_id used in this log - older ones use SteamId32 instead of Steam3
+            Optional<String> exampleId = participants.keySet().stream().findAny();
+            if (exampleId.isPresent()) {
+                if (exampleId.get().startsWith("STEAM_")) {
+                    // convert participants to Steam3 format
+                    participants = participants.entrySet().stream().collect(
+                        Collectors.toMap(e -> SteamIdConverter.steam2To3(e.getKey()), Map.Entry::getValue));
+                }
+            }
+            for (UgcPlayer toMatch : home.getRoster()) {
+                String key = SteamIdConverter.steamId64To3(toMatch.getId());
+                if (participants.containsKey(key)) {
+                    ++homeRosterMatched;
+                }
+            }
+            for (UgcPlayer toMatch : away.getRoster()) {
+                String key = SteamIdConverter.steamId64To3(toMatch.getId());
+                if (participants.containsKey(key)) {
+                    ++awayRosterMatched;
+                }
+            }
+            if (homeRosterMatched >= settings.minimumRosterMatches
+                && awayRosterMatched >= settings.minimumRosterMatches) {
+                log.info("LogsTF: Matched stats with league result #{} ({} home, {} away)",
+                    id, homeRosterMatched, awayRosterMatched);
+                matches.add(new MatchInfo(LOGS_TF, stats.getId(), homeRosterMatched, awayRosterMatched));
+            } else {
+                log.debug("LogsTF: Not enough matched players #{} ({} home, {} away)",
+                    id, homeRosterMatched, awayRosterMatched);
+            }
+            count++;
+        }
+        return matches;
+    }
+
+    private List<MatchInfo> searchSizzStats(UgcPlayer player, Set<Long> scannedIds,
+                                            UgcTeam home, UgcTeam away, LookupSettings settings) {
+        List<MatchInfo> matches = new ArrayList<>();
+        log.info("SizzStats: Finding last games for player {} ({})", player.getName(), player.getId());
+        int count = 0;
+        // define a period of time where the match is most likely to have been recorded
+        ZonedDateTime startDate = settings.startDate;
+        ZonedDateTime endDate = settings.endDate;
+        for (SizzMatch match : statsService.getSizzMatchIterable(player.getId())) {
+            long id = match.getId();
+            ZonedDateTime created = parseMatchDate(match.getCreated());
+            // ignore live matches
+            // ignore matches newer than the endDate
+            if (match.isLive() || created.isAfter(endDate)) {
+                continue;
+            }
+            // abort when finding a match older than startDate
+            if (created.isBefore(startDate)) {
+                log.info("SizzStats: Reached start date for player {}", player.getId());
+                break;
+            }
+            // don't check the same match twice
+            if (scannedIds.contains(id)) {
+                count++;
+                continue;
+            }
+            scannedIds.add(id);
+            // don't check too many stats per player
+            if (count >= settings.matchDepthPerPlayer) {
+                log.info("SizzStats: Maximum depth reached for player {}", player.getId());
+                break;
+            }
+            log.info("SizzStats: Retrieving match stats #{}", id);
+            SizzStats stats = statsService.getSizzStats(id);
+            if (stats == null) {
+                log.warn("SizzStats: No stats for id {}", id);
+                continue;
+            }
+            if (stats.getMap() != null && stats.getMap().equals(settings.mapName)) {
+                continue;
+            }
+            int homeRosterMatched = 0;
+            int awayRosterMatched = 0;
+            // Steam3 -> Player
+            Map<String, SizzStats.Player> participants = stats.getPlayers();
+            for (UgcPlayer toMatch : home.getRoster()) {
+                String key = SteamIdConverter.steamId64To3(toMatch.getId());
+                if (participants.containsKey(key)) {
+                    ++homeRosterMatched;
+                }
+            }
+            for (UgcPlayer toMatch : away.getRoster()) {
+                String key = SteamIdConverter.steamId64To3(toMatch.getId());
+                if (participants.containsKey(key)) {
+                    ++awayRosterMatched;
+                }
+            }
+            if (homeRosterMatched >= settings.minimumRosterMatches
+                && awayRosterMatched >= settings.minimumRosterMatches) {
+                log.info("SizzStats: Matched stats with league result #{} ({} home, {} away)",
+                    id, homeRosterMatched, awayRosterMatched);
+                matches.add(new MatchInfo(SIZZ_STATS, stats.getId(), homeRosterMatched, awayRosterMatched));
+            } else {
+                log.debug("SizzStats: Not enough matched players #{} ({} home, {} away)",
+                    id, homeRosterMatched, awayRosterMatched);
+            }
+            count++;
         }
         return matches;
     }
@@ -348,12 +453,14 @@ public class UgcPresenter {
     }
 
     private static class MatchInfo {
-        private final SizzStats stats;
+        private final String provider;
+        private final long id;
         private final int homeTeamMatches;
         private final int awayTeamMatches;
 
-        private MatchInfo(SizzStats stats, int homeTeamMatches, int awayTeamMatches) {
-            this.stats = stats;
+        private MatchInfo(String provider, long id, int homeTeamMatches, int awayTeamMatches) {
+            this.provider = provider;
+            this.id = id;
             this.homeTeamMatches = homeTeamMatches;
             this.awayTeamMatches = awayTeamMatches;
         }

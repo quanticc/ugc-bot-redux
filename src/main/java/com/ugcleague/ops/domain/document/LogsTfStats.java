@@ -15,41 +15,40 @@ public class LogsTfStats {
     @JsonIgnore
     private Long id;
 
-    private int version;
-
-    @JsonProperty("teams")
+    private Integer version;
     private Map<String, Team> teams = new LinkedHashMap<>();
-
-    @JsonProperty("length")
     private Long length;
-
-    @JsonProperty("players")
     private Map<String, Player> players = new LinkedHashMap<>();
-
-    @JsonProperty("names")
     private Map<String, String> names = new LinkedHashMap<>();
-
-    @JsonProperty("rounds")
     private List<Round> rounds = new ArrayList<>();
 
-    // steam_id -> steam_id -> heals
-    @JsonProperty("healspread")
+    /**
+     * Map of source steam_id (could be steam3 or steamId32) to target steam_id to heal amount.
+     */
     private Map<String, Map<String, Long>> healspread = new LinkedHashMap<>();
 
-    // steam_id -> class -> kills
+    /**
+     * Map of source steam_id (could be steam3 or steamId32) to target class to kill amount.
+     */
     @Field("class_kills")
     @JsonProperty("classkills")
     private Map<String, Map<String, Long>> classKills = new LinkedHashMap<>();
 
-    // steam_id -> class -> deaths
+    /**
+     * Map of source steam_id (could be steam3 or steamId32) to target class to death amount.
+     */
     @Field("class_deaths")
     @JsonProperty("classdeaths")
     private Map<String, Map<String, Long>> classDeaths = new LinkedHashMap<>();
 
-    @JsonProperty("chat")
-    private List<Chat> chat = new ArrayList<>();
+    /**
+     * Since version 3
+     */
+    @Field("class_killassists")
+    @JsonProperty("classkillassists")
+    private Map<String, Map<String, Long>> classKillAssists = new LinkedHashMap<>();
 
-    @JsonProperty("info")
+    private List<Chat> chat = new ArrayList<>();
     private Info info = new Info();
 
     @Field("kill_streaks")
@@ -62,6 +61,14 @@ public class LogsTfStats {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 
     public Map<String, Team> getTeams() {
@@ -165,28 +172,26 @@ public class LogsTfStats {
         return Objects.hash(id);
     }
 
+    public Map<String, Map<String, Long>> getClassKillAssists() {
+        return classKillAssists;
+    }
+
+    public void setClassKillAssists(Map<String, Map<String, Long>> classKillAssists) {
+        this.classKillAssists = classKillAssists;
+    }
+
     public static class Team {
 
-        @JsonProperty("score")
         private Long score;
-
-        @JsonProperty("kills")
         private Long kills;
-
-        @JsonProperty("deaths")
         private Long deaths;
-
-        @JsonProperty("dmg")
         private Long dmg;
-
-        @JsonProperty("charges")
         private Long charges;
 
         @Field("first_caps")
         @JsonProperty("firstcaps")
         private Long firstCaps;
 
-        @JsonProperty("caps")
         private Long caps;
 
         public Long getScore() {
@@ -246,68 +251,69 @@ public class LogsTfStats {
         }
     }
 
+    /**
+     * Individual player stats. New fields from v3:
+     * <ul>
+     * <li>suicides</li>
+     * <li>dmg_real</li>
+     * <li>dt</li>
+     * <li>dt_real</li>
+     * <li>hr</li>
+     * <li>as</li>
+     * <li>medkits_hp</li>
+     * <li>headshots_hit</li>
+     * <li>medicstats</li>
+     * </ul>
+     */
     public static class Player {
 
-        @JsonProperty("team")
         private String team;
-
-        @JsonProperty("kills")
         private Long kills;
-
-        @JsonProperty("deaths")
         private Long deaths;
-
-        @JsonProperty("assists")
         private Long assists;
-
-        @JsonProperty("kapd")
+        private Long suicides;
         private String kapd;
-
-        @JsonProperty("kpd")
         private String kpd;
-
-        @JsonProperty("dmg")
         private Long dmg;
 
-        @JsonProperty("lks")
+        @Field("dmg_real")
+        @JsonProperty("dmg_real")
+        private Long dmgReal;
+
+        private Long dt;
+
+        @Field("dt_real")
+        @JsonProperty("dt_real")
+        private Long dtReal;
+
+        private Long hr;
         private Long lks;
-
-        @JsonProperty("dapd")
+        private Long as;
         private Long dapd;
-
-        @JsonProperty("dapm")
         private Long dapm;
-
-        @JsonProperty("ubers")
         private Long ubers;
-
-        @JsonProperty("drops")
         private Long drops;
-
-        @JsonProperty("backstabs")
-        private Long backstabs;
-
-        @JsonProperty("headshots")
-        private Long headshots;
-
-        @JsonProperty("sentries")
-        private Long sentries;
-
-        @JsonProperty("heal")
-        private Long heal;
-
-        @JsonProperty("cpc")
-        private Long cpc;
-
-        @JsonProperty("ic")
-        private Long ic;
-
-        @JsonProperty("medkits")
         private Long medkits;
+        @Field("medkits_hp")
+        @JsonProperty("medkits_hp")
+        private Long medkitsHp;
+        private Long backstabs;
+        private Long headshots;
+        @Field("headshots_hit")
+        @JsonProperty("headshots_hit")
+        private Long headshotsHit;
+        private Long sentries;
+        private Long heal;
+        private Long cpc;
+        private Long ic;
 
         @Field("class_stats")
         @JsonProperty("class_stats")
-        private List<ClassStat> classStats = new ArrayList<>();
+        private List<ClassStats> classStats = new ArrayList<>();
+
+        @Field("medic_stats")
+        @JsonProperty("medicstats")
+        private Map<String, Object> medicStats = new LinkedHashMap<>();
 
         public String getTeam() {
             return team;
@@ -461,37 +467,105 @@ public class LogsTfStats {
             this.medkits = medkits;
         }
 
-        public List<ClassStat> getClassStats() {
+        public List<ClassStats> getClassStats() {
             return classStats;
         }
 
-        public void setClassStats(List<ClassStat> classStats) {
+        public void setClassStats(List<ClassStats> classStats) {
             this.classStats = classStats;
+        }
+
+        public Long getSuicides() {
+            return suicides;
+        }
+
+        public void setSuicides(Long suicides) {
+            this.suicides = suicides;
+        }
+
+        public Long getDmgReal() {
+            return dmgReal;
+        }
+
+        public void setDmgReal(Long dmgReal) {
+            this.dmgReal = dmgReal;
+        }
+
+        public Long getDt() {
+            return dt;
+        }
+
+        public void setDt(Long dt) {
+            this.dt = dt;
+        }
+
+        public Long getDtReal() {
+            return dtReal;
+        }
+
+        public void setDtReal(Long dtReal) {
+            this.dtReal = dtReal;
+        }
+
+        public Long getHr() {
+            return hr;
+        }
+
+        public void setHr(Long hr) {
+            this.hr = hr;
+        }
+
+        public Long getAs() {
+            return as;
+        }
+
+        public void setAs(Long as) {
+            this.as = as;
+        }
+
+        public Long getMedkitsHp() {
+            return medkitsHp;
+        }
+
+        public void setMedkitsHp(Long medkitsHp) {
+            this.medkitsHp = medkitsHp;
+        }
+
+        public Long getHeadshotsHit() {
+            return headshotsHit;
+        }
+
+        public void setHeadshotsHit(Long headshotsHit) {
+            this.headshotsHit = headshotsHit;
+        }
+
+        public Map<String, Object> getMedicStats() {
+            return medicStats;
+        }
+
+        public void setMedicStats(Map<String, Object> medicStats) {
+            this.medicStats = medicStats;
         }
     }
 
-    public static class ClassStat {
+    public static class ClassStats {
 
-        @JsonProperty("kills")
         private Long kills;
-
-        @JsonProperty("assists")
         private Long assists;
-
-        @JsonProperty("deaths")
         private Long deaths;
-
-        @JsonProperty("dmg")
         private Long dmg;
 
-        @JsonProperty("weapon")
-        private Map<String, Long> weapon = new LinkedHashMap<>();
+        /**
+         * In older logs, this field signalled a numeric value with a weapon name. But in version 3, this field now
+         * keeps track of various weapon stats. Therefore, since Jackson does not have versioning support, the
+         * deserialization will be made into an object.
+         */
+        private Map<String, Object> weapon = new LinkedHashMap<>();
 
         @Field("total_time")
         @JsonProperty("total_time")
         private Long totalTime;
 
-        @JsonProperty("type")
         private String type;
 
         public Long getKills() {
@@ -526,11 +600,11 @@ public class LogsTfStats {
             this.dmg = dmg;
         }
 
-        public Map<String, Long> getWeapon() {
+        public Map<String, Object> getWeapon() {
             return weapon;
         }
 
-        public void setWeapon(Map<String, Long> weapon) {
+        public void setWeapon(Map<String, Object> weapon) {
             this.weapon = weapon;
         }
 
@@ -553,26 +627,21 @@ public class LogsTfStats {
 
     public static class Round {
 
+        /**
+         * In Epoch Seconds
+         */
         @Field("start_time")
         @JsonProperty("start_time")
         private Long startTime;
 
-        @JsonProperty("winner")
         private String winner;
-
-        @JsonProperty("team")
         private Team team = new Team();
-
-        @JsonProperty("events")
         private List<Map<String, Object>> events = new ArrayList<>();
-
-        @JsonProperty("players")
         private Map<String, PlayerRound> players = new LinkedHashMap<>();
-
-        @JsonProperty("firstcap")
         private String firstcap;
-
-        @JsonProperty("length")
+        /**
+         * In seconds
+         */
         private Long length;
 
         public Long getStartTime() {
@@ -634,10 +703,7 @@ public class LogsTfStats {
 
     public static class PlayerRound {
 
-        @JsonProperty("kills")
         private Long kills;
-
-        @JsonProperty("dmg")
         private Long dmg;
 
         public Long getKills() {
@@ -663,10 +729,7 @@ public class LogsTfStats {
         @JsonProperty("steamid")
         private String steamId;
 
-        @JsonProperty("name")
         private String name;
-
-        @JsonProperty("msg")
         private String msg;
 
         public String getSteamId() {
@@ -694,17 +757,30 @@ public class LogsTfStats {
         }
     }
 
+    /**
+     * Info about the stats plugin in the server. Since v2/v3
+     * <ul>
+     * <li>hasRealDamage</li>
+     * <li>hasWeaponDamage</li>
+     * <li>notifications</li>
+     * </ul>
+     */
     public static class Info {
 
-        @JsonProperty("map")
         private String map;
-
-        @JsonProperty("supplemental")
         private Boolean supplemental;
 
         @Field("total_length")
         @JsonProperty("total_length")
         private Long totalLength;
+
+        @Field("has_real_damage")
+        @JsonProperty("hasRealDamage")
+        private Boolean hasRealDamage;
+
+        @Field("has_weapon_damage")
+        @JsonProperty("hasWeaponDamage")
+        private Boolean hasWeaponDamage;
 
         @Field("has_hp")
         @JsonProperty("hasHP")
@@ -729,6 +805,8 @@ public class LogsTfStats {
         @Field("has_intel")
         @JsonProperty("hasIntel")
         private Boolean hasIntel;
+
+        private List<Object> notifications = new ArrayList<>();
 
         public String getMap() {
             return map;
@@ -801,6 +879,30 @@ public class LogsTfStats {
         public void setHasIntel(Boolean hasIntel) {
             this.hasIntel = hasIntel;
         }
+
+        public Boolean getHasRealDamage() {
+            return hasRealDamage;
+        }
+
+        public void setHasRealDamage(Boolean hasRealDamage) {
+            this.hasRealDamage = hasRealDamage;
+        }
+
+        public Boolean getHasWeaponDamage() {
+            return hasWeaponDamage;
+        }
+
+        public void setHasWeaponDamage(Boolean hasWeaponDamage) {
+            this.hasWeaponDamage = hasWeaponDamage;
+        }
+
+        public List<Object> getNotifications() {
+            return notifications;
+        }
+
+        public void setNotifications(List<Object> notifications) {
+            this.notifications = notifications;
+        }
     }
 
     public static class KillStreak {
@@ -809,10 +911,11 @@ public class LogsTfStats {
         @JsonProperty("steamid")
         private String steamId;
 
-        @JsonProperty("streak")
         private Long streak;
 
-        @JsonProperty("time")
+        /**
+         * Seconds since match start
+         */
         private Long time;
 
         public String getSteamId() {
