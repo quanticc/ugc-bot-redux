@@ -15,6 +15,8 @@ public class LogsTfStats {
     @JsonIgnore
     private Long id;
 
+    private int version;
+
     @JsonProperty("teams")
     private Map<String, Team> teams = new LinkedHashMap<>();
 

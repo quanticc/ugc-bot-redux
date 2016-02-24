@@ -1,13 +1,20 @@
 package com.ugcleague.ops.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ugcleague.ops.config.LeagueProperties;
+import com.ugcleague.ops.domain.document.LogsTfStats;
+import com.ugcleague.ops.service.util.LogsTfMatchIterator;
+import com.ugcleague.ops.web.rest.JsonLogsTfMatchesResponse;
+import com.ugcleague.ops.web.rest.LogsTfMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestOperations;
 
 import javax.annotation.PostConstruct;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -16,15 +23,15 @@ public class LogsTfApiClient {
     private static final Logger log = LoggerFactory.getLogger(LogsTfApiClient.class);
 
     private final LeagueProperties properties;
-    private final ObjectMapper mapper;
+    private final RestOperations restTemplate;
 
     private String matchesUrl;
     private String statsUrl;
 
     @Autowired
-    public LogsTfApiClient(LeagueProperties properties, ObjectMapper mapper) {
+    public LogsTfApiClient(LeagueProperties properties, RestOperations restTemplate) {
         this.properties = properties;
-        this.mapper = mapper;
+        this.restTemplate = restTemplate;
     }
 
     @PostConstruct
@@ -32,5 +39,24 @@ public class LogsTfApiClient {
         Map<String, String> endpoints = properties.getStats().getEndpoints();
         matchesUrl = endpoints.get("logsTfMatches");
         statsUrl = endpoints.get("logsTfStats");
+    }
+
+    public Iterable<LogsTfMatch> getMatchIterable(long steamId64, int chunkSize) {
+        return () -> new LogsTfMatchIterator(this, steamId64, chunkSize);
+    }
+
+    @Retryable(backoff = @Backoff(2000L))
+    public List<LogsTfMatch> getMatches(long steamId64, int limit) {
+        JsonLogsTfMatchesResponse response = restTemplate.getForObject(matchesUrl, JsonLogsTfMatchesResponse.class,
+            steamId64, limit);
+        if (!response.isSuccess()) {
+            log.warn("Response indicates fail status: ({}, {})", steamId64, limit);
+        }
+        return response.getLogs();
+    }
+
+    @Retryable(backoff = @Backoff(2000L))
+    public LogsTfStats getStats(long id) {
+        return restTemplate.getForObject(statsUrl, LogsTfStats.class, id);
     }
 }

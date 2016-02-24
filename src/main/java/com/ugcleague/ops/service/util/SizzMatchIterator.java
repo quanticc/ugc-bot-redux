@@ -17,8 +17,8 @@ public class SizzMatchIterator implements Iterator<SizzMatch> {
 
     private static final Logger log = LoggerFactory.getLogger(SizzMatchIterator.class);
 
-    private SizzlingApiClient client;
-    private Queue<SizzMatch> cache = new ArrayDeque<>();
+    private final SizzlingApiClient client;
+    private final Queue<SizzMatch> cache = new ArrayDeque<>();
     private long id;
     private int skip = 0;
 
@@ -30,19 +30,18 @@ public class SizzMatchIterator implements Iterator<SizzMatch> {
 
     @Override
     public boolean hasNext() {
-        if (cache.peek() != null) {
-            return true;
-        }
-        List<SizzMatch> list = loadMatches();
-        return (list != null && !list.isEmpty());
+        return cache.peek() != null || (loadMatches() > 0);
     }
 
-    private List<SizzMatch> loadMatches() {
+    private int loadMatches() {
+        int queued = 0;
         List<SizzMatch> list = client.getMatches(id, Math.max(1, skip));
-        skip += list.size();
-        log.info("Loaded {} matches from SizzlingStats", list.size());
-        cache.addAll(list);
-        return list;
+        if (list != null) {
+            skip += list.size();
+            cache.addAll(list);
+        }
+        log.info("Queued {} matches", queued);
+        return queued;
     }
 
     @Override

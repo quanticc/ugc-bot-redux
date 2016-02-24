@@ -1,8 +1,10 @@
 package com.ugcleague.ops.service;
 
+import com.ugcleague.ops.domain.document.LogsTfStats;
 import com.ugcleague.ops.domain.document.SizzStats;
 import com.ugcleague.ops.repository.mongo.LogsTfStatsRepository;
 import com.ugcleague.ops.repository.mongo.SizzStatsRepository;
+import com.ugcleague.ops.web.rest.LogsTfMatch;
 import com.ugcleague.ops.web.rest.SizzMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +45,24 @@ public class GameStatsService {
     }
 
     public SizzStats getSizzStats(long id) {
-        return sizzStatsRepository.findById(id).orElseGet(() -> cacheStats(id));
+        return sizzStatsRepository.findById(id).orElseGet(() -> cacheSizzStats(id));
     }
 
-    private SizzStats cacheStats(long id) {
+    private SizzStats cacheSizzStats(long id) {
         SizzStats stats = sizzlingApiClient.getStats(id);
-        sizzStatsRepository.save(stats);
-        return stats;
+        return sizzStatsRepository.save(stats);
+    }
+
+    public Iterable<LogsTfMatch> getLogsTfMatchIterable(long steamId64, int chunkSize) {
+        return logsTfApiClient.getMatchIterable(steamId64, chunkSize);
+    }
+
+    public LogsTfStats getLogsTfStats(long id) {
+        return logsTfStatsRepository.findById(id).orElseGet(() -> cacheLogsTfStats(id));
+    }
+
+    private LogsTfStats cacheLogsTfStats(long id) {
+        LogsTfStats stats = logsTfApiClient.getStats(id);
+        return logsTfStatsRepository.save(stats);
     }
 }

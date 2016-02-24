@@ -1,6 +1,5 @@
 package com.ugcleague.ops.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.SizzStats;
 import com.ugcleague.ops.service.util.SizzMatchIterator;
@@ -11,6 +10,8 @@ import com.ugcleague.ops.web.rest.SizzMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestOperations;
 
@@ -27,7 +28,6 @@ public class SizzlingApiClient {
     private static final Logger log = LoggerFactory.getLogger(SizzlingApiClient.class);
 
     private final LeagueProperties properties;
-    private final ObjectMapper mapper;
     private final RestOperations restTemplate;
 
     private String latestMatchesUrl;
@@ -36,9 +36,8 @@ public class SizzlingApiClient {
     private String statsUrl;
 
     @Autowired
-    public SizzlingApiClient(LeagueProperties properties, ObjectMapper mapper, RestOperations restTemplate) {
+    public SizzlingApiClient(LeagueProperties properties, RestOperations restTemplate) {
         this.properties = properties;
-        this.mapper = mapper;
         this.restTemplate = restTemplate;
     }
 
@@ -58,7 +57,7 @@ public class SizzlingApiClient {
      * @return an iterable of matches, that can be used to retrieve the full stats
      */
     public Iterable<SizzMatch> getMatchIterable(long steamId64) {
-        return () -> new SizzMatchIterator(SizzlingApiClient.this, steamId64);
+        return () -> new SizzMatchIterator(this, steamId64);
     }
 
     /**
@@ -68,6 +67,7 @@ public class SizzlingApiClient {
      * @param skip      the number of matches to skip before getting the list of matches
      * @return a list of raw match data as they are obtained from the SizzlingStats API
      */
+    @Retryable(backoff = @Backoff(2000L))
     public List<SizzMatch> getMatches(long steamId64, int skip) {
         String steam3 = SteamIdConverter.steamId64To3(steamId64);
         JsonSizzMatchesResponse response = restTemplate.getForObject(playerMatchesUrl, JsonSizzMatchesResponse.class,
@@ -81,6 +81,7 @@ public class SizzlingApiClient {
      * @param id the match ID
      * @return the match stats
      */
+    @Retryable(backoff = @Backoff(2000L))
     public SizzStats getStats(long id) {
         JsonSizzStatsResponse response = restTemplate.getForObject(statsUrl, JsonSizzStatsResponse.class, id);
         return response.getStats();
