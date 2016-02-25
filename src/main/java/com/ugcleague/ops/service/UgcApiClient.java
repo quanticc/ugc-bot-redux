@@ -110,24 +110,24 @@ public class UgcApiClient {
         Set<UgcResult> results = new LinkedHashSet<>();
         for (List<Object> raw : response.getData()) {
             UgcResult result = new UgcResult();
-            result.setMatchId((Integer) raw.get(0)); // "MATCH_ID", #
-            result.setScheduleId((Integer) raw.get(1)); // "SCHED_ID", #
-            result.setScheduleDate(parseLongDate((String) raw.get(2))); // "SCHED_DT", date
-            result.setMapName((String) raw.get(3)); // "MAP_NAME", str
-            result.setHomeClanId((Integer) raw.get(4)); // "CLAN_ID_H", #
-            result.setHomeTeam((String) raw.get(5)); // "HOME_TEAM", str
-            result.setAwayClanId((Integer) raw.get(6)); // "CLAN_ID_V", #
-            int h1 = (int) raw.get(7); // "NO_SCORE_R1_H", #
-            int h2 = (int) raw.get(8); // "NO_SCORE_R2_H", #
-            int h3 = (int) raw.get(9); // "NO_SCORE_R3_H", #
+            result.setMatchId(safeToInteger(raw.get(0))); // "MATCH_ID", #
+            result.setScheduleId(safeToInteger(raw.get(1))); // "SCHED_ID", #
+            result.setScheduleDate(parseLongDate(safeToString(raw.get(2)))); // "SCHED_DT", date
+            result.setMapName(safeToString(raw.get(3))); // "MAP_NAME", str
+            result.setHomeClanId(safeToInteger(raw.get(4))); // "CLAN_ID_H", #
+            result.setHomeTeam(safeToString(raw.get(5))); // "HOME_TEAM", str
+            result.setAwayClanId(safeToInteger(raw.get(6))); // "CLAN_ID_V", #
+            int h1 = safeToInteger(raw.get(7)); // "NO_SCORE_R1_H", #
+            int h2 = safeToInteger(raw.get(8)); // "NO_SCORE_R2_H", #
+            int h3 = safeToInteger(raw.get(9)); // "NO_SCORE_R3_H", #
             result.setHomeScores(Arrays.asList(h1, h2, h3));
-            result.setAwayTeam((String) raw.get(10)); // "VISITING_TEAM", str
-            int a1 = (int) raw.get(11); // "NO_SCORE_R1_V", #
-            int a2 = (int) raw.get(12); // "NO_SCORE_R2_V", #
-            int a3 = (int) raw.get(13); // "NO_SCORE_R3_V", #
+            result.setAwayTeam(safeToString(raw.get(10))); // "VISITING_TEAM", str
+            int a1 = safeToInteger(raw.get(11)); // "NO_SCORE_R1_V", #
+            int a2 = safeToInteger(raw.get(12)); // "NO_SCORE_R2_V", #
+            int a3 = safeToInteger(raw.get(13)); // "NO_SCORE_R3_V", #
             result.setAwayScores(Arrays.asList(a1, a2, a3));
-            result.setWinnerClanId((Integer) raw.get(14)); // "WINNER", #
-            result.setWinner((String) raw.get(15)); // "WINNING_TEAM" str
+            result.setWinnerClanId(safeToInteger(raw.get(14))); // "WINNER", #
+            result.setWinner(safeToString(raw.get(15))); // "WINNING_TEAM" str
             result.setId(result.getMatchId());
             results.add(result);
         }
@@ -177,15 +177,15 @@ public class UgcApiClient {
         }
         List<Object> raw = data.get(0);
         UgcTeam team = new UgcTeam();
-        team.setId((Integer) raw.get(0));
-        team.setTag((String) raw.get(1));
-        team.setName((String) raw.get(2));
-        team.setStatus((String) raw.get(3));
-        team.setSteamPage(((String) raw.get(6)).replace("\\", ""));
-        team.setAvatar(((String) raw.get(9)).replace("\\", ""));
-        team.setTimezone((String) raw.get(12));
-        team.setLadderName((String) raw.get(15));
-        team.setDivisionName((String) raw.get(16));
+        team.setId(safeToInteger(raw.get(0)));
+        team.setTag(safeToString(raw.get(1)));
+        team.setName(safeToString(raw.get(2)));
+        team.setStatus(safeToString(raw.get(3)));
+        team.setSteamPage(safeToString(raw.get(6)).replace("\\", ""));
+        team.setAvatar(safeToString(raw.get(9)).replace("\\", ""));
+        team.setTimezone(safeToString(raw.get(12)));
+        team.setLadderName(safeToString(raw.get(15)));
+        team.setDivisionName(safeToString(raw.get(16)));
         return team;
     }
 
@@ -211,11 +211,11 @@ public class UgcApiClient {
         List<UgcPlayer> list = new ArrayList<>();
         for (List<Object> raw : response.getData()) {
             UgcPlayer player = new UgcPlayer();
-            player.setName((String) raw.get(0));
-            player.setType((String) raw.get(1));
-            player.setAdded(parseLongDate((String) raw.get(2)));
-            player.setUpdated(parseLongDate((String) raw.get(3)));
-            player.setId((Long) raw.get(5));
+            player.setName(safeToString(raw.get(0)));
+            player.setType(safeToString(raw.get(1)));
+            player.setAdded(parseLongDate(safeToString(raw.get(2))));
+            player.setUpdated(parseLongDate(safeToString(raw.get(3))));
+            player.setId(safeToLong(raw.get(5)));
             list.add(player);
         }
         return list;
@@ -229,5 +229,41 @@ public class UgcApiClient {
             log.warn("Could not get roster for team id {}. Raw results: {}", id, e.toString());
         }
         return Optional.empty();
+    }
+
+    private String safeToString(Object obj) {
+        return obj == null ? "?" : obj.toString();
+    }
+
+    private Integer safeToInteger(Object obj) {
+        if (obj == null) {
+            return 0;
+        }
+        try {
+            if (obj instanceof String) {
+                return Integer.parseInt((String) obj);
+            } else {
+                return (Integer) obj;
+            }
+        } catch (NumberFormatException | ClassCastException e) {
+            log.warn("Could not parse or cast {} to integer: {}", obj, e.toString());
+            return 0;
+        }
+    }
+
+    private Long safeToLong(Object obj) {
+        if (obj == null) {
+            return 0L;
+        }
+        try {
+            if (obj instanceof String) {
+                return Long.parseLong((String) obj);
+            } else {
+                return (Long) obj;
+            }
+        } catch (NumberFormatException | ClassCastException e) {
+            log.warn("Could not parse or cast {} to long: {}", obj, e.toString());
+            return 0L;
+        }
     }
 }
