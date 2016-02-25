@@ -1,5 +1,9 @@
 package com.ugcleague.ops.service.discord;
 
+import com.mongodb.AggregationOutput;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import com.ugcleague.ops.domain.document.Chart;
 import com.ugcleague.ops.domain.document.Series;
 import com.ugcleague.ops.repository.mongo.ChartRepository;
@@ -29,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.maypril.metrics.entity.GaugeEntity;
@@ -42,6 +45,8 @@ import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -299,12 +304,45 @@ public class ChartPresenter {
         int pointCount = 0;
         int i = 0;
         for (Series seriesSpec : chartSpec.getSeriesList()) {
-            List<GaugeEntity> points = mongoTemplate.find(
-                query(where(NAME).is(seriesSpec.getMetric())
-                    .andOperator(
-                        Criteria.where(TIMESTAMP).gte(Date.from(after.toInstant())),
-                        Criteria.where(TIMESTAMP).lte(Date.from(before.toInstant()))
-                    )), GaugeEntity.class, GAUGES_COLLECTION);
+            String metric = seriesSpec.getMetric();
+            List<GaugeEntity> points;
+            if (Duration.between(after, before).abs().toDays() >= 1) {
+                // "cleanest" way for now. Spring Data MongoDB needs date aggregation
+                log.debug("Aggregating data since time frame is longer than 1 day");
+                BasicDBList andMatcher = new BasicDBList();
+                andMatcher.add(new BasicDBObject(NAME, new BasicDBObject("$eq", metric)));
+                andMatcher.add(new BasicDBObject(TIMESTAMP, new BasicDBObject("$gte", Date.from(after.toInstant()))));
+                andMatcher.add(new BasicDBObject(TIMESTAMP, new BasicDBObject("$lte", Date.from(before.toInstant()))));
+                BasicDBObject matcher = new BasicDBObject("$match", new BasicDBObject("$and", andMatcher));
+                BasicDBObject dateToString = new BasicDBObject();
+                dateToString.append("format", "%Y-%m-%dT%H:00:00.00Z");
+                dateToString.append("date", "$" + TIMESTAMP);
+                BasicDBObject grouperContents = new BasicDBObject();
+                grouperContents.append("_id", new BasicDBObject("$dateToString", dateToString));
+                grouperContents.append("count", new BasicDBObject("$sum", 1));
+                grouperContents.append("average", new BasicDBObject("$avg", "$value"));
+                BasicDBObject grouper = new BasicDBObject("$group", grouperContents);
+                BasicDBObject sorter = new BasicDBObject("$sort", new BasicDBObject("_id", 1));
+                AggregationOutput result = mongoTemplate.getCollection(GAUGES_COLLECTION)
+                    .aggregate(Arrays.asList(matcher, grouper, sorter));
+                // map: Instant -> count, average
+                points = new ArrayList<>();
+                for (DBObject object : result.results()) {
+                    BasicDBObject obj = (BasicDBObject) object;
+                    GaugeEntity entity = new GaugeEntity();
+                    entity.setName(metric);
+                    entity.setValue(obj.get("average"));
+                    entity.setTimestamp(Date.from(Instant.parse((String) obj.get("_id"))));
+                    points.add(entity);
+                }
+            } else {
+                points = mongoTemplate.find(
+                    query(where(NAME).is(metric)
+                        .andOperator(
+                            where(TIMESTAMP).gte(Date.from(after.toInstant())),
+                            where(TIMESTAMP).lte(Date.from(before.toInstant()))
+                        )), GaugeEntity.class, GAUGES_COLLECTION);
+            }
             pointCount += points.size();
             if (points.isEmpty()) {
                 log.debug("No data points from series {} (metric: {})",
