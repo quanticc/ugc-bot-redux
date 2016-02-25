@@ -181,7 +181,7 @@ public class CommandService implements DiscordSubscriber {
                 if (gatekeeper.getQueuedJobCount(key) > 0) {
                     tryReplyFrom(m, command, "Please wait until your previous command finishes running");
                 } else {
-                    statusReplyFrom(m, command, "Your command will be executed shortly...");
+                    statusReplyFrom(m, command, "Running your command in the background...");
                     CompletableFuture<String> future = gatekeeper.queue(key, job);
                     // handle response and then delete status command
                     future.thenAccept(response -> handleResponse(m, command, response))

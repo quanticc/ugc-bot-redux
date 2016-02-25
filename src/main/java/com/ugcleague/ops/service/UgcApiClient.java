@@ -1,6 +1,7 @@
 package com.ugcleague.ops.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.UgcPlayer;
 import com.ugcleague.ops.domain.document.UgcResult;
@@ -69,7 +70,7 @@ public class UgcApiClient {
         playerTeamCurrentActiveUrl = endpoints.get("playerTeamCurrentActive"); // id64
     }
 
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     private String httpToString(String url) throws IOException {
         URL u = new URL(url);
         HttpURLConnection c = (HttpURLConnection) u.openConnection();
@@ -80,7 +81,7 @@ public class UgcApiClient {
         c.setConnectTimeout(10000);
         c.setReadTimeout(10000);
         c.setRequestProperty("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36");
+            Constants.USER_AGENT);
         c.connect();
         int status = c.getResponseCode();
         switch (status) {
@@ -153,12 +154,12 @@ public class UgcApiClient {
         return ZonedDateTime.now();
     }
 
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public UgcPlayerPage getCurrentPlayer(Long steamId64) {
         String key = properties.getUgc().getKey();
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36");
+        headers.set("User-Agent", Constants.USER_AGENT);
         ResponseEntity<UgcPlayerPage> response = restTemplate.exchange(playerTeamCurrentUrl, HttpMethod.GET,
             new HttpEntity<>(headers), UgcPlayerPage.class, key, steamId64);
         return response.getBody();

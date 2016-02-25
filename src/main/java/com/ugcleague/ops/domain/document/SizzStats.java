@@ -42,20 +42,14 @@ public class SizzStats {
     private String hostIp;
 
     @Indexed
-    @JsonProperty("ip")
     private String ip;
 
     @Field("host_port")
     @JsonProperty("hostport")
     private Long hostPort;
 
-    @JsonProperty("round")
     private Long round;
-
-    @JsonProperty("updated")
     private ZonedDateTime updated;
-
-    @JsonProperty("created")
     private ZonedDateTime created;
 
     @Field("view_count")
@@ -76,9 +70,8 @@ public class SizzStats {
 
     @Field("is_live")
     @JsonProperty("isLive")
-    private Boolean isLive;
+    private boolean isLive;
 
-    @JsonProperty("owner")
     private Owner owner;
 
     @JsonProperty("chats")
@@ -239,11 +232,11 @@ public class SizzStats {
         this.matchDuration = matchDuration;
     }
 
-    public Boolean getLive() {
+    public boolean isLive() {
         return isLive;
     }
 
-    public void setLive(Boolean live) {
+    public void setLive(boolean live) {
         isLive = live;
     }
 
@@ -362,14 +355,12 @@ public class SizzStats {
         @JsonProperty("_id")
         private String id;
 
-        @JsonProperty("name")
         private String name;
 
         @Field("steam_id")
         @JsonProperty("steamid")
         private String steamId;
 
-        @JsonProperty("team")
         private Long team;
 
         @Field("med_picks")
@@ -384,7 +375,6 @@ public class SizzStats {
         @JsonProperty("healsreceived")
         private List<Long> healsReceived = new ArrayList<>();
 
-        @JsonProperty("points")
         private List<Long> points = new ArrayList<>();
 
         @Field("bonus_points")
@@ -395,7 +385,6 @@ public class SizzStats {
         @JsonProperty("resupplypoints")
         private List<Long> resupplyPoints = new ArrayList<>();
 
-        @JsonProperty("crits")
         private List<Long> crits = new ArrayList<>();
 
         @Field("overkill_damage")
@@ -406,19 +395,10 @@ public class SizzStats {
         @JsonProperty("damagedone")
         private List<Long> damageDone = new ArrayList<>();
 
-        @JsonProperty("teleports")
         private List<Long> teleports = new ArrayList<>();
-
-        @JsonProperty("invulns")
         private List<Long> invulns = new ArrayList<>();
-
-        @JsonProperty("healpoints")
         private List<Long> healpoints = new ArrayList<>();
-
-        @JsonProperty("backstabs")
         private List<Long> backstabs = new ArrayList<>();
-
-        @JsonProperty("headshots")
         private List<Long> headshots = new ArrayList<>();
 
         @Field("buildings_destroyed")
@@ -429,29 +409,17 @@ public class SizzStats {
         @JsonProperty("buildingsbuilt")
         private List<Long> buildingsBuilt = new ArrayList<>();
 
-        @JsonProperty("revenge")
         private List<Long> revenge = new ArrayList<>();
-
-        @JsonProperty("dominations")
         private List<Long> dominations = new ArrayList<>();
-
-        @JsonProperty("suicides")
         private List<Long> suicides = new ArrayList<>();
-
-        @JsonProperty("defenses")
         private List<Long> defenses = new ArrayList<>();
-
-        @JsonProperty("captures")
         private List<Long> captures = new ArrayList<>();
-
-        @JsonProperty("deaths")
         private List<Long> deaths = new ArrayList<>();
 
         @Field("kill_assists")
         @JsonProperty("killassists")
         private List<Long> killAssists = new ArrayList<>();
 
-        @JsonProperty("kills")
         private List<Long> kills = new ArrayList<>();
 
         @Field("played_classes")
@@ -462,14 +430,12 @@ public class SizzStats {
         @JsonProperty("mostplayedclass")
         private List<Long> mostPlayedClass = new ArrayList<>();
 
-        @JsonProperty("avatar")
         private String avatar;
 
         @Field("numeric_id")
         @JsonProperty("numericid")
         private String numericId;
 
-        @JsonProperty("country")
         private String country;
 
         public String getId() {

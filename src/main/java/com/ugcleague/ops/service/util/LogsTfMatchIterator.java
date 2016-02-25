@@ -44,7 +44,7 @@ public class LogsTfMatchIterator implements Iterator<LogsTfMatch> {
                 }
             }
         }
-        log.info("Queued {} more matches", queued);
+        log.info("LogsTF: Loaded {} new matches", queued);
         return queued;
     }
 

@@ -3,6 +3,7 @@ package com.ugcleague.ops.service.discord;
 import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.service.GameStatsService;
 import com.ugcleague.ops.service.UgcDataService;
+import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.SteamIdConverter;
 import com.ugcleague.ops.web.rest.LogsTfMatch;
@@ -58,6 +59,8 @@ public class UgcPresenter {
     private OptionSpec<Integer> xrefMatchesSpec;
     private OptionSpec<Integer> xrefDaysSpec;
     private OptionSpec<String> xrefFormatSpec;
+    private OptionSpec<Boolean> xrefPartialSpec;
+    private Command statsCommand;
 
     @Autowired
     public UgcPresenter(CommandService commandService, UgcDataService ugcDataService, GameStatsService statsService) {
@@ -113,6 +116,8 @@ public class UgcPresenter {
             .withRequiredArg().ofType(Integer.class).defaultsTo(10);
         xrefFormatSpec = parser.accepts("format", "Game format, to filter by player count")
             .withRequiredArg().defaultsTo("HL");
+        xrefPartialSpec = parser.accepts("no-partial", "Don't display partial results while it's running")
+            .withRequiredArg().ofType(Boolean.class).defaultsTo(true);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("ugc", "--ugc");
         aliases.put("results", "--ugc");
@@ -122,8 +127,9 @@ public class UgcPresenter {
         aliases.put("depth", "--depth");
         aliases.put("matches", "--matches");
         aliases.put("days", "--days");
-        commandService.register(CommandBuilder.startsWith(".stats")
-            .description("Cross-references UGC matches against Sizzling/LogsTF stats")
+        aliases.put("no-partial", "--no-partial");
+        statsCommand = commandService.register(CommandBuilder.startsWith(".stats")
+            .description("Cross-references UGC matches against Sizzling/LogsTF stats").persistStatus()
             .support().originReplies().parser(parser).withOptionAliases(aliases).queued().command(this::xref).build());
     }
 
@@ -172,10 +178,16 @@ public class UgcPresenter {
             }
         }
 
+        int minPlayers = minMatches * 2;
+        log.info("Only considering logs with at least {} players", minPlayers);
+
         String division = null;
         if (optionSet.has(xrefDivisionSpec)) {
-            division = divisionAliasMap.get(optionSet.valueOf(xrefDivisionSpec)); // can return null
+            division = divisionAliasMap.get(optionSet.valueOf(xrefDivisionSpec).toLowerCase()); // can return null
+            log.debug("Filtering by division: {}", division);
         }
+
+        boolean partialResults = !optionSet.has(xrefPartialSpec) || !optionSet.valueOf(xrefPartialSpec);
 
         // collect stats within the possible match times for each result until a match is found
         // time frame: [scheduleDate, scheduleDate + 10 days]
@@ -205,15 +217,18 @@ public class UgcPresenter {
                     // skip due to division filter
                     continue;
                 }
+                response.append(String.format("[#%d] %s vs %s @ %s", result.getMatchId(),
+                    result.getHomeTeam(), result.getAwayTeam(), result.getMapName()));
+                if (partialResults) {
+                    commandService.statusReplyFrom(message, statsCommand, response.toString());
+                }
                 LookupSettings settings = new LookupSettings(start, end,
-                    optionSet.valueOf(xrefDepthSpec), minMatches, result.getMapName());
+                    optionSet.valueOf(xrefDepthSpec), minPlayers, minMatches, result.getMapName());
                 List<MatchInfo> matches = findStats(home.get(), away.get(), settings);
                 if (!matches.isEmpty()) {
-                    response.append(String.format("[#%d] %s vs %s @ %s\n", result.getMatchId(),
-                        result.getHomeTeam(), result.getAwayTeam(), result.getMapName()));
                     for (MatchInfo match : matches) {
-                        response.append("\t\t").append(match.homeTeamMatches + match.awayTeamMatches)
-                            .append(" roster matches found: ");
+                        response.append(": ").append(match.homeTeamMatches + match.awayTeamMatches)
+                            .append("/").append(match.totalPlayers).append(" matches found in ");
                         switch (match.provider) {
                             case SIZZ_STATS:
                                 response.append("http://sizzlingstats.com/stats/")
@@ -224,15 +239,21 @@ public class UgcPresenter {
                                     .append(match.id).append("\n");
                                 break;
                             default:
-                                response.append("Unknown provider with id: ").append(match.id).append("\n");
+                                response.append(match.id).append("\n");
                                 break;
                         }
                     }
                 }
+                if (matches.isEmpty()) {
+                    response.append(": No matches found\n");
+                }
+                if (partialResults) {
+                    commandService.statusReplyFrom(message, statsCommand, response.toString());
+                }
             }
         }
 
-        return response.toString();
+        return partialResults ? "" : response.toString();
     }
 
     private List<MatchInfo> findStats(UgcTeam home, UgcTeam away, LookupSettings settings) {
@@ -244,11 +265,7 @@ public class UgcPresenter {
         Set<Long> logsTfScanned = new LinkedHashSet<>();
         for (UgcPlayer player : players) {
             matches.addAll(searchSizzStats(player, sizzScanned, home, away, settings));
-            if (matches.isEmpty()) {
-                matches.addAll(searchLogsTfStats(player, logsTfScanned, home, away, settings));
-            } else {
-                log.info("Skipping search in LogsTF since a match was already found");
-            }
+            matches.addAll(searchLogsTfStats(player, logsTfScanned, home, away, settings));
         }
         return matches;
     }
@@ -292,6 +309,12 @@ public class UgcPresenter {
                 log.warn("LogsTF: No stats for id {}", id);
                 continue;
             }
+            // ignore matches with too few players
+            int totalPlayers = stats.getNames().size();
+            if (totalPlayers < settings.minPlayers) {
+                log.debug("LogsTF: Skipping #{} due to low player count: {}", stats.getId(), totalPlayers);
+                continue;
+            }
             // logs.tf does not save map name - can't filter for that
             int homeRosterMatched = 0;
             int awayRosterMatched = 0;
@@ -320,12 +343,12 @@ public class UgcPresenter {
             }
             if (homeRosterMatched >= settings.minimumRosterMatches
                 && awayRosterMatched >= settings.minimumRosterMatches) {
-                log.info("LogsTF: Matched stats with league result #{} ({} home, {} away)",
-                    id, homeRosterMatched, awayRosterMatched);
-                matches.add(new MatchInfo(LOGS_TF, stats.getId(), homeRosterMatched, awayRosterMatched));
+                log.info("LogsTF: Matched stats with league result #{} ({} home and {} away of {} total)",
+                    id, homeRosterMatched, awayRosterMatched, totalPlayers);
+                matches.add(new MatchInfo(LOGS_TF, stats.getId(), homeRosterMatched, awayRosterMatched, totalPlayers));
             } else {
-                log.debug("LogsTF: Not enough matched players #{} ({} home, {} away)",
-                    id, homeRosterMatched, awayRosterMatched);
+                log.debug("LogsTF: Not enough matched players #{} ({} home and {} away of {} total)",
+                    id, homeRosterMatched, awayRosterMatched, totalPlayers);
             }
             count++;
         }
@@ -343,9 +366,8 @@ public class UgcPresenter {
         for (SizzMatch match : statsService.getSizzMatchIterable(player.getId())) {
             long id = match.getId();
             ZonedDateTime created = parseMatchDate(match.getCreated());
-            // ignore live matches
             // ignore matches newer than the endDate
-            if (match.isLive() || created.isAfter(endDate)) {
+            if (created.isAfter(endDate)) {
                 continue;
             }
             // abort when finding a match older than startDate
@@ -370,7 +392,15 @@ public class UgcPresenter {
                 log.warn("SizzStats: No stats for id {}", id);
                 continue;
             }
-            if (stats.getMap() != null && stats.getMap().equals(settings.mapName)) {
+            // ignore live matches
+            // ignore if a map filter is set and it does not match
+            if (stats.isLive() || (stats.getMap() != null && stats.getMap().equals(settings.mapName))) {
+                continue;
+            }
+            // ignore matches with too few players
+            int totalPlayers = stats.getPlayers().size();
+            if (totalPlayers < settings.minPlayers) {
+                log.debug("SizzStats: Skipping #{} due to low player count: {}", stats.getId(), totalPlayers);
                 continue;
             }
             int homeRosterMatched = 0;
@@ -391,12 +421,12 @@ public class UgcPresenter {
             }
             if (homeRosterMatched >= settings.minimumRosterMatches
                 && awayRosterMatched >= settings.minimumRosterMatches) {
-                log.info("SizzStats: Matched stats with league result #{} ({} home, {} away)",
-                    id, homeRosterMatched, awayRosterMatched);
-                matches.add(new MatchInfo(SIZZ_STATS, stats.getId(), homeRosterMatched, awayRosterMatched));
+                log.info("SizzStats: Matched stats with league result #{} ({} home and {} away of {} total)",
+                    id, homeRosterMatched, awayRosterMatched, totalPlayers);
+                matches.add(new MatchInfo(SIZZ_STATS, stats.getId(), homeRosterMatched, awayRosterMatched, totalPlayers));
             } else {
-                log.debug("SizzStats: Not enough matched players #{} ({} home, {} away)",
-                    id, homeRosterMatched, awayRosterMatched);
+                log.debug("SizzStats: Not enough matched players #{} ({} home and {} away of {} total)",
+                    id, homeRosterMatched, awayRosterMatched, totalPlayers);
             }
             count++;
         }
@@ -457,26 +487,30 @@ public class UgcPresenter {
         private final long id;
         private final int homeTeamMatches;
         private final int awayTeamMatches;
+        private final int totalPlayers;
 
-        private MatchInfo(String provider, long id, int homeTeamMatches, int awayTeamMatches) {
+        private MatchInfo(String provider, long id, int homeTeamMatches, int awayTeamMatches, int totalPlayers) {
             this.provider = provider;
             this.id = id;
             this.homeTeamMatches = homeTeamMatches;
             this.awayTeamMatches = awayTeamMatches;
+            this.totalPlayers = totalPlayers;
         }
     }
 
     private static class LookupSettings {
         private final ZonedDateTime startDate;
         private final ZonedDateTime endDate;
+        private final int minPlayers;
         private final int matchDepthPerPlayer;
         private final int minimumRosterMatches;
         private final String mapName;
 
-        private LookupSettings(ZonedDateTime startDate, ZonedDateTime endDate, int matchDepthPerPlayer,
+        private LookupSettings(ZonedDateTime startDate, ZonedDateTime endDate, int matchDepthPerPlayer, int minPlayers,
                                int minimumRosterMatches, String mapName) {
             this.startDate = startDate;
             this.endDate = endDate;
+            this.minPlayers = minPlayers;
             this.matchDepthPerPlayer = matchDepthPerPlayer;
             this.minimumRosterMatches = minimumRosterMatches;
             this.mapName = mapName;

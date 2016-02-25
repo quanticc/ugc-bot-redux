@@ -12,12 +12,24 @@ public class LogsTfMatch implements Comparable<LogsTfMatch> {
         return date;
     }
 
+    public void setDate(long date) {
+        this.date = date;
+    }
+
     public long getId() {
         return id;
     }
 
+    public void setId(long id) {
+        this.id = id;
+    }
+
     public String getTitle() {
         return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     @Override

@@ -39,8 +39,9 @@ public class SizzMatchIterator implements Iterator<SizzMatch> {
         if (list != null) {
             skip += list.size();
             cache.addAll(list);
+            queued += list.size();
         }
-        log.info("Queued {} matches", queued);
+        log.info("SizzStats: Loaded {} new matches", queued);
         return queued;
     }
 

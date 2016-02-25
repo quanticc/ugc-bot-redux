@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service;
 
+import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.SizzStats;
 import com.ugcleague.ops.service.util.SizzMatchIterator;
@@ -10,10 +11,14 @@ import com.ugcleague.ops.web.rest.SizzMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestOperations;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -28,7 +33,6 @@ public class SizzlingApiClient {
     private static final Logger log = LoggerFactory.getLogger(SizzlingApiClient.class);
 
     private final LeagueProperties properties;
-    private final RestOperations restTemplate;
 
     private String latestMatchesUrl;
     private String playerLastMatchesUrl;
@@ -36,9 +40,8 @@ public class SizzlingApiClient {
     private String statsUrl;
 
     @Autowired
-    public SizzlingApiClient(LeagueProperties properties, RestOperations restTemplate) {
+    public SizzlingApiClient(LeagueProperties properties) {
         this.properties = properties;
-        this.restTemplate = restTemplate;
     }
 
     @PostConstruct
@@ -67,12 +70,15 @@ public class SizzlingApiClient {
      * @param skip      the number of matches to skip before getting the list of matches
      * @return a list of raw match data as they are obtained from the SizzlingStats API
      */
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public List<SizzMatch> getMatches(long steamId64, int skip) {
         String steam3 = SteamIdConverter.steamId64To3(steamId64);
-        JsonSizzMatchesResponse response = restTemplate.getForObject(playerMatchesUrl, JsonSizzMatchesResponse.class,
-            steam3, Integer.MAX_VALUE, skip);
-        return response.getMatches();
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", Constants.USER_AGENT);
+        ResponseEntity<JsonSizzMatchesResponse> response = restTemplate.exchange(playerMatchesUrl, HttpMethod.GET,
+            new HttpEntity<>(headers), JsonSizzMatchesResponse.class, steam3, Integer.MAX_VALUE, skip);
+        return response.getBody().getMatches();
     }
 
     /**
@@ -81,9 +87,13 @@ public class SizzlingApiClient {
      * @param id the match ID
      * @return the match stats
      */
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public SizzStats getStats(long id) {
-        JsonSizzStatsResponse response = restTemplate.getForObject(statsUrl, JsonSizzStatsResponse.class, id);
-        return response.getStats();
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", Constants.USER_AGENT);
+        ResponseEntity<JsonSizzStatsResponse> response = restTemplate.exchange(statsUrl, HttpMethod.GET,
+            new HttpEntity<>(headers), JsonSizzStatsResponse.class, id);
+        return response.getBody().getStats();
     }
 }

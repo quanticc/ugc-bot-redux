@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service;
 
+import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.LogsTfStats;
 import com.ugcleague.ops.service.util.LogsTfMatchIterator;
@@ -8,10 +9,14 @@ import com.ugcleague.ops.web.rest.LogsTfMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestOperations;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -23,15 +28,13 @@ public class LogsTfApiClient {
     private static final Logger log = LoggerFactory.getLogger(LogsTfApiClient.class);
 
     private final LeagueProperties properties;
-    private final RestOperations restTemplate;
 
     private String matchesUrl;
     private String statsUrl;
 
     @Autowired
-    public LogsTfApiClient(LeagueProperties properties, RestOperations restTemplate) {
+    public LogsTfApiClient(LeagueProperties properties) {
         this.properties = properties;
-        this.restTemplate = restTemplate;
     }
 
     @PostConstruct
@@ -45,18 +48,29 @@ public class LogsTfApiClient {
         return () -> new LogsTfMatchIterator(this, steamId64, chunkSize);
     }
 
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public List<LogsTfMatch> getMatches(long steamId64, int limit) {
-        JsonLogsTfMatchesResponse response = restTemplate.getForObject(matchesUrl, JsonLogsTfMatchesResponse.class,
-            steamId64, limit);
-        if (!response.isSuccess()) {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", Constants.USER_AGENT);
+        ResponseEntity<JsonLogsTfMatchesResponse> response = restTemplate.exchange(matchesUrl, HttpMethod.GET,
+            new HttpEntity<>(headers), JsonLogsTfMatchesResponse.class, steamId64, limit);
+        JsonLogsTfMatchesResponse body = response.getBody();
+        if (!body.isSuccess()) {
             log.warn("Response indicates fail status: ({}, {})", steamId64, limit);
         }
-        return response.getLogs();
+        return body.getLogs();
     }
 
-    @Retryable(backoff = @Backoff(2000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public LogsTfStats getStats(long id) {
-        return restTemplate.getForObject(statsUrl, LogsTfStats.class, id);
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", Constants.USER_AGENT);
+        ResponseEntity<LogsTfStats> response = restTemplate.exchange(statsUrl, HttpMethod.GET,
+            new HttpEntity<>(headers), LogsTfStats.class, id);
+        LogsTfStats stats = response.getBody();
+        stats.setId(id);
+        return stats;
     }
 }
