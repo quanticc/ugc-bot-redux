@@ -80,6 +80,7 @@ public class ChartPresenter {
     private OptionSpec<Integer> chartHeightSpec;
     private OptionSpec<Void> chartListSpec;
     private OptionSpec<String> chartNonOptionSpec;
+    private OptionSpec<Boolean> chartFullSpec;
     private OptionSpec<String> manageAddSpec;
     private OptionSpec<String> manageEditSpec;
     private OptionSpec<String> manageRemoveSpec;
@@ -128,6 +129,8 @@ public class ChartPresenter {
         chartHeightSpec = parser.acceptsAll(asList("h", "height"), "Height of the chart")
             .withRequiredArg().ofType(Integer.class).defaultsTo(230).describedAs("px");
         chartListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available charts");
+        chartFullSpec = parser.acceptsAll(asList("f", "full", "detailed"), "Display ALL data points available in the specified time range")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("get", "--get");
         aliases.put("since", "--since");
@@ -135,6 +138,8 @@ public class ChartPresenter {
         aliases.put("width", "--width");
         aliases.put("height", "--height");
         aliases.put("list", "--list");
+        aliases.put("full", "--full");
+        aliases.put("detailed", "--detailed");
         chartCommand = commandService.register(CommandBuilder.startsWith(".chart")
             .description("Display a pre-defined chart").support().originReplies().queued()
             .parser(parser).withOptionAliases(aliases).command(this::chart).build());
@@ -241,9 +246,10 @@ public class ChartPresenter {
         String until = optionSet.valueOf(chartUntilSpec);
         int width = optionSet.valueOf(chartWidthSpec);
         int height = optionSet.valueOf(chartHeightSpec);
+        boolean full = optionSet.has(chartFullSpec) ? optionSet.valueOf(chartFullSpec) : false;
 
         // snapshot the chart and send it as a file to the origin channel
-        Node node = generateChart(chart.get(), since, until, width, height);
+        Node node = generateChart(chart.get(), since, until, width, height, full);
         if (node == null) {
             return "Data set is empty!";
         }
@@ -258,7 +264,7 @@ public class ChartPresenter {
         return "";
     }
 
-    private Node generateChart(Chart chartSpec, String since, String until, int width, int height) {
+    private Node generateChart(Chart chartSpec, String since, String until, int width, int height, boolean full) {
         ZonedDateTime now = ZonedDateTime.now();
         ZonedDateTime after = Optional.ofNullable(DateUtil.parseTimeDate(since)).orElse(now.minusHours(1));
         ZonedDateTime before = Optional.ofNullable(DateUtil.parseTimeDate(until)).orElse(now);
@@ -306,9 +312,9 @@ public class ChartPresenter {
         for (Series seriesSpec : chartSpec.getSeriesList()) {
             String metric = seriesSpec.getMetric();
             List<GaugeEntity> points;
-            if (Duration.between(after, before).abs().toDays() >= 1) {
+            if (!full && Duration.between(after, before).abs().toDays() >= 1) {
                 // "cleanest" way for now. Spring Data MongoDB needs date aggregation
-                log.debug("Aggregating data since time frame is longer than 1 day");
+                log.debug("Aggregating since duration is >1d and detailed mode is not enabled");
                 BasicDBList andMatcher = new BasicDBList();
                 andMatcher.add(new BasicDBObject(NAME, new BasicDBObject("$eq", metric)));
                 andMatcher.add(new BasicDBObject(TIMESTAMP, new BasicDBObject("$gte", Date.from(after.toInstant()))));
