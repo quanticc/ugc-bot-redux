@@ -14,10 +14,7 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
@@ -67,7 +64,8 @@ public class TagPresenter {
         aliases.put("delete", "-r");
         aliases.put("info", "-i");
         commandService.register(CommandBuilder.anyMatch(".tag").description("Perform operations to tag and display messages")
-            .support().originReplies().parser(parser).withOptionAliases(aliases).command(this::executeTag).build());
+            .support().originReplies().parser(parser).withOptionAliases(aliases).command(this::executeTag)
+            .limit(3).build());
     }
 
     private String executeTag(IMessage message, OptionSet optionSet) {
@@ -75,13 +73,23 @@ public class TagPresenter {
             return null;
         }
 
+        if (Arrays.asList(optionSet.has(tagAddSpec), optionSet.has(tagRemoveSpec), optionSet.has(tagInfoSpec)).stream()
+            .filter(b -> b).count() > 1) {
+            return "Please run in separate commands";
+        }
+
+        List<String> nonOptions = optionSet.valuesOf(tagNonOptionSpec);
+
         if (optionSet.has(tagAddSpec)) {
-            String key = optionSet.valueOf(tagAddSpec);
+            String key = optionSet.valueOf(tagAddSpec).replaceAll("\"|'", "");
             Optional<Tag> tag = tagRepository.findById(key);
             if (tag.isPresent()) {
                 return "A tag with this name already exists";
             }
-            String content = mergeNonOptions(optionSet.valuesOf(tagNonOptionSpec));
+            if (nonOptions.isEmpty()) {
+                return "Must add some content to this tag";
+            }
+            String content = mergeNonOptions(nonOptions);
             Tag newTag = new Tag(key, cacheService.getOrCreateUser(message.getAuthor()), content);
             log.debug("Saving new tag: {}", newTag);
             tagRepository.save(newTag);
@@ -108,10 +116,8 @@ public class TagPresenter {
             return formatTagContents(tag.get());
         }
 
-        List<String> nonOptions = optionSet.valuesOf(tagNonOptionSpec);
-
         if (!nonOptions.isEmpty()) {
-            String key = nonOptions.get(0);
+            String key = mergeNonOptions(nonOptions);
             Optional<Tag> tag = tagRepository.findById(key);
             if (!tag.isPresent()) {
                 return "No tag exists with this name";
@@ -129,6 +135,12 @@ public class TagPresenter {
     }
 
     private String mergeNonOptions(List<String> nonOptions) {
-        return nonOptions.stream().collect(Collectors.joining(" "));
+        return nonOptions.stream().map(s -> {
+            if ((s.startsWith("\"") && s.endsWith("\"")) || (s.startsWith("'") && s.endsWith("'"))) {
+                return s;
+            } else {
+                return s + " ";
+            }
+        }).collect(Collectors.joining()).trim();
     }
 }

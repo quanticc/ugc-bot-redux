@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 public class Command implements Comparable<Command> {
 
-    private static final Pattern PATTERN = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'");
+    private static final Pattern PATTERN = Pattern.compile("[^ \\t\"']+|\"([^\"]*)\"|'([^']*)'");
 
     private MatchType matchType;
     private String key;
@@ -29,10 +29,13 @@ public class Command implements Comparable<Command> {
     private boolean mention;
     private boolean persistStatus;
     private Map<String, String> optionAliases;
+    private boolean unquote;
+    private int limit;
 
     public Command(MatchType matchType, String key, String description, OptionParser parser,
                    BiFunction<IMessage, OptionSet, String> command, CommandPermission permission, boolean queued,
-                   ReplyMode replyMode, boolean mention, boolean persistStatus, Map<String, String> optionAliases) {
+                   ReplyMode replyMode, boolean mention, boolean persistStatus, Map<String, String> optionAliases,
+                   boolean unquote, int limit) {
         Objects.requireNonNull(matchType, "Match type must not be null");
         Objects.requireNonNull(key, "Key must not be null");
         Objects.requireNonNull(description, "Description must not be null");
@@ -50,6 +53,8 @@ public class Command implements Comparable<Command> {
         this.mention = mention;
         this.persistStatus = persistStatus;
         this.optionAliases = optionAliases;
+        this.unquote = unquote;
+        this.limit = limit;
     }
 
     public MatchType getMatchType() {
@@ -140,6 +145,22 @@ public class Command implements Comparable<Command> {
         this.optionAliases = optionAliases;
     }
 
+    public boolean isUnquote() {
+        return unquote;
+    }
+
+    public void setUnquote(boolean unquote) {
+        this.unquote = unquote;
+    }
+
+    public int getLimit() {
+        return limit;
+    }
+
+    public void setLimit(int limit) {
+        this.limit = limit;
+    }
+
     public boolean matches(String message) {
         switch (matchType) {
             case ANY:
@@ -156,15 +177,23 @@ public class Command implements Comparable<Command> {
         if (parser == null || parser.recognizedOptions().isEmpty()) {
             return command.apply(message, null);
         } else {
-            return command.apply(message, args != null ? parser.parse(split(args)) : parser.parse());
+            return command.apply(message, args != null ? parser.parse(split(args, limit)) : parser.parse());
         }
     }
 
-    private String[] split(String args) {
+    private String[] split(String args, int limit) {
         Matcher matcher = PATTERN.matcher(args);
         List<String> matches = new ArrayList<>();
+        int count = 1;
         while (matcher.find()) {
-            matches.add(matcher.group().replaceAll("\"|'", ""));
+            if (limit > 0 && ++count > limit) {
+                String group = args.substring(matcher.start());
+                matches.add(group);
+                break;
+            } else {
+                String group = matcher.group();
+                matches.add(unquote ? group.replaceAll("\"|'", "") : group);
+            }
         }
         if (optionAliases != null && !optionAliases.isEmpty()) {
             return matches.stream().map(s -> optionAliases.getOrDefault(s, s))
@@ -199,6 +228,8 @@ public class Command implements Comparable<Command> {
             ", mention=" + mention +
             ", persistStatus=" + persistStatus +
             ", optionAliases=" + optionAliases +
+            ", unquote=" + unquote +
+            ", limit=" + limit +
             '}';
     }
 

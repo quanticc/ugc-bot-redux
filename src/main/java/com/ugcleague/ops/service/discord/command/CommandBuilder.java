@@ -60,6 +60,8 @@ public class CommandBuilder {
     private ReplyMode replyMode = ReplyMode.PRIVATE; // by default
     private boolean persistStatus = false;
     private Map<String, String> optionAliases = null;
+    private boolean unquote = true;
+    private int limit = 0;
 
     private CommandBuilder() {
         parser.allowsUnrecognizedOptions();
@@ -257,12 +259,35 @@ public class CommandBuilder {
     }
 
     /**
+     * Whether to unquote or not the parsed arguments. By default it's <code>true</code>
+     *
+     * @param unquote <code>true</code> to remove quotes from passed arguments, <code>false</code> otherwise.
+     * @return this builder
+     */
+    public CommandBuilder unquote(boolean unquote) {
+        this.unquote = unquote;
+        return this;
+    }
+
+    /**
+     * Limit the argument parsing by the given amount. Non-positive values will be ignored. Note that the argument
+     * parsing begins after the command key is matched.
+     *
+     * @param limit times to match the arguments before grouping the remaining arguments as one
+     * @return this builder
+     */
+    public CommandBuilder limit(int limit) {
+        this.limit = limit;
+        return this;
+    }
+
+    /**
      * Construct the command made with the current settings.
      *
      * @return a valid command that can be registered to the service
      */
     public Command build() {
         return new Command(matchType, key, description, parser, command, permission,
-            queued, replyMode, mention, persistStatus, optionAliases);
+            queued, replyMode, mention, persistStatus, optionAliases, unquote, limit);
     }
 }
