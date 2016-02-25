@@ -2,11 +2,11 @@ package com.ugcleague.ops;
 
 import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.javafx.AbstractJavaFxApplicationSupport;
-import javafx.stage.Stage;
+import com.ugcleague.ops.javafx.JavaFxSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.MetricFilterAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.MetricRepositoryAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.liquibase.LiquibaseProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -24,7 +25,7 @@ import java.util.Collection;
 @EnableAutoConfiguration(exclude = {MetricFilterAutoConfiguration.class, MetricRepositoryAutoConfiguration.class})
 @EnableConfigurationProperties({LeagueProperties.class, LiquibaseProperties.class})
 @SpringBootApplication
-public class Application extends AbstractJavaFxApplicationSupport {
+public class Application {
 
     private static final Logger log = LoggerFactory.getLogger(Application.class);
 
@@ -67,12 +68,21 @@ public class Application extends AbstractJavaFxApplicationSupport {
      * Main method, used to run the application.
      */
     public static void main(String[] args) {
-        launchApp(Application.class, args);
+        SpringApplication app = new SpringApplication(Application.class);
+        SimpleCommandLinePropertySource source = new SimpleCommandLinePropertySource(args);
+        addDefaultProfile(app, source);
+        app.run(args);
+        javafx.application.Application.launch(JavaFxSupport.class, args);
     }
 
-    @Override
-    public void start(Stage primaryStage) throws Exception {
-        Thread.currentThread().setName("JavaFXAppThread");
-        log.debug("Started JavaFX runtime");
+    /**
+     * If no profile has been configured, set by default the "dev" profile.
+     */
+    private static void addDefaultProfile(SpringApplication app, SimpleCommandLinePropertySource source) {
+        if (!source.containsProperty("spring.profiles.active") &&
+            !System.getenv().containsKey("SPRING_PROFILES_ACTIVE")) {
+
+            app.setAdditionalProfiles(Constants.SPRING_PROFILE_DEVELOPMENT);
+        }
     }
 }

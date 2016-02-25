@@ -20,6 +20,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.StringConverter;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -106,7 +107,6 @@ public class ChartPresenter {
         initChartCommand();
         initChartManageCommand();
         initChartSeriesCommand();
-        Platform.setImplicitExit(false);
     }
 
     private void initChartCommand() {
@@ -353,8 +353,9 @@ public class ChartPresenter {
     private void takeSnapshot(Node node, Consumer<File> consumer) {
         Platform.runLater(() -> {
             VBox vbox = new VBox(node);
-            Stage stage = new Stage();
+            Stage stage = new Stage(StageStyle.TRANSPARENT);
             Scene scene = new Scene(vbox);
+            scene.setFill(null);
             stage.setScene(scene);
             stage.show();
             SnapshotParameters parameters = new SnapshotParameters();
