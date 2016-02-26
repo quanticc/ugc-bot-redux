@@ -72,6 +72,12 @@ public class UgcApiClient {
 
     @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     private String httpToString(String url) throws IOException {
+        try {
+            // TODO: make it configurable
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted my sleep", e);
+        }
         URL u = new URL(url);
         HttpURLConnection c = (HttpURLConnection) u.openConnection();
         c.setRequestMethod("GET");

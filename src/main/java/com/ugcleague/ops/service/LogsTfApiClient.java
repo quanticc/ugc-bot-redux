@@ -50,6 +50,12 @@ public class LogsTfApiClient {
 
     @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public List<LogsTfMatch> getMatches(long steamId64, int limit) {
+        try {
+            // TODO: make it configurable
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted my sleep", e);
+        }
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.set("User-Agent", Constants.USER_AGENT);
@@ -64,6 +70,12 @@ public class LogsTfApiClient {
 
     @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public LogsTfStats getStats(long id) {
+        try {
+            // TODO: make it configurable
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted my sleep", e);
+        }
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.set("User-Agent", Constants.USER_AGENT);

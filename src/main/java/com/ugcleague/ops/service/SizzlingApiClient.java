@@ -72,6 +72,12 @@ public class SizzlingApiClient {
      */
     @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public List<SizzMatch> getMatches(long steamId64, int skip) {
+        try {
+            // TODO: make it configurable
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted my sleep", e);
+        }
         String steam3 = SteamIdConverter.steamId64To3(steamId64);
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -89,6 +95,12 @@ public class SizzlingApiClient {
      */
     @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
     public SizzStats getStats(long id) {
+        try {
+            // TODO: make it configurable
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted my sleep", e);
+        }
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.set("User-Agent", Constants.USER_AGENT);
