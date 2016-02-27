@@ -10,6 +10,8 @@ import com.ugcleague.ops.service.util.MetricNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -89,7 +91,7 @@ public class DiscordService implements DiscordSubscriber {
         if (properties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
-                    Thread.sleep(3000); // wait a bit before firing
+                    Thread.sleep(5000); // wait a bit before firing
                     login();
                 } catch (InterruptedException | DiscordException e) {
                     log.warn("Could not connect discord bot", e);
@@ -98,16 +100,18 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    @Retryable(maxAttempts = 10, include = DiscordException.class, backoff = @Backoff(delay = 10000L))
     public void login() throws DiscordException {
+        log.debug("Logging in to Discord");
         LeagueProperties.Discord discord = properties.getDiscord();
         client = new ClientBuilder()
             .withLogin(discord.getEmail(), discord.getPassword())
             .withTimeout(discord.getTimeoutDelay())
             .withPingTimeout(discord.getMaxMissedPings())
             .login();
-        log.debug("Registering {} Discord event subscribers", queuedListeners.size() + queuedSubscribers.size());
         queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
         queuedSubscribers.forEach(subscriber -> client.getDispatcher().registerListener(subscriber));
+        log.debug("Registering ready listener");
         client.getDispatcher().registerListener(this);
     }
 
