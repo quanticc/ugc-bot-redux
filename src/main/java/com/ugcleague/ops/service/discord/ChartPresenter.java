@@ -142,7 +142,7 @@ public class ChartPresenter {
         aliases.put("detailed", "--detailed");
         chartCommand = commandService.register(CommandBuilder.startsWith(".chart")
             .description("Display a pre-defined chart").support().originReplies().queued()
-            .parser(parser).withOptionAliases(aliases).command(this::chart).build());
+            .parser(parser).optionAliases(aliases).command(this::chart).build());
     }
 
     private void initChartManageCommand() {
@@ -178,7 +178,7 @@ public class ChartPresenter {
         aliases.put("format", "--format");
         commandService.register(CommandBuilder.startsWith(".beep chart")
             .description("Manage chart definitions").master().originReplies().queued()
-            .parser(parser).withOptionAliases(aliases).command(this::manage).build());
+            .parser(parser).optionAliases(aliases).command(this::manage).build());
     }
 
     private void initChartSeriesCommand() {
@@ -206,7 +206,7 @@ public class ChartPresenter {
         aliases.put("draw-last-value", "--draw-last-value");
         commandService.register(CommandBuilder.startsWith(".beep series")
             .description("Manage chart series").master().originReplies().queued()
-            .parser(parser).withOptionAliases(aliases).command(this::series).build());
+            .parser(parser).optionAliases(aliases).command(this::series).build());
     }
 
     private String chart(IMessage message, OptionSet optionSet) {

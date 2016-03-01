@@ -64,7 +64,7 @@ public class TagPresenter {
         aliases.put("delete", "-r");
         aliases.put("info", "-i");
         commandService.register(CommandBuilder.anyMatch(".tag").description("Perform operations to tag and display messages")
-            .support().originReplies().parser(parser).withOptionAliases(aliases).command(this::executeTag)
+            .support().originReplies().parser(parser).optionAliases(aliases).command(this::executeTag)
             .limit(3).build());
     }
 

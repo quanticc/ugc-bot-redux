@@ -250,7 +250,7 @@ public class CommandBuilder {
      * @return this builder
      * @throws IllegalArgumentException if the option alias map contract is not fulfilled.
      */
-    public CommandBuilder withOptionAliases(Map<String, String> optionAliases) {
+    public CommandBuilder optionAliases(Map<String, String> optionAliases) {
         if (optionAliases.values().stream().anyMatch(v -> !v.startsWith("-"))) {
             throw new IllegalArgumentException("Option alias map must have all its values starting with - or --");
         }

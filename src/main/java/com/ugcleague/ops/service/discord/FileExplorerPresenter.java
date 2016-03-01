@@ -104,13 +104,13 @@ public class FileExplorerPresenter {
     private void initGetLogsCommand() {
         getLogsCommand = commandService.register(CommandBuilder.anyMatch(".get logs")
             .description("List or retrieve log files from a game server").support().permissionReplies().mention()
-            .parser(parser).withOptionAliases(getOptionAliases).command(this::executeGetLogs).queued().persistStatus().build());
+            .parser(parser).optionAliases(getOptionAliases).command(this::executeGetLogs).queued().persistStatus().build());
     }
 
     private void initGetStvCommand() {
         getStvCommand = commandService.register(CommandBuilder.anyMatch(".get stv")
             .description("List or retrieve SourceTV demos from a game server").support().permissionReplies().mention()
-            .parser(parser).withOptionAliases(getOptionAliases).command(this::executeGetStv).queued().persistStatus().build());
+            .parser(parser).optionAliases(getOptionAliases).command(this::executeGetStv).queued().persistStatus().build());
     }
 
     private String executeGetLogs(IMessage message, OptionSet optionSet) {

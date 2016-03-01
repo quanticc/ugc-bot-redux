@@ -2,11 +2,12 @@ package com.ugcleague.ops.service.discord;
 
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
-import com.ugcleague.ops.domain.Publisher;
-import com.ugcleague.ops.domain.Subscriber;
+import com.ugcleague.ops.domain.document.ChannelSubscription;
+import com.ugcleague.ops.domain.document.Publisher;
+import com.ugcleague.ops.domain.document.Subscription;
 import com.ugcleague.ops.event.*;
-import com.ugcleague.ops.repository.PublisherRepository;
-import com.ugcleague.ops.repository.SubscriberRepository;
+import com.ugcleague.ops.repository.mongo.PublisherRepository;
+import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.util.DateUtil;
@@ -47,12 +48,11 @@ import static java.util.Arrays.asList;
 public class AnnouncePresenter {
 
     private static final Logger log = LoggerFactory.getLogger(AnnouncePresenter.class);
-    private static final String nonOptDesc = "announcement publishers: updates, issues";
-    private static final String SUPPORT = "support";
+    private static final String nonOptDesc = "Announcer name";
 
     private final DiscordService discordService;
     private final PublisherRepository publisherRepository;
-    private final SubscriberRepository subscriberRepository;
+    private final DiscordCacheService cacheService;
     private final CommandService commandService;
 
     private OptionSpec<String> startNonOptionSpec;
@@ -62,10 +62,10 @@ public class AnnouncePresenter {
 
     @Autowired
     public AnnouncePresenter(DiscordService discordService, PublisherRepository publisherRepository,
-                             SubscriberRepository subscriberRepository, CommandService commandService) {
+                             DiscordCacheService cacheService, CommandService commandService) {
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;
-        this.subscriberRepository = subscriberRepository;
+        this.cacheService = cacheService;
         this.commandService = commandService;
     }
 
@@ -148,28 +148,29 @@ public class AnnouncePresenter {
     }
 
     private String subscribeAnnouncer(IUser author, String announcer, IChannel channel) {
-        String key = announcer.trim();
-        if (!key.isEmpty() && !key.equals(SUPPORT)) {
-            Publisher publisher = publisherRepository.findByName(key).orElseGet(() -> newPublisher(key));
-            Subscriber subscriber = subscriberRepository.findByUserId(channel.getID())
-                .orElseGet(() -> newChannelSubscriber(channel));
-            Set<Subscriber> subs = publisher.getSubscribers();
-            if (subs.stream().anyMatch(s -> s.getUserId().equals(channel.getID()))) {
-                return "That channel is already receiving announcements about **" + announcer + "**";
-            } else {
-                subs.add(subscriber);
-                subscriberRepository.save(subscriber);
-                publisherRepository.save(publisher);
+        if (!announcer.isEmpty()) {
+            Optional<Publisher> publisher = publisherRepository.findById(announcer);
+            if (!publisher.isPresent()) {
+                log.warn("Publisher not found by name: {}", announcer);
+                return "Not a valid announcer name";
+            }
+            List<ChannelSubscription> matching = publisher.get().getChannelSubscriptions().stream()
+                .filter(s -> s.getChannel().getId().equals(channel.getID())).collect(Collectors.toList());
+            if (matching.isEmpty()) {
+                ChannelSubscription subscription = new ChannelSubscription();
+                subscription.setChannel(cacheService.getOrCreateChannel(channel));
+                subscription.setEnabled(true);
+                subscription.setMode(Subscription.Mode.ALWAYS);
+                publisher.get().getChannelSubscriptions().add(subscription);
+                publisherRepository.save(publisher.get());
+                log.debug("Subscribing channel {} ({}) to announcer {}", channel.getName(), channel.getID(), announcer);
                 if (channel.isPrivate()) {
                     return ":satellite: I'll PM you about **" + announcer + "**";
                 } else {
-                    try {
-                        discordService.sendMessage(channel, ":satellite: I'll let this channel know about **" + announcer + "**");
-                    } catch (Exception e) {
-                        log.warn("Could not send channel message to {}: {}", channel, e.toString());
-                    }
                     return String.format("Subscription of %s to **%s** successful", channel.mention(), announcer);
                 }
+            } else {
+                return "The channel is already receiving announcements about **" + announcer + "**";
             }
         } else {
             log.debug("Attempted to subscribe announcer: {}", author);
@@ -178,43 +179,27 @@ public class AnnouncePresenter {
     }
 
     private String unsubscribeAnnouncer(IUser author, String announcer, IChannel channel) {
-        String key = announcer.trim();
-        if (!key.isEmpty() && !key.equals(SUPPORT)) {
-            Optional<Subscriber> o = subscriberRepository.findByUserId(channel.getID());
-            if (o.isPresent()) {
-                Subscriber sub = o.get();
-                Publisher publisher = publisherRepository.findByName(key).orElseGet(() -> newPublisher(key));
-                Set<Subscriber> subs = publisher.getSubscribers();
-                if (subs.stream().anyMatch(s -> s.getUserId().equals(channel.getID()))) {
-                    subs.remove(sub);
-                    publisherRepository.save(publisher);
-                    try {
-                        discordService.sendMessage(channel, ":speak_no_evil: I'll stop sending messages about **" + announcer + "**");
-                    } catch (Exception e) {
-                        log.warn("Could not send channel message to {}: {}", channel, e.toString());
-                    }
-                    return String.format("Cancelled subscription of %s to **%s**", channel.mention(), announcer);
-                } else {
-                    return "That channel is not receiving announcements about **" + announcer + "**";
+        if (!announcer.isEmpty()) {
+            Optional<Publisher> publisher = publisherRepository.findById(announcer);
+            if (!publisher.isPresent()) {
+                log.warn("Publisher not found by name: {}", announcer);
+                return "Not a valid announcer name";
+            }
+            List<ChannelSubscription> matching = publisher.get().getChannelSubscriptions().stream()
+                .filter(s -> s.getChannel().getId().equals(channel.getID())).collect(Collectors.toList());
+            if (matching.isEmpty()) {
+                return "That channel is not receiving announcements about **" + announcer + "**";
+            } else {
+                for (ChannelSubscription subscription : matching) {
+                    subscription.setEnabled(false);
                 }
+                publisherRepository.save(publisher.get());
+                return String.format("Cancelled subscription of %s to **%s**", channel.mention(), announcer);
             }
         } else {
-            log.debug("Attempted to unsubscribe announcer: {}", author);
+            log.debug("Attempted to subscribe announcer: {}", author);
         }
         return null;
-    }
-
-    private Publisher newPublisher(String name) {
-        Publisher publisher = new Publisher();
-        publisher.setName(name);
-        return publisher;
-    }
-
-    private Subscriber newChannelSubscriber(IChannel channel) {
-        Subscriber subscriber = new Subscriber();
-        subscriber.setUserId(channel.getID());
-        subscriber.setName(channel.getName());
-        return subscriber;
     }
 
     @EventListener
@@ -264,27 +249,17 @@ public class AnnouncePresenter {
     }
 
     private void announce(String publisherName, String message) {
-        publisherRepository.findByName(publisherName).ifPresent(pub -> {
-            Set<Subscriber> subs = pub.getSubscribers();
+        publisherRepository.findById(publisherName).ifPresent(pub -> {
+            Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
             subs.stream().forEach(sub -> {
                 try {
                     IDiscordClient client = discordService.getClient();
-                    IChannel channel = Optional.ofNullable(client.getChannelByID(sub.getUserId()))
-                        .orElseGet(() -> Optional.ofNullable(client.getUserByID(sub.getUserId()))
-                            .map(user -> {
-                                try {
-                                    return client.getOrCreatePMChannel(user);
-                                } catch (Exception e) {
-                                    log.warn("Could not create PM channel with user {}: {}", user.getID(), e.toString());
-                                }
-                                return null;
-                            }).orElse(null));
+                    IChannel channel = client.getChannelByID(sub.getChannel().getId());
                     if (channel != null) {
-                        log.debug("Making an announcement from {} to {}", publisherName,
-                            (channel.isPrivate() ? sub.getName() : channel.getName()));
+                        log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
                         commandService.answerToChannel(channel, "**<" + publisherName + ">** " + message);
                     } else {
-                        log.warn("Could not find a channel with id {} to send our {} message", sub.getUserId(), publisherName);
+                        log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
                     }
                 } catch (Exception e) {
                     log.warn("Could not send message to '{}': {}", publisherName, e.toString());

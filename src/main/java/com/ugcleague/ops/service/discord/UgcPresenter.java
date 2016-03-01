@@ -130,7 +130,7 @@ public class UgcPresenter {
         aliases.put("no-partial", "--no-partial");
         statsCommand = commandService.register(CommandBuilder.startsWith(".stats")
             .description("Cross-references UGC matches against Sizzling/LogsTF stats").persistStatus()
-            .support().originReplies().parser(parser).withOptionAliases(aliases).queued().command(this::xref).build());
+            .support().originReplies().parser(parser).optionAliases(aliases).queued().command(this::xref).build());
     }
 
     private String xref(IMessage message, OptionSet optionSet) {
