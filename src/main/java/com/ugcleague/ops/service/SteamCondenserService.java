@@ -37,8 +37,7 @@ public class SteamCondenserService {
     private final Map<String, SourceServer> sourceServers = new ConcurrentHashMap<>();
     private final LeagueProperties leagueProperties;
 
-    private Integer cachedLatestVersion = 0;
-    private boolean invalid = true;
+    private Integer lastCachedVersion = 0;
 
     @Autowired
     public SteamCondenserService(LeagueProperties leagueProperties) throws WebApiException {
@@ -214,30 +213,13 @@ public class SteamCondenserService {
         return result.getInt("required_version");
     }
 
-    public Integer queryLatestVersion() {
-        // and don't cache it
+    public Integer getLatestVersion() {
         try {
-            return loadLatestVersion();
+            lastCachedVersion = loadLatestVersion();
         } catch (JSONException | SteamCondenserException e) {
             log.warn("Could not get latest version number: {}", e.toString());
         }
-        return cachedLatestVersion; // fallback.
-    }
-
-    public Integer getLatestVersion() {
-        if (invalid) {
-            try {
-                Integer version = loadLatestVersion();
-                if (cachedLatestVersion < version) {
-                    cachedLatestVersion = version;
-                    invalid = false;
-                    log.info("TF2 server minimum required version: {}", cachedLatestVersion);
-                }
-            } catch (JSONException | SteamCondenserException e) {
-                log.warn("Could not get latest version number: {}", e.toString());
-            }
-        }
-        return cachedLatestVersion;
+        return lastCachedVersion;
     }
 
     public boolean isLatestVersion(Integer version) {
@@ -245,8 +227,7 @@ public class SteamCondenserService {
         return latest != null && version >= latest;
     }
 
-    public void invalidateLatestVersion() {
-        invalid = true;
+    public Integer getLastCachedVersion() {
+        return lastCachedVersion;
     }
-
 }

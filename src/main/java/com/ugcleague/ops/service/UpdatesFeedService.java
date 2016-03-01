@@ -86,7 +86,7 @@ public class UpdatesFeedService {
                 Instant lastPublishedDate = event.getFeed().getPublishedDate().toInstant();
                 log.debug("[hlds_announce] Feed retrieved. Published at {}", lastPublishedDate);
                 // news post might not be related to TF2!! always check before dispatching event
-                if (condenserService.getLatestVersion() < condenserService.queryLatestVersion()) {
+                if (condenserService.getLastCachedVersion() < condenserService.getLatestVersion()) {
                     publisher.publishEvent(new FeedUpdatedEvent(event.getFeed()));
                 }
             } else if (FetcherEvent.EVENT_TYPE_FEED_UNCHANGED.equals(eventType)) {
