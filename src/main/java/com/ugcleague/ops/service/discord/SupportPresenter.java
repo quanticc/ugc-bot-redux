@@ -87,6 +87,7 @@ public class SupportPresenter implements DiscordSubscriber {
         discordService.subscribe(this);
         initSubCommand();
         initUnsubCommand();
+        initManageCommand();
     }
 
     private void initSubCommand() {
@@ -154,19 +155,21 @@ public class SupportPresenter implements DiscordSubscriber {
             for (Publisher publisher : publisherRepository.findAll()) {
                 String channel = Optional.ofNullable(discordService.getClient().getChannelByID(publisher.getChannelId()))
                     .map(IChannel::mention).orElse(publisher.getChannelId());
-                response.append("[**").append(publisher.getId()).append("**] ").append(publisher.isEnabled() ? "Enabled" : "Disabled")
-                    .append(" from ").append(channel).append(" to ").append(publisher.getId()).append("\n");
+                if (channel != null) {
+                    response.append("[**").append(publisher.getId()).append("**] ").append(publisher.isEnabled() ? "Enabled" : "Disabled")
+                        .append(" from ").append(channel).append(" to ").append(publisher.getId()).append("\n");
+                }
             }
             return response.toString();
         }
 
         if (optionSet.has(supportEnableSpec)) {
             String key = optionSet.valueOf(supportEnableSpec);
-            Publisher publisher = publisherRepository.findById(key)
-                .orElseGet(() -> newPublisher(key, message.getChannel().getID()));
-            if (publisher.isEnabled()) {
+            Optional<Publisher> optional = publisherRepository.findById(key);
+            if (optional.isPresent() && optional.get().isEnabled()) {
                 return "Support PMs already enabled from " + message.getChannel().mention() + " to `" + key + "`";
             }
+            Publisher publisher = optional.orElseGet(() -> newPublisher(key, message.getChannel().getID()));
             publisher.setEnabled(true);
             publisherRepository.save(publisher);
             return "Support PMs enabled from " + message.getChannel().mention() + " to `" + key + "`";
@@ -174,11 +177,11 @@ public class SupportPresenter implements DiscordSubscriber {
 
         if (optionSet.has(supportDisableSpec)) {
             String key = optionSet.valueOf(supportDisableSpec);
-            Publisher publisher = publisherRepository.findById(key)
-                .orElseGet(() -> newPublisher(key, message.getChannel().getID()));
-            if (!publisher.isEnabled()) {
+            Optional<Publisher> optional = publisherRepository.findById(key);
+            if (optional.isPresent() && !optional.get().isEnabled()) {
                 return "Support PMs already disabled from " + message.getChannel().mention() + " to `" + key + "`";
             }
+            Publisher publisher = optional.orElseGet(() -> newPublisher(key, message.getChannel().getID()));
             publisher.setEnabled(false);
             publisherRepository.save(publisher);
             return "Support PMs disabled from " + message.getChannel().mention() + " to `" + key + "`";
@@ -241,8 +244,9 @@ public class SupportPresenter implements DiscordSubscriber {
         for (Publisher publisher : publisherRepository.findAll()) {
             List<UserSubscription> matching = publisher.getUserSubscriptions().stream()
                 .filter(s -> s.getUser().getId().equals(author.getID())).collect(Collectors.toList());
-            if (!matching.isEmpty()) {
-                response.append("[**").append(publisher.getId()).append("**] Current settings\n");
+            boolean atLeastOneEnabled = matching.stream().anyMatch(Subscription::isEnabled);
+            if (!matching.isEmpty() && atLeastOneEnabled) {
+                response.append("[**").append(publisher.getId()).append("**] Enabled subscription(s):\n");
                 for (UserSubscription sub : matching) {
                     boolean enabled = sub.isEnabled();
                     Subscription.Mode mode = sub.getMode();
@@ -258,10 +262,10 @@ public class SupportPresenter implements DiscordSubscriber {
                             response.append("You will *not* receive PMs between **")
                                 .append(formatTime(start)).append("** and **").append(formatTime(finish)).append("**\n");
                         }
-                        response.append("This means that, at this moment, you **").append(isActive(sub) ? "would" : "would not")
-                            .append("** receive PMs.\n");
                     }
                 }
+                response.append("This means that, at this moment, you **").append(isActive(matching) ? "would" : "would not")
+                    .append("** receive PMs.\n");
             }
         }
         if (response.length() == 0) {
@@ -278,11 +282,14 @@ public class SupportPresenter implements DiscordSubscriber {
         Optional<Publisher> publisher = getPublisher(publisherName);
         if (!publisher.isPresent()) {
             log.warn("Publisher does not exist: {}", publisherName);
-            return "No publisher by id **" + publisherName + "**\n";
+            String available = publisherRepository.findAll().stream()
+                .map(Publisher::getId).collect(Collectors.joining(", "));
+            return "Invalid support channel. Available IDs: " + available + "\n";
         }
         DiscordUser discordUser = cacheService.getOrCreateUser(user);
         UserSubscription subscription = new UserSubscription();
         subscription.setUser(discordUser);
+        subscription.setEnabled(true);
         publisher.get().getUserSubscriptions().removeIf(s -> s.getUser().getId().equals(user.getID()));
         publisher.get().getUserSubscriptions().add(subscription);
         publisherRepository.save(publisher.get());
@@ -297,7 +304,9 @@ public class SupportPresenter implements DiscordSubscriber {
         Optional<Publisher> publisher = getPublisher(publisherName);
         if (!publisher.isPresent()) {
             log.warn("Publisher does not exist: {}", publisherName);
-            return "No publisher by id **" + publisherName + "**\n";
+            String available = publisherRepository.findAll().stream()
+                .map(Publisher::getId).collect(Collectors.joining(", "));
+            return "Invalid support channel. Available IDs: " + available + "\n";
         }
         List<UserSubscription> matching = publisher.get().getUserSubscriptions().stream()
             .filter(s -> s.getUser().getId().equals(user.getID())).collect(Collectors.toList());
@@ -316,10 +325,10 @@ public class SupportPresenter implements DiscordSubscriber {
     }
 
     private void appendFooter(StringBuilder response) {
-        response.append("*Enter `.sub` to receive support PMs all day*\n")
-            .append("*Enter `.sub on` or `.sub off` to receive or block PMs within a time range*\n")
-            .append("*Enter `.unsub` to shutdown all support PMs*\n")
-            .append("*Enter `.sub status` to get your current configuration*\n");
+        response.append("\nEnter `.sub` to receive TF2 support PMs all day\n")
+            .append("Enter `.sub on` or `.sub off` to receive or block PMs within a time range\n")
+            .append("Enter `.unsub` to shutdown all TF2 support PMs\n")
+            .append("Enter `.sub status` to get your current configuration\n");
     }
 
     private String subWithTimeFrame(IMessage message, List<String> channels, List<String> timeExpressions, boolean enabled) {
@@ -350,7 +359,9 @@ public class SupportPresenter implements DiscordSubscriber {
                 for (String key : channels) {
                     Optional<Publisher> publisher = getPublisher(key);
                     if (!publisher.isPresent()) {
-                        response.append("No publisher by id **").append(key).append("**\n");
+                        String available = publisherRepository.findAll().stream()
+                            .map(Publisher::getId).collect(Collectors.joining(", "));
+                        response.append("Invalid support channel. Available IDs: ").append(available).append("\n");
                         continue;
                     }
                     IUser author = message.getAuthor();
@@ -360,6 +371,7 @@ public class SupportPresenter implements DiscordSubscriber {
                     subscription.setEnabled(true);
                     subscription.setStart(start);
                     subscription.setFinish(finish);
+                    publisher.get().getUserSubscriptions().removeIf(s -> s.getUser().getId().equals(author.getID()));
                     response.append("*Preferences updated. Current settings:*\n");
                     if (enabled) {
                         subscription.setMode(Subscription.Mode.TIME_INCLUSIVE);
@@ -419,13 +431,19 @@ public class SupportPresenter implements DiscordSubscriber {
             // ping subscribers at most once per hour per user
             Optional<Publisher> publisher = getPublisher(publisherName);
             if (publisher.isPresent()) {
-                publisher.get().getUserSubscriptions().stream().filter(this::isActive).forEach(sub -> {
-                    try {
-                        discordService.sendPrivateMessage(sub.getUser().getId(), buildPingMessage(m));
-                    } catch (Exception e) {
-                        log.warn("Could not send PM to subscriber: {}", e.toString());
+                List<UserSubscription> subs = publisher.get().getUserSubscriptions().stream()
+                    .filter(this::isActive).collect(Collectors.toList());
+                Set<DiscordUser> pinged = new HashSet<>();
+                for (UserSubscription sub : subs) {
+                    if (!pinged.contains(sub.getUser())) {
+                        try {
+                            discordService.sendPrivateMessage(sub.getUser().getId(), buildPingMessage(m));
+                        } catch (Exception e) {
+                            log.warn("Could not send PM to subscriber: {}", e.toString());
+                        }
+                        pinged.add(sub.getUser());
                     }
-                });
+                }
             } else {
                 log.warn("Could not publish support event, publisher does not exist: {}", publisherName);
             }

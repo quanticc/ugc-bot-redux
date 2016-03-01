@@ -1,13 +1,11 @@
 package com.ugcleague.ops.domain.document;
 
-import javax.validation.constraints.NotNull;
 import java.time.ZonedDateTime;
 
 public abstract class Subscription extends AbstractAuditingEntity {
 
-    private boolean enabled;
-    @NotNull
-    private Mode mode;
+    private boolean enabled = true;
+    private Mode mode = Mode.ALWAYS;
     private ZonedDateTime start;
     private ZonedDateTime finish;
 
