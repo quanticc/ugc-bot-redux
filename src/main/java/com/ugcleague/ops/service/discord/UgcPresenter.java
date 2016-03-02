@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
+import static org.apache.commons.lang3.StringUtils.*;
 
 /**
  * Commands to handle UGC cached data.
@@ -41,6 +42,9 @@ public class UgcPresenter {
     private static final Logger log = LoggerFactory.getLogger(UgcPresenter.class);
     private static final String SIZZ_STATS = "SizzStats";
     private static final String LOGS_TF = "LogsTF";
+    private static final int ID_COLUMN_WIDTH = 7;
+    private static final int DIV_COLUMN_WIDTH = 15;
+    private static final int TEAM_COLUMN_WIDTH = 30;
 
     private final CommandService commandService;
     private final UgcDataService ugcDataService;
@@ -60,6 +64,7 @@ public class UgcPresenter {
     private OptionSpec<Integer> xrefDaysSpec;
     private OptionSpec<String> xrefFormatSpec;
     private OptionSpec<Boolean> xrefPartialSpec;
+    private OptionSpec<Integer> xrefMaxMatchSpec;
     private Command statsCommand;
 
     @Autowired
@@ -118,6 +123,8 @@ public class UgcPresenter {
             .withRequiredArg().defaultsTo("HL");
         xrefPartialSpec = parser.accepts("no-partial", "Don't display partial results while it's running")
             .withRequiredArg().ofType(Boolean.class).defaultsTo(true);
+        xrefMaxMatchSpec = parser.acceptsAll(asList("m", "max", "max-matches"), "Max matches per game before stopping")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(3);
         Map<String, String> aliases = new HashMap<>();
         aliases.put("ugc", "--ugc");
         aliases.put("results", "--ugc");
@@ -128,6 +135,7 @@ public class UgcPresenter {
         aliases.put("matches", "--matches");
         aliases.put("days", "--days");
         aliases.put("no-partial", "--no-partial");
+        aliases.put("max", "--max");
         statsCommand = commandService.register(CommandBuilder.startsWith(".stats")
             .description("Cross-references UGC matches against Sizzling/LogsTF stats").persistStatus()
             .support().originReplies().parser(parser).optionAliases(aliases).queued().command(this::xref).build());
@@ -193,6 +201,12 @@ public class UgcPresenter {
         // time frame: [scheduleDate, scheduleDate + 10 days]
         // extra filters: stats player count, map name
         StringBuilder response = new StringBuilder();
+        response.append(leftPad("ID", ID_COLUMN_WIDTH + 1)).append(leftPad("Division", DIV_COLUMN_WIDTH + 1))
+            .append(leftPad("Home", TEAM_COLUMN_WIDTH + 1)).append(leftPad("Away", TEAM_COLUMN_WIDTH + 1)).append('\n');
+        response.append(repeat('-', ID_COLUMN_WIDTH)).append(' ')
+            .append(repeat('-', DIV_COLUMN_WIDTH)).append(' ')
+            .append(repeat('-', TEAM_COLUMN_WIDTH)).append(' ')
+            .append(repeat('-', TEAM_COLUMN_WIDTH)).append('\n');
         for (Set<UgcResult> results : resultMap.values()) {
             for (UgcResult result : results) {
                 log.debug("Preparing to search for UGC match #{}: {} ({}) vs {} ({}) @ {}",
@@ -202,33 +216,40 @@ public class UgcPresenter {
                 ZonedDateTime end = result.getScheduleDate().plusDays(optionSet.valueOf(xrefDaysSpec));
                 Optional<UgcTeam> home = ugcDataService.findTeamById(result.getHomeClanId(), refresh);
                 if (!home.isPresent()) {
-                    response.append("Could not find team ").append(result.getHomeTeam())
+                    response.append(leftPad("#" + result.getMatchId(), ID_COLUMN_WIDTH)).append(' ')
+                        .append("Could not find team ").append(result.getHomeTeam())
                         .append(" with id: ").append(result.getHomeClanId()).append("\n");
                     break;
                 }
                 Optional<UgcTeam> away = ugcDataService.findTeamById(result.getAwayClanId(), refresh);
                 if (!away.isPresent()) {
-                    response.append("Could not find team ").append(result.getAwayTeam())
+                    response.append(leftPad("#" + result.getMatchId(), ID_COLUMN_WIDTH)).append(' ')
+                        .append("Could not find team ").append(result.getAwayTeam())
                         .append(" with id: ").append(result.getAwayClanId()).append("\n");
                     break;
                 }
-                if (division != null && !home.get().getDivisionName().equals(division)
-                    && !away.get().getDivisionName().equals(division)) {
+                String homeDiv = home.get().getDivisionName();
+                if (division != null && !homeDiv.equals(division) && !away.get().getDivisionName().equals(division)) {
                     // skip due to division filter
                     continue;
                 }
-                response.append(String.format("[#%d] %s vs %s @ %s", result.getMatchId(),
-                    result.getHomeTeam(), result.getAwayTeam(), result.getMapName()));
+                response.append(leftPad("#" + result.getMatchId(), ID_COLUMN_WIDTH)).append(' ')
+                    .append(leftPad(homeDiv, DIV_COLUMN_WIDTH)).append(' ')
+                    .append(leftPad(substring(result.getHomeTeam(), 0, TEAM_COLUMN_WIDTH), TEAM_COLUMN_WIDTH)).append(' ')
+                    .append(leftPad(substring(result.getAwayTeam(), 0, TEAM_COLUMN_WIDTH), TEAM_COLUMN_WIDTH)).append('\n')
+                    .append(" - http://www.ugcleague.com/matchpage_tf2h.cfm?mid=").append(result.getMatchId()).append('\n');
                 if (partialResults) {
                     commandService.statusReplyFrom(message, statsCommand, response.toString());
                 }
+                int limit = Math.max(0, optionSet.valueOf(xrefMaxMatchSpec));
                 LookupSettings settings = new LookupSettings(start, end,
-                    optionSet.valueOf(xrefDepthSpec), minPlayers, minMatches, result.getMapName());
+                    optionSet.valueOf(xrefDepthSpec), minPlayers, minMatches, result.getMapName(),
+                    limit);
                 List<MatchInfo> matches = findStats(home.get(), away.get(), settings);
                 if (!matches.isEmpty()) {
                     for (MatchInfo match : matches) {
-                        response.append(": ").append(match.homeTeamMatches + match.awayTeamMatches)
-                            .append("/").append(match.totalPlayers).append(" matches found in ");
+                        response.append(" - (").append(match.homeTeamMatches + match.awayTeamMatches)
+                            .append("/").append(match.totalPlayers).append(") ");
                         switch (match.provider) {
                             case SIZZ_STATS:
                                 response.append("http://sizzlingstats.com/stats/")
@@ -245,15 +266,15 @@ public class UgcPresenter {
                     }
                 }
                 if (matches.isEmpty()) {
-                    response.append(": No matches found\n");
+                    response.append(" - <no stats found>\n");
                 }
                 if (partialResults) {
-                    commandService.statusReplyFrom(message, statsCommand, response.toString());
+                    commandService.statusReplyFrom(message, statsCommand, "```\n" + response.toString() + "```");
                 }
             }
         }
 
-        return partialResults ? "" : response.toString();
+        return partialResults ? "" : ("```\n" + response.toString() + "```");
     }
 
     private List<MatchInfo> findStats(UgcTeam home, UgcTeam away, LookupSettings settings) {
@@ -263,9 +284,16 @@ public class UgcPresenter {
         players.addAll(away.getRoster());
         Set<Long> sizzScanned = new LinkedHashSet<>();
         Set<Long> logsTfScanned = new LinkedHashSet<>();
+        int matchLimit = settings.maxMatchesPerGame;
         for (UgcPlayer player : players) {
             matches.addAll(searchSizzStats(player, sizzScanned, home, away, settings));
+            if (matchLimit > 0 && matches.size() >= matchLimit) {
+                break;
+            }
             matches.addAll(searchLogsTfStats(player, logsTfScanned, home, away, settings));
+            if (matchLimit > 0 && matches.size() >= matchLimit) {
+                break;
+            }
         }
         return matches;
     }
@@ -279,7 +307,11 @@ public class UgcPresenter {
         ZonedDateTime startDate = settings.startDate;
         ZonedDateTime endDate = settings.endDate;
         int maxDepth = settings.matchDepthPerPlayer;
+        int matchLimit = settings.maxMatchesPerGame;
         for (LogsTfMatch match : statsService.getLogsTfMatchIterable(player.getId(), maxDepth)) {
+            if (matchLimit > 0 && matches.size() >= matchLimit) {
+                break;
+            }
             long id = match.getId();
             ZonedDateTime created = Instant.ofEpochMilli(match.getDate() * 1000).atZone(ZoneId.systemDefault());
             // logs.tf does not track live matches
@@ -363,7 +395,13 @@ public class UgcPresenter {
         // define a period of time where the match is most likely to have been recorded
         ZonedDateTime startDate = settings.startDate;
         ZonedDateTime endDate = settings.endDate;
+        int maxDepth = settings.matchDepthPerPlayer;
+        int matchLimit = settings.maxMatchesPerGame;
         for (SizzMatch match : statsService.getSizzMatchIterable(player.getId())) {
+            if (matchLimit > 0 && matches.size() >= matchLimit) {
+                log.info("Reached max stat matches per game: {}", matchLimit);
+                break;
+            }
             long id = match.getId();
             ZonedDateTime created = parseMatchDate(match.getCreated());
             // ignore matches newer than the endDate
@@ -382,7 +420,7 @@ public class UgcPresenter {
             }
             scannedIds.add(id);
             // don't check too many stats per player
-            if (count >= settings.matchDepthPerPlayer) {
+            if (count >= maxDepth) {
                 log.info("SizzStats: Maximum depth reached for player {}", player.getId());
                 break;
             }
@@ -505,15 +543,17 @@ public class UgcPresenter {
         private final int matchDepthPerPlayer;
         private final int minimumRosterMatches;
         private final String mapName;
+        private final int maxMatchesPerGame;
 
         private LookupSettings(ZonedDateTime startDate, ZonedDateTime endDate, int matchDepthPerPlayer, int minPlayers,
-                               int minimumRosterMatches, String mapName) {
+                               int minimumRosterMatches, String mapName, int maxMatchesPerGame) {
             this.startDate = startDate;
             this.endDate = endDate;
             this.minPlayers = minPlayers;
             this.matchDepthPerPlayer = matchDepthPerPlayer;
             this.minimumRosterMatches = minimumRosterMatches;
             this.mapName = mapName;
+            this.maxMatchesPerGame = maxMatchesPerGame;
         }
     }
 
