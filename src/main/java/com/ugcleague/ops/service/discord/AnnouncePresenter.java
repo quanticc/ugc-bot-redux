@@ -251,7 +251,7 @@ public class AnnouncePresenter {
     private void announce(String publisherName, String message) {
         publisherRepository.findById(publisherName).ifPresent(pub -> {
             Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
-            subs.stream().forEach(sub -> {
+            subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
                 try {
                     IDiscordClient client = discordService.getClient();
                     IChannel channel = client.getChannelByID(sub.getChannel().getId());
