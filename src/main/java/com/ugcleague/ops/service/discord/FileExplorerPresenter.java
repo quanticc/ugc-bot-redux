@@ -96,9 +96,14 @@ public class FileExplorerPresenter {
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         getOptionAliases = new HashMap<>();
         getOptionAliases.put("from", "-s");
+        getOptionAliases.put("server", "-s");
         getOptionAliases.put("since", "-a");
+        getOptionAliases.put("after", "-a");
         getOptionAliases.put("until", "-b");
+        getOptionAliases.put("before", "-b");
         getOptionAliases.put("like", "-f");
+        getOptionAliases.put("filename", "-f");
+        getOptionAliases.put("absolute", "--absolute-date");
     }
 
     private void initGetLogsCommand() {
