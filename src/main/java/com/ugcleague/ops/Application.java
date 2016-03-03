@@ -72,7 +72,12 @@ public class Application {
         SimpleCommandLinePropertySource source = new SimpleCommandLinePropertySource(args);
         addDefaultProfile(app, source);
         app.run(args);
+        Thread.setDefaultUncaughtExceptionHandler(Application::uncaught);
         javafx.application.Application.launch(JavaFxSupport.class, args);
+    }
+
+    private static void uncaught(Thread thread, Throwable throwable) {
+        log.error("Unhandled exception in " + thread, throwable);
     }
 
     /**
