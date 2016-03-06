@@ -266,6 +266,10 @@ public class GameServer implements Serializable {
             + ", lastGameUpdate='" + lastGameUpdate + "'" + '}';
     }
 
+    public String toShortString() {
+        return getShortName() + "(" + address + ")";
+    }
+
     public String getShortName() {
         return name.trim().replaceAll("(^[A-Za-z]{3})[^0-9]*([0-9]+).*", "$1$2").toLowerCase();
     }

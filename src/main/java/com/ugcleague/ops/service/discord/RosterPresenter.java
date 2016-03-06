@@ -18,9 +18,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,7 +29,9 @@ import static org.apache.commons.lang3.StringUtils.rightPad;
 public class RosterPresenter {
 
     private static final Logger log = LoggerFactory.getLogger(RosterPresenter.class);
+
     private final Pattern INDIVIDUAL_PATTERN = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);
+    private final Map<String, String> formatConverter = new HashMap<>();
 
     private final CommandService commandService;
     private final UgcDataService ugcDataService;
@@ -47,6 +47,9 @@ public class RosterPresenter {
         commandService.register(CommandBuilder.startsWith(".check")
             .description("Check UGC rosters from a status command output").unrestricted().originReplies().mention()
             .queued().noParser().command(this::checkRosters).build());
+        formatConverter.put("TF2 Highlander", "9v9");
+        formatConverter.put("TF2 6vs6", "6v6");
+        formatConverter.put("TF2 4vs4", "4v4");
     }
 
     private String checkRosters(IMessage message, OptionSet optionSet) {
@@ -80,7 +83,7 @@ public class RosterPresenter {
         int nameWidth = result.stream().map(d -> d.getServerName().length()).reduce(0, Integer::max) + 2;
         int teamWidth = result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
-            .map(t -> t.getName().length()).reduce(0, Integer::max) + 2;
+            .map(t -> (t.getClanId() + " ").length() + t.getName().length()).reduce(0, Integer::max) + 2;
         int divWidth = result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
             .map(t -> t.getDivision().length()).reduce(0, Integer::max) + 2;
@@ -90,20 +93,29 @@ public class RosterPresenter {
             .append("\n")
             .append(repeat('-', nameWidth + teamWidth + divWidth + formatWidth)).append("\n");
         StringBuilder recentJoinsBuilder = new StringBuilder();
+        Set<Integer> teamIds = new LinkedHashSet<>();
         for (RosterData player : result) {
             if (player.getUgcData() == null || player.getUgcData().getTeam() == null || player.getUgcData().getTeam().isEmpty()) {
                 builder.append(rightPad(player.getServerName(), nameWidth)).append("\n");
             } else {
                 boolean first = true;
                 for (UgcPlayerPage.Team team : player.getUgcData().getTeam()) {
+                    // convert if legacy format
+                    if (team.getClanId() > 0) {
+                        // format needs conversion
+                        team.setFormat(formatConverter.getOrDefault(team.getFormat(), team.getFormat()));
+                        teamIds.add(team.getClanId());
+                    } else {
+                        team.setJoined(player.getUgcData().getJoined());
+                    }
                     if (filter.isEmpty() || team.getFormat().equals(filter)) {
                         builder.append(rightPad(first ? player.getServerName() : "", nameWidth))
-                            .append(rightPad(team.getName(), teamWidth))
+                            .append(rightPad((team.getClanId() > 0 ? team.getClanId() + " " : "") + team.getName(), teamWidth))
                             .append(rightPad(team.getDivision(), divWidth))
                             .append(rightPad(team.getFormat().equals("9v9") ? "HL" : team.getFormat(), formatWidth))
                             .append("\n");
                         first = false;
-                        if (isRecentJoin(team.getJoined())) {
+                        if (isRecentJoin(team)) {
                             recentJoinsBuilder.append("\n*Warning* ")
                                 .append(player.getServerName())
                                 .append(" joined ").append(team.getName())
@@ -113,11 +125,21 @@ public class RosterPresenter {
                 }
             }
         }
+        if (teamIds.size() > 0 && teamIds.size() <= 2) {
+            recentJoinsBuilder.append('\n');
+            for (Integer id : teamIds) {
+                recentJoinsBuilder.append("http://www.ugcleague.com/team_page.cfm?clan_id=").append(id).append("\n");
+            }
+        }
         return builder.append("```").append(recentJoinsBuilder.toString()).toString();
     }
 
-    private boolean isRecentJoin(String ugcFormatDate) {
-        LocalDateTime date = LocalDateTime.parse(ugcFormatDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH));
+    private boolean isRecentJoin(UgcPlayerPage.Team team) {
+        String pattern = team.getClanId() > 0 ? "MMMM, dd yyyy HH:mm:ss" : "yyyy-MM-dd HH:mm:ss";
+        if (team.getJoined() == null) {
+            return false;
+        }
+        LocalDateTime date = LocalDateTime.parse(team.getJoined(), DateTimeFormatter.ofPattern(pattern, Locale.ENGLISH));
         ZonedDateTime join = date.atZone(ZoneId.of("America/New_York"));
         return ZonedDateTime.now().minusHours(18).isBefore(join);
     }

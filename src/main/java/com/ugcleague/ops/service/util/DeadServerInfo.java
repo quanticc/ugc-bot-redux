@@ -12,9 +12,13 @@ public class DeadServerInfo {
     private final AtomicInteger attempts;
 
     public DeadServerInfo(GameServer gameServer) {
+        this(gameServer, Instant.now(), 0);
+    }
+
+    public DeadServerInfo(GameServer gameServer, Instant firstAttempt, int attempts) {
         this.gameServer = gameServer;
-        this.created = Instant.now();
-        this.attempts = new AtomicInteger(0);
+        this.created = firstAttempt;
+        this.attempts = new AtomicInteger(attempts);
     }
 
     public GameServer getGameServer() {

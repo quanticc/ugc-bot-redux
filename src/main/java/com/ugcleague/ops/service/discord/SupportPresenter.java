@@ -1,10 +1,9 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.domain.document.DiscordUser;
-import com.ugcleague.ops.domain.document.Publisher;
-import com.ugcleague.ops.domain.document.Subscription;
-import com.ugcleague.ops.domain.document.UserSubscription;
+import com.ugcleague.ops.config.Constants;
+import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.repository.mongo.PublisherRepository;
+import com.ugcleague.ops.repository.mongo.SettingsRepository;
 import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.PermissionService;
@@ -16,6 +15,7 @@ import joptsimple.OptionSpec;
 import org.ocpsoft.prettytime.nlp.PrettyTimeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,7 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -50,7 +50,7 @@ import static java.util.Arrays.asList;
  */
 @Service
 @Transactional
-public class SupportPresenter implements DiscordSubscriber {
+public class SupportPresenter implements DiscordSubscriber, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(SupportPresenter.class);
 
@@ -59,7 +59,8 @@ public class SupportPresenter implements DiscordSubscriber {
     private final PermissionService permissionService;
     private final DiscordCacheService cacheService;
     private final PublisherRepository publisherRepository;
-    private final Map<String, LocalDateTime> lastMessage = new ConcurrentHashMap<>();
+    private final SettingsRepository settingsRepository;
+    private final Map<String, ZonedDateTime> lastMessage = new ConcurrentHashMap<>();
 
     private OptionSpec<String> subToSpec;
     private OptionSpec<String> unsubFromSpec;
@@ -74,17 +75,25 @@ public class SupportPresenter implements DiscordSubscriber {
     @Autowired
     public SupportPresenter(DiscordService discordService, CommandService commandService,
                             PermissionService permissionService, DiscordCacheService cacheService,
-                            PublisherRepository publisherRepository) {
+                            PublisherRepository publisherRepository, SettingsRepository settingsRepository) {
         this.discordService = discordService;
         this.commandService = commandService;
         this.permissionService = permissionService;
         this.cacheService = cacheService;
         this.publisherRepository = publisherRepository;
+        this.settingsRepository = settingsRepository;
     }
 
     @PostConstruct
     private void configure() {
         discordService.subscribe(this);
+
+        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
+        if (cfg != null) {
+            lastMessage.putAll(cfg.getLastUserMessage());
+        }
+
+
         initSubCommand();
         initUnsubCommand();
         initManageCommand();
@@ -424,8 +433,9 @@ public class SupportPresenter implements DiscordSubscriber {
     }
 
     private void publishSupportEvent(IMessage m, String publisherName) {
-        LocalDateTime now = m.getTimestamp();
-        LocalDateTime last = lastMessage.computeIfAbsent(m.getAuthor().getID(), k -> LocalDateTime.MIN);
+        ZonedDateTime now = m.getTimestamp().atZone(ZoneId.systemDefault());
+        ZonedDateTime last = lastMessage.computeIfAbsent(m.getAuthor().getID(),
+            k -> Instant.EPOCH.atZone(ZoneId.systemDefault()));
         lastMessage.put(m.getAuthor().getID(), now);
         if (last.isBefore(now.minusHours(1))) {
             // ping subscribers at most once per hour per user
@@ -486,5 +496,15 @@ public class SupportPresenter implements DiscordSubscriber {
 
     private String buildPingMessage(IMessage m) {
         return String.format("[%s] %s: %s", m.getChannel().mention(), m.getAuthor().mention(), m.getContent());
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
+        if (cfg != null) {
+            cfg.getLastUserMessage().clear();
+            cfg.getLastUserMessage().putAll(lastMessage);
+            settingsRepository.save(cfg);
+        }
     }
 }
