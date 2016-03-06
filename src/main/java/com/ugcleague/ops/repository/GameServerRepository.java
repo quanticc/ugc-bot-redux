@@ -29,7 +29,7 @@ public interface GameServerRepository extends JpaRepository<GameServer, Long> {
     @Query("select gameServer from GameServer gameServer left join fetch gameServer.flags where gameServer.id =:id")
     Optional<GameServer> findOneWithEagerRelationships(@Param("id") Long id);
 
-    @Query("select gameServer from GameServer gameServer where gameServer.lastRconDate <= gameServer.expireDate and gameServer.expireDate <=:date")
+    @Query("select gameServer from GameServer gameServer where gameServer.rconPassword is null or (gameServer.lastRconDate <= gameServer.expireDate and gameServer.expireDate <=:date)")
     List<GameServer> findByRconRefreshNeeded(@Param("date") ZonedDateTime date);
 
     Stream<GameServer> findByStatusCheckDateBefore(ZonedDateTime dateTime);
