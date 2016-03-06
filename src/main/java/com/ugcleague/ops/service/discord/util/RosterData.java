@@ -42,7 +42,9 @@ public class RosterData {
     }
 
     public RosterData updateUgcData(UgcPlayerPage ugcData) {
-        setUgcData(ugcData);
+        if (ugcData != null) {
+            setUgcData(ugcData);
+        }
         return this;
     }
 }

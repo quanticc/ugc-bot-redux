@@ -11,14 +11,9 @@ import com.ugcleague.ops.web.rest.UgcPlayerPage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
@@ -48,6 +43,7 @@ public class UgcApiClient {
     private String playerTeamHistoryUrl;
     private String playerTeamCurrentUrl;
     private String playerTeamCurrentActiveUrl;
+    private String teamPlayerUrl;
 
     @Autowired
     public UgcApiClient(LeagueProperties properties, ObjectMapper mapper) {
@@ -63,6 +59,7 @@ public class UgcApiClient {
         teamRosterUrl = endpoints.get("teamRoster"); // clan_id
         teamPageUrl = endpoints.get("teamPage"); // clan_id
         matchResultsUrl = endpoints.get("matchResults"); // week, season
+        teamPlayerUrl = endpoints.get("teamPlayer"); // id64
         // v2 API
         existsUrl = endpoints.get("exists"); // key, id64
         playerTeamHistoryUrl = endpoints.get("playerTeamHistory"); // key, id64
@@ -160,15 +157,54 @@ public class UgcApiClient {
         return ZonedDateTime.now();
     }
 
-    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
+//    @Retryable(maxAttempts = 10, backoff = @Backoff(2000L))
+//    public UgcPlayerPage getCurrentPlayer(Long steamId64) {
+//        String key = properties.getUgc().getKey();
+//        RestTemplate restTemplate = new RestTemplate();
+//        HttpHeaders headers = new HttpHeaders();
+//        headers.set("User-Agent", Constants.USER_AGENT);
+//        ResponseEntity<UgcPlayerPage> response = restTemplate.exchange(playerTeamCurrentUrl, HttpMethod.GET,
+//            new HttpEntity<>(headers), UgcPlayerPage.class, key, steamId64);
+//        return response.getBody();
+//    }
+
     public UgcPlayerPage getCurrentPlayer(Long steamId64) {
-        String key = properties.getUgc().getKey();
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", Constants.USER_AGENT);
-        ResponseEntity<UgcPlayerPage> response = restTemplate.exchange(playerTeamCurrentUrl, HttpMethod.GET,
-            new HttpEntity<>(headers), UgcPlayerPage.class, key, steamId64);
-        return response.getBody();
+        return rawCurrentPlayer(steamId64).map(this::mapCurrentPlayer).orElse(null);
+    }
+
+    private UgcPlayerPage mapCurrentPlayer(JsonUgcResponse response) {
+        List<List<Object>> data = response.getData();
+        if (data.size() < 1) {
+            log.warn("Not enough data to create player roster info: {}", response);
+            return null;
+        }
+        UgcPlayerPage player = new UgcPlayerPage();
+        player.setUgcPage("http://www.ugcleague.com/players_page.cfm?player_id=" + safeToLong(data.get(0).get(4)));
+        player.setTeam(new ArrayList<>());
+        for (List<Object> raw : data) {
+            if ("N".equals(safeToString(raw.get(5)))) {
+                UgcPlayerPage.Team team = new UgcPlayerPage.Team();
+                team.setClanId(safeToInteger(raw.get(1)));
+                team.setMemberName(safeToString(raw.get(2)));
+                team.setJoined(safeToString(raw.get(6))); // alternative format: "February, 19 2016 19:28:58"
+                team.setTag(safeToString(raw.get(7)));
+                team.setName(safeToString(raw.get(8)));
+                team.setFormat(safeToString(raw.get(9)));
+                team.setDivision(safeToString(raw.get(10)));
+                player.getTeam().add(team);
+            }
+        }
+        return player;
+    }
+
+    private Optional<JsonUgcResponse> rawCurrentPlayer(Long steamId64) {
+        String url = teamPlayerUrl.replace("{id64}", steamId64 + "");
+        try {
+            return Optional.of(mapper.readValue(httpToString(url), JsonUgcResponse.class));
+        } catch (IOException e) {
+            log.warn("Could not get roster info for player id {}. Raw results: {}", steamId64, e.toString());
+        }
+        return Optional.empty();
     }
 
     public Optional<UgcTeam> getTeamPage(int id) {

@@ -9,6 +9,7 @@ public class UgcPlayerPage {
 
     @JsonProperty("ugc_page")
     private String ugcPage = "";
+    private String joined;
     private List<Team> team = new ArrayList<>();
 
     public String getUgcPage() {
@@ -17,6 +18,14 @@ public class UgcPlayerPage {
 
     public void setUgcPage(String ugcPage) {
         this.ugcPage = ugcPage;
+    }
+
+    public String getJoined() {
+        return joined;
+    }
+
+    public void setJoined(String joined) {
+        this.joined = joined;
     }
 
     public List<Team> getTeam() {
@@ -29,6 +38,9 @@ public class UgcPlayerPage {
 
     public static class Team {
 
+        private int clanId = 0;
+        private String memberName;
+
         private String name;
         private String tag;
         private String format;
@@ -38,6 +50,22 @@ public class UgcPlayerPage {
         private String lastUpdated;
         private String joined;
         private String active;
+
+        public int getClanId() {
+            return clanId;
+        }
+
+        public void setClanId(int clanId) {
+            this.clanId = clanId;
+        }
+
+        public String getMemberName() {
+            return memberName;
+        }
+
+        public void setMemberName(String memberName) {
+            this.memberName = memberName;
+        }
 
         public String getName() {
             return name;
