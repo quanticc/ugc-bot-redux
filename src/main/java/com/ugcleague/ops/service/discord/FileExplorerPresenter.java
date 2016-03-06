@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
-import static com.ugcleague.ops.util.DateUtil.formatRelativeBetweenNowAnd;
+import static com.ugcleague.ops.util.DateUtil.formatRelative;
 import static com.ugcleague.ops.util.Util.humanizeBytes;
 import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
@@ -195,7 +195,7 @@ public class FileExplorerPresenter {
                 for (RemoteFile file : remoteFiles) {
                     response.append(String.format("**%s**\t\t%s\t\t%s\n", file.getFilename(),
                         humanizeBytes(file.getSize()), absolute ? file.getModified() :
-                            formatRelativeBetweenNowAnd(file.getModified().toInstant())));
+                            formatRelative(file.getModified().toInstant())));
                 }
             }
             commandService.deleteStatusFrom(message);

@@ -7,7 +7,6 @@ import com.ugcleague.ops.service.GameServerService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.DeadServerMap;
 import com.ugcleague.ops.service.util.SourceServer;
-import com.ugcleague.ops.util.DateUtil;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -28,6 +26,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.util.DateUtil.formatElapsed;
+import static com.ugcleague.ops.util.DateUtil.formatRelative;
 import static com.ugcleague.ops.util.Util.padLeft;
 import static com.ugcleague.ops.util.Util.padRight;
 import static java.util.Arrays.asList;
@@ -157,7 +156,7 @@ public class GameServerPresenter {
                 String srvId = gameServerService.toShortName(server);
                 String version = "v" + server.getVersion();
                 String claim = server.getExpireCheckDate().isEqual(EPOCH) ? "non-claimable" :
-                    formatDuration(Duration.between(ZonedDateTime.now(), server.getExpireDate()));
+                    formatExpireDate(server.getExpireDate());
                 String plyrs = server.getPing() > 0 ? server.getPlayers() + "/" + server.getMaxPlayers() : "**Down?**";
                 String map = server.getMapName();
                 int tvPort = server.getTvPort();
@@ -246,8 +245,9 @@ public class GameServerPresenter {
         return s;
     }
 
-    private String formatDuration(Duration duration) {
-        return (duration.isNegative() ? "available since " : "claim expires ") + DateUtil.formatRelative(duration);
+    private String formatExpireDate(ZonedDateTime expireDate) {
+        return (expireDate.isBefore(ZonedDateTime.now()) ? "available since " : "claim expires ") +
+            formatRelative(expireDate.toInstant());
     }
 
     private void initRestartCommand() {
@@ -385,7 +385,7 @@ public class GameServerPresenter {
             .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
             .map(e -> String.format("• **%s** (%s) appears to be down since %s",
                 e.getKey().getShortName(), e.getKey().getAddress(),
-                DateUtil.formatRelative(Duration.between(Instant.now(), e.getValue().getCreated()))))
+                formatRelative(e.getValue().getCreated())))
             .collect(Collectors.joining("\n"));
         if (!nonResponsive.isEmpty()) {
             nonResponsive += "\nRestart with `.server restart " + map.entrySet().stream()

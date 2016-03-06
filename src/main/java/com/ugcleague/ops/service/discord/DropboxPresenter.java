@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
-import static com.ugcleague.ops.util.DateUtil.formatRelativeBetweenNowAnd;
+import static com.ugcleague.ops.util.DateUtil.formatRelative;
 import static com.ugcleague.ops.util.Util.humanizeBytes;
 
 /**
@@ -122,7 +122,7 @@ public class DropboxPresenter {
         if (metadata instanceof DbxFiles.FileMetadata) {
             DbxFiles.FileMetadata fileMetadata = (DbxFiles.FileMetadata) metadata;
             size = humanizeBytes(fileMetadata.size);
-            lastModified = formatRelativeBetweenNowAnd(fileMetadata.serverModified.toInstant());
+            lastModified = formatRelative(fileMetadata.serverModified.toInstant());
         } else if (metadata instanceof DbxFiles.FolderMetadata) {
             size = "(dir)";
         } else if (metadata instanceof DbxFiles.DeletedMetadata) {
