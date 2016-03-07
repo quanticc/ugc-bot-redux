@@ -2,6 +2,7 @@ package com.ugcleague.ops.domain.document;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
@@ -12,10 +13,19 @@ public class Settings {
 
     @Id
     private String id;
+
+    @Field("last_announcement")
     private Map<String, Announcement> lastAnnouncement = new LinkedHashMap<>();
+
+    @Field("last_user_message")
     private Map<String, ZonedDateTime> lastUserMessage = new LinkedHashMap<>();
+
     private Map<String, Object> values = new LinkedHashMap<>();
+
+    @Field("update_data_map")
     private Map<String, ServerUpdateData> updateDataMap = new LinkedHashMap<>();
+
+    @Field("check_data_map")
     private Map<String, ServerCheckData> checkDataMap = new LinkedHashMap<>();
 
     public String getId() {
