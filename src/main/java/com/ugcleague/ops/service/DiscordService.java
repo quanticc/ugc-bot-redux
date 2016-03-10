@@ -16,7 +16,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.api.*;
+import sx.blah.discord.api.ClientBuilder;
+import sx.blah.discord.api.DiscordException;
+import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.EventSubscriber;
 import sx.blah.discord.handle.IListener;
 import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
@@ -38,8 +41,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
-import static java.util.Arrays.asList;
 
 @Service
 @Transactional
@@ -100,7 +101,7 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Retryable(maxAttempts = 10, include = DiscordException.class, backoff = @Backoff(delay = 10000L))
+    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 10000L))
     public void login() throws DiscordException {
         log.debug("Logging in to Discord");
         LeagueProperties.Discord discord = properties.getDiscord();
@@ -199,10 +200,8 @@ public class DiscordService implements DiscordSubscriber {
     public void subscribe(IListener<?> listener) {
         if (client != null && client.isReady()) {
             client.getDispatcher().registerListener(listener);
-        } else {
-            // queue if the client is not ready yet
-            queuedListeners.add(listener);
         }
+        queuedListeners.add(listener);
     }
 
     /**
@@ -213,10 +212,8 @@ public class DiscordService implements DiscordSubscriber {
     public void subscribe(DiscordSubscriber subscriber) {
         if (client != null && client.isReady()) {
             client.getDispatcher().registerListener(subscriber);
-        } else {
-            // queue if the client is not ready yet
-            queuedSubscribers.add(subscriber);
         }
+        queuedSubscribers.add(subscriber);
     }
 
     public void unsubscribe(IListener<?> listener) {
@@ -380,32 +377,6 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Async
-    public CompletableFuture<List<DiscordStatus.Maintenance>> getActiveMaintenances() throws DiscordException, InterruptedException {
-        DiscordStatus.Maintenance[] response = null;
-        while (response == null) {
-            try {
-                response = DiscordStatus.getActiveMaintenances();
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
-            }
-        }
-        return CompletableFuture.completedFuture(asList(response));
-    }
-
-    @Async
-    public CompletableFuture<List<DiscordStatus.Maintenance>> getUpcomingMaintenances() throws DiscordException, InterruptedException {
-        DiscordStatus.Maintenance[] response = null;
-        while (response == null) {
-            try {
-                response = DiscordStatus.getUpcomingMaintenances();
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
-            }
-        }
-        return CompletableFuture.completedFuture(asList(response));
-    }
-
     public Long getUserCount() {
         if (client == null || !client.isReady()) {
             return 0L;
@@ -476,15 +447,15 @@ public class DiscordService implements DiscordSubscriber {
         String id = channel.getID();
         String name = channel.getName();
         String topic = channel.getTopic();
-        String roleOverrides = channel.getRoleOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
-        String userOverrides = channel.getUserOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
+        //String roleOverrides = channel.getRoleOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
+        //String userOverrides = channel.getUserOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
         String userModifiedPermissions = channel.getModifiedPermissions(user).toString();
         return "Channel ["
             + "id='" + id + '\''
             + ", name='" + name + '\''
             + ", topic='" + topic + '\''
-            + ", roleOverrides=" + roleOverrides
-            + ", userOverrides=" + userOverrides
+            //+ ", roleOverrides=" + roleOverrides
+            //+ ", userOverrides=" + userOverrides
             + ", userModifiedPermissions=" + userModifiedPermissions
             //+ ", roleModifiedPermissionsPerRole=" + channel.getGuild().getRoles().stream()
             //.map(r -> "{" + r.getName() + " -> " + channel.getModifiedPermissions(r).toString() + "}").collect(Collectors.joining(", "))
