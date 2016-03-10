@@ -5,20 +5,16 @@ import org.springframework.context.ApplicationEvent;
 
 public class GameUpdateCompletedEvent extends ApplicationEvent {
 
-    private int version;
+    private final int version;
 
     /**
      * Create a new ApplicationEvent.
      *
      * @param source the object on which the event initially occurred (never {@code null})
      */
-    public GameUpdateCompletedEvent(UpdateResultMap source) {
+    public GameUpdateCompletedEvent(UpdateResultMap source, int version) {
         super(source);
-    }
-
-    public GameUpdateCompletedEvent toVersion(int version) {
         this.version = version;
-        return this;
     }
 
     public int getVersion() {
