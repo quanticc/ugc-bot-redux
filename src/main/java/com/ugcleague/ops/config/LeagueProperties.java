@@ -12,7 +12,6 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "league", ignoreUnknownFields = false)
 public class LeagueProperties {
 
-    private String configPath = "config.json";
     private final GameServers gameServers = new GameServers();
     private final Feed feed = new Feed();
     private final Async async = new Async();

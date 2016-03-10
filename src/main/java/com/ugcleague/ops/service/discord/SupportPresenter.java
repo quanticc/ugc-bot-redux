@@ -1,9 +1,10 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.config.Constants;
-import com.ugcleague.ops.domain.document.*;
+import com.ugcleague.ops.domain.document.DiscordUser;
+import com.ugcleague.ops.domain.document.Publisher;
+import com.ugcleague.ops.domain.document.Subscription;
+import com.ugcleague.ops.domain.document.UserSubscription;
 import com.ugcleague.ops.repository.mongo.PublisherRepository;
-import com.ugcleague.ops.repository.mongo.SettingsRepository;
 import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.PermissionService;
@@ -15,7 +16,6 @@ import joptsimple.OptionSpec;
 import org.ocpsoft.prettytime.nlp.PrettyTimeParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +50,7 @@ import static java.util.Arrays.asList;
  */
 @Service
 @Transactional
-public class SupportPresenter implements DiscordSubscriber, DisposableBean {
+public class SupportPresenter implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(SupportPresenter.class);
 
@@ -59,7 +59,6 @@ public class SupportPresenter implements DiscordSubscriber, DisposableBean {
     private final PermissionService permissionService;
     private final DiscordCacheService cacheService;
     private final PublisherRepository publisherRepository;
-    private final SettingsRepository settingsRepository;
     private final Map<String, ZonedDateTime> lastMessage = new ConcurrentHashMap<>();
 
     private OptionSpec<String> subToSpec;
@@ -75,24 +74,17 @@ public class SupportPresenter implements DiscordSubscriber, DisposableBean {
     @Autowired
     public SupportPresenter(DiscordService discordService, CommandService commandService,
                             PermissionService permissionService, DiscordCacheService cacheService,
-                            PublisherRepository publisherRepository, SettingsRepository settingsRepository) {
+                            PublisherRepository publisherRepository) {
         this.discordService = discordService;
         this.commandService = commandService;
         this.permissionService = permissionService;
         this.cacheService = cacheService;
         this.publisherRepository = publisherRepository;
-        this.settingsRepository = settingsRepository;
     }
 
     @PostConstruct
     private void configure() {
         discordService.subscribe(this);
-
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            lastMessage.putAll(cfg.getLastUserMessage());
-        }
-
 
         initSubCommand();
         initUnsubCommand();
@@ -496,15 +488,5 @@ public class SupportPresenter implements DiscordSubscriber, DisposableBean {
 
     private String buildPingMessage(IMessage m) {
         return String.format("[%s] %s: %s", m.getChannel().mention(), m.getAuthor().mention(), m.getContent());
-    }
-
-    @Override
-    public void destroy() throws Exception {
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            cfg.getLastUserMessage().clear();
-            cfg.getLastUserMessage().putAll(lastMessage);
-            settingsRepository.save(cfg);
-        }
     }
 }

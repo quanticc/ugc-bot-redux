@@ -2,14 +2,11 @@ package com.ugcleague.ops.service.discord;
 
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
-import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.domain.document.ChannelSubscription;
 import com.ugcleague.ops.domain.document.Publisher;
-import com.ugcleague.ops.domain.document.Settings;
 import com.ugcleague.ops.domain.document.Subscription;
 import com.ugcleague.ops.event.*;
 import com.ugcleague.ops.repository.mongo.PublisherRepository;
-import com.ugcleague.ops.repository.mongo.SettingsRepository;
 import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
@@ -18,7 +15,6 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -29,12 +25,9 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
-import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.DateUtil.formatRelative;
@@ -50,7 +43,7 @@ import static java.util.Arrays.asList;
  */
 @Service
 @Transactional
-public class AnnouncePresenter implements DisposableBean {
+public class AnnouncePresenter {
 
     private static final Logger log = LoggerFactory.getLogger(AnnouncePresenter.class);
     private static final String nonOptDesc = "Announcer name";
@@ -59,32 +52,23 @@ public class AnnouncePresenter implements DisposableBean {
     private final PublisherRepository publisherRepository;
     private final DiscordCacheService cacheService;
     private final CommandService commandService;
-    private final SettingsRepository settingsRepository;
 
     private OptionSpec<String> startNonOptionSpec;
     private OptionSpec<String> stopNonOptionSpec;
     private OptionSpec<String> testNonOptionSpec;
     private OptionSpec<String> testMessageSpec;
 
-    private final Map<String, Settings.Announcement> lastAnnouncement = new ConcurrentHashMap<>();
-
     @Autowired
     public AnnouncePresenter(DiscordService discordService, PublisherRepository publisherRepository,
-                             DiscordCacheService cacheService, CommandService commandService, SettingsRepository settingsRepository) {
+                             DiscordCacheService cacheService, CommandService commandService) {
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;
         this.cacheService = cacheService;
         this.commandService = commandService;
-        this.settingsRepository = settingsRepository;
     }
 
     @PostConstruct
     private void configure() {
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            lastAnnouncement.putAll(cfg.getLastAnnouncement());
-        }
-
         initStartAnnounceCommand();
         initStopAnnounceCommand();
         initTestAnnounceCommand();
@@ -126,7 +110,7 @@ public class AnnouncePresenter implements DisposableBean {
         if (!o.has("?") && !nonOptions.isEmpty()) {
             String message = Optional.ofNullable(o.valueOf(testMessageSpec)).orElse("Test message");
             for (String announcer : nonOptions) {
-                announce(announcer, message, true);
+                announce(announcer, message);
             }
             return "";
         }
@@ -234,7 +218,7 @@ public class AnnouncePresenter implements DisposableBean {
 
     @EventListener
     private void onUpdateStarted(GameUpdateStartedEvent event) {
-        //announce("updates", "Preparing to update UGC game servers");
+        announce("updates", "Preparing to update UGC game servers");
     }
 
     @EventListener
@@ -261,46 +245,23 @@ public class AnnouncePresenter implements DisposableBean {
         announce("issues", "*Game Server Status*\n" + list);
     }
 
-    private void announce(String publisherName, String message) {
-        announce(publisherName, message, false);
-    }
-
-    private void announce(String publisherName, String message, boolean force) {
-        Settings.Announcement last = lastAnnouncement.computeIfAbsent(publisherName, k -> new Settings.Announcement());
-        if (force || !last.getMessage().equals(message) || last.getTime().isBefore(ZonedDateTime.now().minusHours(6))) {
-            publisherRepository.findById(publisherName).ifPresent(pub -> {
-                Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
-                subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
-                    try {
-                        IDiscordClient client = discordService.getClient();
-                        IChannel channel = client.getChannelByID(sub.getChannel().getId());
-                        if (channel != null) {
-                            log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
-                            commandService.answerToChannel(channel, "**<" + publisherName + ">** " + message);
-                        } else {
-                            log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Could not send message to '{}': {}", publisherName, e.toString());
+    public void announce(String publisherName, String message) {
+        publisherRepository.findById(publisherName).ifPresent(pub -> {
+            Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
+            subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
+                try {
+                    IDiscordClient client = discordService.getClient();
+                    IChannel channel = client.getChannelByID(sub.getChannel().getId());
+                    if (channel != null) {
+                        log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
+                        commandService.answerToChannel(channel, "**<" + publisherName + ">** " + message);
+                    } else {
+                        log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
                     }
-                });
+                } catch (Exception e) {
+                    log.warn("Could not send message to '{}': {}", publisherName, e.toString());
+                }
             });
-        } else {
-            log.info("Skipping announcement since last one was recently published. {} -> {}", message, publisherName);
-        }
-        if (!force) {
-            lastAnnouncement.put(publisherName, new Settings.Announcement(message));
-        }
-    }
-
-    @Override
-    public void destroy() throws Exception {
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            cfg.setLastAnnouncement(lastAnnouncement);
-            log.debug("Saving last announcements: {}", lastAnnouncement.entrySet().stream()
-                .map(e -> e.getKey() + " @ " + e.getValue().getTime()).collect(Collectors.joining(", ")));
-            settingsRepository.save(cfg);
-        }
+        });
     }
 }
