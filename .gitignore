@@ -15,6 +15,7 @@ liquibase.properties
 release.sh
 /audio
 /metrics
+/config
 /prod.yml
 
 ######################
