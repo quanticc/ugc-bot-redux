@@ -6,21 +6,17 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
-import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.domain.Flag;
 import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.domain.document.Settings;
 import com.ugcleague.ops.event.GameServerDeathEvent;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
 import com.ugcleague.ops.repository.FlagRepository;
 import com.ugcleague.ops.repository.GameServerRepository;
-import com.ugcleague.ops.repository.mongo.SettingsRepository;
 import com.ugcleague.ops.service.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,7 +37,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class GameServerService implements DisposableBean {
+public class GameServerService {
 
     private static final Logger log = LoggerFactory.getLogger(GameServerService.class);
     private static final String INSECURE_FLAG = "insecure";
@@ -53,7 +49,6 @@ public class GameServerService implements DisposableBean {
     private final ApplicationEventPublisher publisher;
     private final MetricRegistry metricRegistry;
     private final HealthCheckRegistry healthCheckRegistry;
-    private final SettingsRepository settingsRepository;
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
     private final DeadServerMap deadServerMap = new DeadServerMap();
@@ -62,7 +57,7 @@ public class GameServerService implements DisposableBean {
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
                              AdminPanelService adminPanelService, FlagRepository flagRepository,
                              ApplicationEventPublisher publisher, MetricRegistry metricRegistry,
-                             HealthCheckRegistry healthCheckRegistry, SettingsRepository settingsRepository) {
+                             HealthCheckRegistry healthCheckRegistry) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
@@ -70,29 +65,12 @@ public class GameServerService implements DisposableBean {
         this.publisher = publisher;
         this.metricRegistry = metricRegistry;
         this.healthCheckRegistry = healthCheckRegistry;
-        this.settingsRepository = settingsRepository;
     }
 
     @PostConstruct
     private void configure() {
         if (gameServerRepository.count() == 0) {
             refreshServerDetails();
-        }
-
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            for (Map.Entry<String, Settings.ServerUpdateData> entry : cfg.getUpdateDataMap().entrySet()) {
-                gameServerRepository.findByAddress(entry.getKey()).ifPresent(s -> {
-                    updateResultMap.put(s, new UpdateResult(entry.getValue().getAttempts(),
-                        entry.getValue().getLastRconAnnounce().toInstant()));
-                });
-            }
-            for (Map.Entry<String, Settings.ServerCheckData> entry : cfg.getCheckDataMap().entrySet()) {
-                gameServerRepository.findByAddress(entry.getKey()).ifPresent(s -> {
-                    deadServerMap.put(s, new DeadServerInfo(s, entry.getValue().getFirstAttempt().toInstant(),
-                        entry.getValue().getAttempts()));
-                });
-            }
         }
 
         healthCheckRegistry.register("GameServers.PingCheck", new HealthCheck() {
@@ -138,7 +116,7 @@ public class GameServerService implements DisposableBean {
         Map<String, List<Gauge<Integer>>> pingGaugesPerRegion = new LinkedHashMap<>();
         Map<String, List<Gauge<Integer>>> playersGaugesPerRegion = new LinkedHashMap<>();
         for (GameServer server : gameServerRepository.findAll()) {
-            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(2, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     // truncate negative values that signal abnormal conditions
@@ -146,7 +124,7 @@ public class GameServerService implements DisposableBean {
                     return value != null && value > 0 ? value : null;
                 }
             });
-            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
+            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(2, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     // truncate negative values that signal abnormal conditions
@@ -300,7 +278,7 @@ public class GameServerService implements DisposableBean {
             log.debug("All servers up-to-date");
             if (!updateResultMap.isEmpty()) {
                 // all servers are up to date, report and then clear the progress map
-                publisher.publishEvent(new GameUpdateCompletedEvent(updateResultMap.duplicate()).toVersion(latestVersion));
+                publisher.publishEvent(new GameUpdateCompletedEvent(updateResultMap.duplicate(), latestVersion));
                 updateResultMap.clear();
             }
         } else {
@@ -636,29 +614,5 @@ public class GameServerService implements DisposableBean {
 
     public GameServer save(GameServer gameServer) {
         return gameServerRepository.save(gameServer);
-    }
-
-    @Override
-    public void destroy() throws Exception {
-        Settings cfg = settingsRepository.findOne(Constants.BOT_SETTINGS);
-        if (cfg != null) {
-            cfg.getUpdateDataMap().clear();
-            cfg.getCheckDataMap().clear();
-            for (Map.Entry<GameServer, UpdateResult> entry : updateResultMap.entrySet()) {
-                Settings.ServerUpdateData data = new Settings.ServerUpdateData();
-                data.setAttempts(entry.getValue().getAttempts().get());
-                data.setLastRconAnnounce(entry.getValue().getLastRconAnnounce().get().atZone(ZoneId.systemDefault()));
-                cfg.getUpdateDataMap().put(entry.getKey().getAddress(), data);
-                log.debug("Saving update state: {} -> {}", entry.getKey().toShortString(), data);
-            }
-            for (Map.Entry<GameServer, DeadServerInfo> entry : deadServerMap.entrySet()) {
-                Settings.ServerCheckData data = new Settings.ServerCheckData();
-                data.setAttempts(entry.getValue().getAttempts().get());
-                data.setFirstAttempt(entry.getValue().getCreated().atZone(ZoneId.systemDefault()));
-                cfg.getCheckDataMap().put(entry.getKey().getAddress(), data);
-                log.debug("Saving unresponsive state: {} -> {}", entry.getKey().toShortString(), data);
-            }
-            settingsRepository.save(cfg);
-        }
     }
 }
