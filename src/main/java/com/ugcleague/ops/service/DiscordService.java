@@ -92,10 +92,9 @@ public class DiscordService implements DiscordSubscriber {
         if (properties.getDiscord().isAutologin()) {
             CompletableFuture.runAsync(() -> {
                 try {
-                    Thread.sleep(5000); // wait a bit before firing
                     login();
-                } catch (InterruptedException | DiscordException e) {
-                    log.warn("Could not connect discord bot", e);
+                } catch (DiscordException e) {
+                    log.error("Could not connect discord bot", e);
                 }
             });
         }
@@ -110,9 +109,15 @@ public class DiscordService implements DiscordSubscriber {
             .withTimeout(discord.getTimeoutDelay())
             .withPingTimeout(discord.getMaxMissedPings())
             .login();
-        queuedListeners.forEach(listener -> client.getDispatcher().registerListener(listener));
-        queuedSubscribers.forEach(subscriber -> client.getDispatcher().registerListener(subscriber));
-        log.debug("Registering ready listener");
+        log.debug("Registering Discord event listeners");
+        queuedListeners.forEach(listener -> {
+            log.debug("Registering {}", listener.getClass().getCanonicalName());
+            client.getDispatcher().registerListener(listener);
+        });
+        queuedSubscribers.forEach(subscriber -> {
+            log.debug("Registering {}", subscriber.getClass().getCanonicalName());
+            client.getDispatcher().registerListener(subscriber);
+        });
         client.getDispatcher().registerListener(this);
     }
 
@@ -159,7 +164,7 @@ public class DiscordService implements DiscordSubscriber {
     @EventSubscriber
     public void onDisconnect(DiscordDisconnectedEvent event) {
         if (reconnect.get()) {
-            log.info("Reconnecting bot: {}", event.getReason().toString());
+            log.info("Reconnecting bot due to {}", event.getReason().toString());
             restartCounter.inc();
             lastDisconnectEvent = event;
             lastRestartTime = ZonedDateTime.now();
@@ -199,6 +204,7 @@ public class DiscordService implements DiscordSubscriber {
      */
     public void subscribe(IListener<?> listener) {
         if (client != null && client.isReady()) {
+            log.debug("Subscribing {}", listener.getClass().getCanonicalName());
             client.getDispatcher().registerListener(listener);
         }
         queuedListeners.add(listener);
@@ -211,6 +217,7 @@ public class DiscordService implements DiscordSubscriber {
      */
     public void subscribe(DiscordSubscriber subscriber) {
         if (client != null && client.isReady()) {
+            log.debug("Subscribing {}", subscriber.getClass().getCanonicalName());
             client.getDispatcher().registerListener(subscriber);
         }
         queuedSubscribers.add(subscriber);

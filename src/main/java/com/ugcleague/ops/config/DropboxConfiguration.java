@@ -19,7 +19,6 @@ public class DropboxConfiguration {
 
     @Bean
     public DbxClientV2 dropboxClient() throws DbxException {
-        log.debug("Configuring Dropbox client");
         DbxRequestConfig config = new DbxRequestConfig("ugc-ops-uploader", "en_US");
         return new DbxClientV2(config, properties.getDropbox().getToken());
     }
