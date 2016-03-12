@@ -1,5 +1,7 @@
 package com.ugcleague.ops.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ugcleague.ops.service.discord.CommandService;
 import com.ugcleague.ops.service.util.SystemOutputInterceptorClosure;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestOperations;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.persistence.EntityManager;
@@ -30,15 +33,22 @@ public class ScriptService {
     private final DiscordService discordService;
     private final GameServerService gameServerService;
     private final PermissionService permissionService;
+    private final CommandService commandService;
+    private final ObjectMapper mapper;
+    private final RestOperations restTemplate;
 
     @Autowired
     public ScriptService(ApplicationContext context, EntityManager entityManager, DiscordService discordService,
-                         GameServerService gameServerService, PermissionService permissionService) {
+                         GameServerService gameServerService, PermissionService permissionService,
+                         CommandService commandService, ObjectMapper mapper, RestOperations restTemplate) {
         this.context = context;
         this.entityManager = entityManager;
         this.discordService = discordService;
         this.gameServerService = gameServerService;
         this.permissionService = permissionService;
+        this.commandService = commandService;
+        this.mapper = mapper;
+        this.restTemplate = restTemplate;
     }
 
     private GroovyShell createShell(Map<String, Object> bindingValues) {
@@ -49,6 +59,9 @@ public class ScriptService {
         bindingValues.put("permission", permissionService);
         bindingValues.put("client", discordService.getClient());
         bindingValues.put("bot", discordService.getClient().getOurUser());
+        bindingValues.put("mapper", mapper);
+        bindingValues.put("rest", restTemplate);
+        bindingValues.put("commands", commandService);
         return new GroovyShell(this.getClass().getClassLoader(), new Binding(bindingValues));
     }
 

@@ -94,6 +94,11 @@ public class CommandService implements DiscordSubscriber {
     // Help command definitions
     /////////////////////////////////
 
+
+    public Set<Command> getCommandList() {
+        return commandList;
+    }
+
     private String showCommandList(IMessage m, OptionSet o) {
         List<String> nonOptions = o.valuesOf(helpNonOptionSpec);
         if (o.has("?")) {
