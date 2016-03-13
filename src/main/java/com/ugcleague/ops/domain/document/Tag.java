@@ -2,6 +2,7 @@ package com.ugcleague.ops.domain.document;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.PersistenceConstructor;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,6 +16,9 @@ public class Tag extends AbstractAuditingEntity {
     @DBRef
     private DiscordUser author;
     private String content;
+    @Indexed(sparse = true)
+    private String parent = null; // for aliases
+    private boolean direct = false; // use without .tag
 
     @PersistenceConstructor
     public Tag(String id, DiscordUser author, String content) {
@@ -47,6 +51,22 @@ public class Tag extends AbstractAuditingEntity {
         this.content = content;
     }
 
+    public String getParent() {
+        return parent;
+    }
+
+    public void setParent(String parent) {
+        this.parent = parent;
+    }
+
+    public boolean isDirect() {
+        return direct;
+    }
+
+    public void setDirect(boolean direct) {
+        this.direct = direct;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -66,6 +86,8 @@ public class Tag extends AbstractAuditingEntity {
             "id='" + id + '\'' +
             ", author=" + author +
             ", content='" + content + '\'' +
+            ", parent='" + parent + '\'' +
+            ", direct=" + direct +
             '}';
     }
 }
