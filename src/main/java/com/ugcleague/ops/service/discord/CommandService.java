@@ -12,6 +12,7 @@ import joptsimple.OptionSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.MissingRequiredPropertiesException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +39,8 @@ import static java.util.Arrays.asList;
 /**
  * Main point of contact to register commands.
  * <ul>
- * <li>beep help</li>
+ * <li>help</li>
+ * <li>cancel</li>
  * </ul>
  */
 @Service
@@ -50,33 +52,59 @@ public class CommandService implements DiscordSubscriber {
 
     private final DiscordService discordService;
     private final PermissionService permissionService;
-    private final Gatekeeper gatekeeper;
     private final Executor taskExecutor;
     private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
+    private final Map<String, FutureTask<String>> userTaskMap = new ConcurrentHashMap<>();
 
     private OptionSpec<String> helpNonOptionSpec;
     private OptionSpec<Boolean> helpFullSpec;
 
     @Autowired
     public CommandService(DiscordService discordService, PermissionService permissionService,
-                          Gatekeeper gatekeeper, Executor taskExecutor) {
+                          Executor taskExecutor) {
         this.discordService = discordService;
         this.permissionService = permissionService;
-        this.gatekeeper = gatekeeper;
         this.taskExecutor = taskExecutor;
     }
 
     @PostConstruct
     private void configure() {
-        OptionParser parser = new OptionParser();
-        parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
-        helpNonOptionSpec = parser.nonOptions("command to get help about").ofType(String.class);
-        helpFullSpec = parser.acceptsAll(asList("f", "full"), "display all commands in a list with their description")
-            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        commandList.add(CommandBuilder.anyMatch(".beep help").description("Show help about commands")
-            .command(this::showCommandList).unrestricted().parser(parser).build());
+        initHelpCommand();
+        initCancelCommand();
+
         discordService.subscribe(this);
+    }
+
+    private void initCancelCommand() {
+        OptionParser parser = newParser();
+        Map<String, String> aliases = newAliasesMap();
+        commandList.add(CommandBuilder.anyMatch(".cancel").description("Cancel your current background job")
+            .unrestricted().parser(parser).optionAliases(aliases)
+            .command((m, o) -> {
+                if (o.has("?")) {
+                    return null;
+                }
+                FutureTask<String> task = userTaskMap.get(m.getAuthor().getID());
+                if (task != null) {
+                    task.cancel(true);
+                } else {
+                    return "You have no running commands";
+                }
+                return "";
+            })
+            .build());
+    }
+
+    private void initHelpCommand() {
+        OptionParser parser = newParser();
+        helpNonOptionSpec = parser.nonOptions("Command to get help about").ofType(String.class);
+        helpFullSpec = parser.acceptsAll(asList("f", "full"), "Display all commands in a list with their description")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
+        Map<String, String> aliases = newAliasesMap();
+        aliases.put("full", "-f");
+        commandList.add(CommandBuilder.anyMatch(".help").description("Show help about commands")
+            .command(this::showCommandList).unrestricted().parser(parser).optionAliases(aliases).build());
     }
 
     /**
@@ -89,6 +117,12 @@ public class CommandService implements DiscordSubscriber {
         parser.acceptsAll(asList("?", "h", "help"), "display the help").forHelp();
         parser.allowsUnrecognizedOptions();
         return parser;
+    }
+
+    public static Map<String, String> newAliasesMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("?", "-?");
+        return map;
     }
 
     // Help command definitions
@@ -111,11 +145,11 @@ public class CommandService implements DiscordSubscriber {
                     .map(c -> padRight("**" + c.getKey() + "**", 20) + "\t\t" + c.getDescription())
                     .collect(Collectors.joining("\n"));
             } else {
-                return "*Commands available to you:* " + commandList.stream()
+                return "*Commands available to you*: " + commandList.stream()
                     .filter(c -> canExecute(c, m.getAuthor(), m.getChannel()))
                     .sorted(Comparator.naturalOrder())
                     .map(Command::getKey)
-                    .collect(Collectors.joining(", "));
+                    .collect(Collectors.joining(", ")) + " (more with `.help full`)";
             }
         } else {
             List<Command> requested = commandList.stream()
@@ -181,15 +215,36 @@ public class CommandService implements DiscordSubscriber {
             log.debug("User {} executing command {} with args: {}", format(m.getAuthor()),
                 command.getKey(), args);
             if (command.isQueued()) {
-                CommandJob job = new CommandJob(command, m, args);
                 String key = m.getAuthor().getID();
-                if (gatekeeper.getQueuedJobCount(key) > 0) {
-                    tryReplyFrom(m, command, "Please wait until your previous command finishes running");
+                if (userTaskMap.containsKey(key)) {
+                    tryReplyFrom(m, command, "Please wait until your previous command finishes or cancel it using `.cancel`");
                 } else {
-                    statusReplyFrom(m, command, "Running your command in the background...");
-                    CompletableFuture<String> future = gatekeeper.queue(key, job);
-                    // handle response and then delete status command
-                    future.thenAccept(response -> handleResponse(m, command, response))
+                    String a = args;
+                    FutureTask<String> task = new FutureTask<>(() -> command.execute(m, a));
+                    statusReplyFrom(m, command, "Executing command... type `.cancel` to interrupt");
+                    userTaskMap.put(key, task);
+                    CompletableFuture.supplyAsync(() -> {
+                        task.run();
+                        try {
+                            return task.get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            return null;
+                        }
+                    }, taskExecutor)
+                        .exceptionally(t -> {
+                            log.warn("Command was terminated exceptionally", t);
+                            if (t instanceof MissingRequiredPropertiesException || t instanceof OptionException) {
+                                return ":no_good: $#@%! " + t.getMessage();
+                            } else if (t instanceof CompletionException) {
+                                return ":no_good: Command was cancelled";
+                            } else {
+                                return ":no_good: Something happened. Something happened.";
+                            }
+                        }).thenApply(s -> {
+                        log.info("Command execution done: {} -> {}", key, command.getKey());
+                        userTaskMap.remove(key);
+                        return s;
+                    }).thenAccept(response -> handleResponse(m, command, response))
                         .thenRun(() -> statusReplyFrom(m, command, (String) null));
                 }
             } else {
