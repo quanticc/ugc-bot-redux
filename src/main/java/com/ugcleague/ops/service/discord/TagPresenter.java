@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
@@ -87,13 +88,12 @@ public class TagPresenter {
             .withRequiredArg().describedAs("key");
         tagInfoSpec = parser.acceptsAll(asList("i", "info"), "Retrieves info about an existing tag")
             .withRequiredArg().describedAs("key");
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("add", "-a");
         aliases.put("remove", "-r");
         aliases.put("create", "-a");
         aliases.put("delete", "-r");
         aliases.put("info", "-i");
-        aliases.put("?", "-?");
         commandService.register(CommandBuilder.anyMatch(".tag").description("Perform operations to tag and display messages")
             .support().originReplies().parser(parser).optionAliases(aliases).command(this::executeTag)
             .limit(3).build());
@@ -108,10 +108,9 @@ public class TagPresenter {
             .withRequiredArg().describedAs("key");
         aliasResetSpec = parser.acceptsAll(asList("r", "reset"), "Resets the alias status of a tag")
             .withRequiredArg().describedAs("key");
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("set", "-s");
         aliases.put("reset", "-r");
-        aliases.put("?", "-?");
         commandService.register(CommandBuilder.anyMatch(".tag-alias").description("Sets/Resets aliases to a tag")
             .support().originReplies().parser(parser).optionAliases(aliases).command(this::executeAlias)
             .limit(3).build());
@@ -125,10 +124,9 @@ public class TagPresenter {
             .withRequiredArg().describedAs("key");
         directDisableSpec = parser.acceptsAll(asList("d", "disable"), "Disable tag direct invocation mode")
             .withRequiredArg().describedAs("key");
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "-e");
         aliases.put("disable", "-d");
-        aliases.put("?", "-?");
         commandService.register(CommandBuilder.anyMatch(".tag-direct").description("Configures a tag as direct mode")
             .support().originReplies().parser(parser).optionAliases(aliases).command(this::executeDirect)
             .limit(2).build());

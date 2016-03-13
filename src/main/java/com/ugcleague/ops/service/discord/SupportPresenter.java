@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
@@ -93,7 +94,7 @@ public class SupportPresenter implements DiscordSubscriber {
 
     private void initSubCommand() {
         OptionParser parser = newParser();
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("to", "--to");
         aliases.put("on", "--on");
         aliases.put("off", "--off");
@@ -114,7 +115,7 @@ public class SupportPresenter implements DiscordSubscriber {
 
     private void initUnsubCommand() {
         OptionParser parser = newParser();
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("from", "--from");
         unsubFromSpec = parser.acceptsAll(asList("c", "channels", "f", "from"), "Support channels to leave")
             .withRequiredArg().withValuesSeparatedBy(",").defaultsTo("tf2").describedAs("supportId");
@@ -130,7 +131,7 @@ public class SupportPresenter implements DiscordSubscriber {
         .support list
          */
         OptionParser parser = newParser();
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
         aliases.put("disable", "--disable");
         aliases.put("list", "--list");

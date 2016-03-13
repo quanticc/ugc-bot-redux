@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 import static org.apache.commons.lang3.StringUtils.*;
@@ -125,7 +126,7 @@ public class UgcPresenter {
             .withRequiredArg().ofType(Boolean.class).defaultsTo(true);
         xrefMaxMatchSpec = parser.acceptsAll(asList("m", "max", "max-matches"), "Max matches per game before stopping")
             .withRequiredArg().ofType(Integer.class).defaultsTo(3);
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("ugc", "--ugc");
         aliases.put("results", "--ugc");
         aliases.put("div", "--div");

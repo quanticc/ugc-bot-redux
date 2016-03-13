@@ -53,6 +53,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
@@ -131,7 +132,7 @@ public class ChartPresenter {
         chartListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available charts");
         chartFullSpec = parser.acceptsAll(asList("f", "full", "detailed"), "Display ALL data points available in the specified time range")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("get", "--get");
         aliases.put("since", "--since");
         aliases.put("until", "--until");
@@ -166,7 +167,7 @@ public class ChartPresenter {
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         manageFormatSpec = parser.acceptsAll(asList("f", "format"), "Define a special format of the Y-axis")
             .withOptionalArg().defaultsTo("");
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
         aliases.put("remove", "--remove");
@@ -196,7 +197,7 @@ public class ChartPresenter {
         seriesListSpec = parser.acceptsAll(asList("l", "list"), "Display a list of available series");
         seriesDrawLastSpec = parser.accepts("draw-last-value", "Create a numeric node on the last point show the Y-axis value")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("add", "--add");
         aliases.put("edit", "--edit");
         aliases.put("remove", "--remove");

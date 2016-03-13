@@ -27,11 +27,11 @@ import javax.sound.sampled.AudioInputStream;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
 
@@ -67,7 +67,7 @@ public class AudioPresenter implements DiscordSubscriber {
     }
 
     private void initAudioCommand() {
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> aliases = newAliasesMap();
         aliases.put("join", "-j");
         aliases.put("enqueue", "-e");
         aliases.put("unqueue", "-u");
@@ -77,7 +77,6 @@ public class AudioPresenter implements DiscordSubscriber {
         aliases.put("skip", "-s");
         aliases.put("pause", "-p");
         aliases.put("resume", "-r");
-        aliases.put("?", "-?");
         OptionParser parser = newParser();
         audioJoinSpec = parser.acceptsAll(asList("j", "join"), "Joins a voice channel by order #")
             .withRequiredArg().ofType(Integer.class);
