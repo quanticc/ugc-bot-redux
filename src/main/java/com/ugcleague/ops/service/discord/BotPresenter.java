@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
@@ -40,13 +41,14 @@ import static java.util.Arrays.asList;
 /**
  * Commands to control general operations of the Discord bot.
  * <ul>
- * <li>beep info</li>
- * <li>beep unsay</li>
- * <li>beep exit</li>
+ * <li>info</li>
+ * <li>unsay</li>
+ * <li>beep shutdown</li>
+ * <li>beep logout</li>
  * <li>beep retry</li>
  * <li>beep gc</li>
- * <li>beep guilds</li>
- * <li>beep profile</li>
+ * <li>guilds</li>
+ * <li>profile</li>
  * </ul>
  */
 @Service
@@ -56,6 +58,7 @@ public class BotPresenter {
 
     private final CommandService commandService;
     private final DiscordService discordService;
+    private final Executor taskExecutor;
 
     private OptionSpec<String> profileNameSpec;
     private OptionSpec<String> profileAvatarSpec;
@@ -66,14 +69,15 @@ public class BotPresenter {
     private OptionSpec<String> loadNonOptionSpec;
 
     @Autowired
-    public BotPresenter(CommandService commandService, DiscordService discordService) {
+    public BotPresenter(CommandService commandService, DiscordService discordService, Executor taskExecutor) {
         this.commandService = commandService;
         this.discordService = discordService;
+        this.taskExecutor = taskExecutor;
     }
 
     @PostConstruct
     private void configure() {
-        commandService.register(CommandBuilder.equalsTo(".beep info")
+        commandService.register(CommandBuilder.equalsTo(".info")
             .description("Get Discord information about the bot").unrestricted().originReplies()
             .command(this::info).build());
         initLoadCommand();
@@ -100,10 +104,10 @@ public class BotPresenter {
         initProfileCommand();
         commandService.register(CommandBuilder.equalsTo(".beep gc")
             .description("Instruct JVM to run GC").master().command((message, optionSet) -> {
-                CompletableFuture.runAsync(System::gc);
+                CompletableFuture.runAsync(System::gc, taskExecutor);
                 return "";
             }).build());
-        commandService.register(CommandBuilder.equalsTo(".beep guilds")
+        commandService.register(CommandBuilder.equalsTo(".guilds")
             .description("Display the currently saved guilds").master().command((message, optionSet) -> {
                 List<IGuild> guildList = discordService.getClient().getGuilds();
                 StringBuilder builder = new StringBuilder();
@@ -112,12 +116,36 @@ public class BotPresenter {
                 }
                 return builder.toString();
             }).build());
+        initExamplesCommand();
+    }
+
+    private void initExamplesCommand() {
+        commandService.register(CommandBuilder.equalsTo(".examples")
+            .description("Show a list of examples").support().privateReplies()
+            .command((m, o) -> "**TF2/Dota Support Pings**\n" +
+                "• Subscribe to TF2 support PMs only from 10am to 10pm: `.sub on 10am 10pm`\n" +
+                "• Subscribe to Dota support PMs: `.sub to dota`\n" +
+                "• Remove subscription with `.unsub` or `.unsub from dota`\n" +
+                "• Disable it only during a period of time using `.sub off midnight 9am`\n" +
+                "• Get more details about these commands using `.help sub`\n" +
+                "**Logs/SourceTV file search and download**\n" +
+                "• Find demos from a server matching a name over a certain time period: " +
+                "`.get stv from chi5 since \"10 hours ago\" like \"pl_upward\"`\n" +
+                "• Can also be used for .log files with `.get logs from dal4 since \"last week\"`\n" +
+                "• Use the response to get an exact filename and download it: " +
+                "`.get stv from chi2 auto-20160307-0029-pl_badwater_pro_v9.dem`\n" +
+                "**Utility commands**\n" +
+                "• Get info of a member of this server: `.userinfo beepboop`\n" +
+                "• Get info from a SteamID or URL: `.steam [U:1:51827133]`\n" +
+                "• Check status command output against UGC rosters: `.check <paste status output>`\n" +
+                "• Run a command on a UGC game server: `.rcon \"changelevel cp_steel\" mia6`\n" +
+                "• List of available servers: `.servers`\n").build());
     }
 
     private void initLoadCommand() {
         OptionParser parser = newParser();
         loadNonOptionSpec = parser.nonOptions("# of new messages to load").ofType(String.class);
-        commandService.register(CommandBuilder.anyMatch(".beep load")
+        commandService.register(CommandBuilder.anyMatch(".load")
             .description("Cache more messages from this channel").support()
             .parser(parser).command(this::load).build());
     }
@@ -144,7 +172,7 @@ public class BotPresenter {
     private void initUnsayCommand() {
         OptionParser parser = newParser();
         unsayNonOptionSpec = parser.nonOptions("# of messages to delete").ofType(String.class);
-        commandService.register(CommandBuilder.anyMatch(".beep unsay")
+        commandService.register(CommandBuilder.anyMatch(".unsay")
             .description("Remove bot's last messages").unrestricted()
             .parser(parser).command(this::unsay).build());
     }
@@ -152,7 +180,7 @@ public class BotPresenter {
     private void initExecCommand() {
         OptionParser parser = newParser();
         execNonOptionSpec = parser.nonOptions("Command to run").ofType(String.class);
-        commandService.register(CommandBuilder.startsWith(".beep exec")
+        commandService.register(CommandBuilder.startsWith(".exec")
             .description("Invoke a command line process").master().queued().parser(parser)
             .command(this::exec).build());
     }
@@ -189,7 +217,7 @@ public class BotPresenter {
         profileNameSpec = parser.acceptsAll(asList("n", "name"), "change bot's name").withRequiredArg();
         profileAvatarSpec = parser.acceptsAll(asList("a", "avatar"), "change bot's avatar").withRequiredArg();
         profileGameSpec = parser.acceptsAll(asList("g", "game"), "change bot's game").withRequiredArg();
-        commandService.register(CommandBuilder.startsWith(".beep profile")
+        commandService.register(CommandBuilder.startsWith(".profile")
             .description("Edit this bot's profile").master().parser(parser)
             .command(this::editProfile).build());
     }
@@ -266,7 +294,7 @@ public class BotPresenter {
         builder.append("Hello! I'm here to help with **UGC support**.\n")
             .append("Running `v").append(version).append("` with **Discord4J** library `v")
             .append(Discord4J.VERSION).append("`.\nUptime: ").append(formatHuman(Duration.ofMillis(uptime)))
-            .append("\nCheck the available commands with `.beep help`");
+            .append("\nCheck the available commands with `.help` or `.examples`");
         return builder.toString();
     }
 }

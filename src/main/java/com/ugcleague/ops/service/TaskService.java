@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Service
 @Transactional
@@ -30,14 +31,17 @@ public class TaskService implements DisposableBean {
     private final ExpireStatusService expireStatusService;
     private final Scheduler scheduler;
     private final Map<String, RunnableTask> runnables = new LinkedHashMap<>();
+    private final Executor taskExecutor;
 
     @Autowired
     public TaskService(ScheduledTaskRepository repository, UpdatesFeedService updatesFeedService,
-                       GameServerService gameServerService, ExpireStatusService expireStatusService) {
+                       GameServerService gameServerService, ExpireStatusService expireStatusService,
+                       Executor taskExecutor) {
         this.repository = repository;
         this.updatesFeedService = updatesFeedService;
         this.gameServerService = gameServerService;
         this.expireStatusService = expireStatusService;
+        this.taskExecutor = taskExecutor;
         this.scheduler = new Scheduler();
     }
 
@@ -128,7 +132,8 @@ public class TaskService implements DisposableBean {
                         log.warn("Waiting to start task interrupted: {}", e.toString());
                     }
                 }
-            }).thenRun(runnableTask.getRunnable())
+            }, taskExecutor)
+                .thenRun(runnableTask.getRunnable())
                 .thenRun(() -> log.info("One-off execution of {} was completed", task.getName()));
         } else {
             log.warn("Could not find a runnable for task named {}", task.getName());

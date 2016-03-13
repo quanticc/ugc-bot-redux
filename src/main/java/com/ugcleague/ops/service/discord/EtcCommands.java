@@ -23,6 +23,7 @@ import javax.xml.transform.Source;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
@@ -43,6 +44,7 @@ public class EtcCommands {
     private final DiscordService discordService;
     private final RestOperations restTemplate;
     private final XPathOperations xPathTemplate;
+    private final Executor taskExecutor;
     private final Random random = new Random();
 
     private Command rateCommand;
@@ -53,11 +55,12 @@ public class EtcCommands {
 
     @Autowired
     public EtcCommands(CommandService commandService, DiscordService discordService,
-                       RestOperations restTemplate, XPathOperations xPathTemplate) {
+                       RestOperations restTemplate, XPathOperations xPathTemplate, Executor taskExecutor) {
         this.commandService = commandService;
         this.discordService = discordService;
         this.restTemplate = restTemplate;
         this.xPathTemplate = xPathTemplate;
+        this.taskExecutor = taskExecutor;
     }
 
     @PostConstruct
@@ -81,7 +84,7 @@ public class EtcCommands {
                     } else {
                         return "";
                     }
-                }).thenAccept(s -> {
+                }, taskExecutor).thenAccept(s -> {
                     if (!s.isEmpty()) {
                         try {
                             discordService.sendMessage(message.getChannel(), s);
