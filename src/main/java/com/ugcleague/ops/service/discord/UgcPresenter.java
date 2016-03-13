@@ -237,7 +237,7 @@ public class UgcPresenter {
                     .append(leftPad(homeDiv, DIV_COLUMN_WIDTH)).append(' ')
                     .append(leftPad(substring(result.getHomeTeam(), 0, TEAM_COLUMN_WIDTH), TEAM_COLUMN_WIDTH)).append(' ')
                     .append(leftPad(substring(result.getAwayTeam(), 0, TEAM_COLUMN_WIDTH), TEAM_COLUMN_WIDTH)).append('\n')
-                    .append(" - http://www.ugcleague.com/matchpage_tf2h.cfm?mid=").append(result.getMatchId()).append('\n');
+                    .append(" - <http://www.ugcleague.com/matchpage_tf2h.cfm?mid=").append(result.getMatchId()).append(">\n");
                 if (partialResults) {
                     commandService.statusReplyFrom(message, statsCommand, response.toString());
                 }
@@ -252,12 +252,12 @@ public class UgcPresenter {
                             .append("/").append(match.totalPlayers).append(") ");
                         switch (match.provider) {
                             case SIZZ_STATS:
-                                response.append("http://sizzlingstats.com/stats/")
-                                    .append(match.id).append("\n");
+                                response.append("<http://sizzlingstats.com/stats/")
+                                    .append(match.id).append(">\n");
                                 break;
                             case LOGS_TF:
-                                response.append("http://logs.tf/")
-                                    .append(match.id).append("\n");
+                                response.append("<http://logs.tf/")
+                                    .append(match.id).append(">\n");
                                 break;
                             default:
                                 response.append(match.id).append("\n");

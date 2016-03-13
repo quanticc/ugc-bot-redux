@@ -91,7 +91,8 @@ public class SteamQueryPresenter {
             if (!steamId.getTradeBanState().equals("None")) {
                 builder.append("* User has ").append(steamId.getTradeBanState()).append(" trade state\n");
             }
-            builder.append("```\n").append("http://www.ugcleague.com/players_page.cfm?player_id=").append(steamId64);
+            builder.append("```\n")
+                .append("<http://www.ugcleague.com/players_page.cfm?player_id=").append(steamId64).append(">");
             return builder.toString();
         } catch (SteamCondenserException e) {
             log.warn("Could not create steamId data for {}: {}", steamId64, e.toString());
@@ -101,7 +102,8 @@ public class SteamQueryPresenter {
             .append(leftPad("steamID32: ", pad)).append(steamId32).append("\n")
             .append(leftPad("steamID64: ", pad)).append("http://steamcommunity.com/profiles/").append(steamId64).append("\n")
             //.append(leftPad("steamRep: ", pad)).append("http://steamrep.com/profiles/").append(steamId64).append("\n")
-            .append("```\n").append("http://www.ugcleague.com/players_page.cfm?player_id=").append(steamId64);
+            .append("```\n")
+            .append("<http://www.ugcleague.com/players_page.cfm?player_id=").append(steamId64).append(">");
         return builder.toString();
     }
 
