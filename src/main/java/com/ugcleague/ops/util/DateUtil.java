@@ -226,6 +226,14 @@ public class DateUtil {
         return null;
     }
 
+    public static String formatRelative(LocalDateTime then) {
+        return formatRelative(then.atZone(ZoneId.systemDefault()).toInstant());
+    }
+
+    public static String formatRelative(ZonedDateTime then) {
+        return formatRelative(then.toInstant());
+    }
+
     public static String formatRelative(Instant then) {
         PrettyTime prettyTime = new PrettyTime(Locale.ENGLISH);
         prettyTime.removeUnit(JustNow.class);

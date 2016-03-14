@@ -18,6 +18,7 @@ import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IGuild;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.Presences;
+import sx.blah.discord.util.HTTP429Exception;
 import sx.blah.discord.util.Image;
 
 import javax.annotation.PostConstruct;
@@ -159,14 +160,39 @@ public class BotPresenter {
         if (!nonOptions.isEmpty()) {
             String arg = nonOptions.get(0);
             if (arg.matches("[0-9]+")) {
-                count = Math.max(1, Math.min(100, Integer.parseInt(arg)));
+                count = Math.max(1, Math.min(100, tryParseInt(arg)));
             }
         }
         IChannel channel = message.getChannel();
-        boolean result = channel.getMessages().load(count);
-        log.debug("Could load {} messages from channel {} ({}) into cache: {}",
-            count, channel.getName(), channel.getID(), result);
+        boolean result = false;
+        while (!result) {
+            try {
+                result = channel.getMessages().load(count);
+            } catch (HTTP429Exception e) {
+                try {
+                    sleep(e.getRetryDelay());
+                } catch (InterruptedException ex) {
+                    log.warn("Interrupted while waiting for retry delay");
+                    return "";
+                }
+            }
+        }
+        log.debug("Could load {} messages from channel {} ({}) into cache",
+            count, channel.getName(), channel.getID());
         return ""; // silent
+    }
+
+    private int tryParseInt(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void sleep(long millis) throws InterruptedException {
+        log.info("Backing off for {} ms due to rate limits", millis);
+        Thread.sleep(Math.max(1, millis));
     }
 
     private void initUnsayCommand() {
