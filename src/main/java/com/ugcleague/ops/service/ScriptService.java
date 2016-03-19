@@ -2,10 +2,8 @@ package com.ugcleague.ops.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ugcleague.ops.service.discord.CommandService;
-import com.ugcleague.ops.service.util.SystemOutputInterceptorClosure;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
-import groovy.ui.SystemOutputInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +18,8 @@ import javax.persistence.PersistenceContext;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Transactional
@@ -82,9 +82,9 @@ public class ScriptService {
         resultMap.put("script", script);
         resultMap.put("startTime", ZonedDateTime.now());
 
-        SystemOutputInterceptorClosure outputCollector = new SystemOutputInterceptorClosure(null);
-        SystemOutputInterceptor systemOutputInterceptor = new SystemOutputInterceptor(outputCollector);
-        systemOutputInterceptor.start();
+//        SystemOutputInterceptorClosure outputCollector = new SystemOutputInterceptorClosure(null);
+//        SystemOutputInterceptor systemOutputInterceptor = new SystemOutputInterceptor(outputCollector);
+//        systemOutputInterceptor.start();
 
         try {
             Map<String, Object> scope = new LinkedHashMap<>();
@@ -92,23 +92,26 @@ public class ScriptService {
             scope.put("server", message.getChannel().isPrivate() ? null : message.getChannel().getGuild());
             scope.put("channel", message.getChannel());
             scope.put("author", message.getAuthor());
-            resultMap.put("result", evalWithScope(script, scope));
+            FutureTask<String> evalTask = new FutureTask<>(() -> evalWithScope(script, scope));
+            evalTask.run();
+            resultMap.put("result", evalTask.get(1, TimeUnit.MINUTES));
         } catch (Throwable t) {
             log.error("Could not bind result", t);
             resultMap.put("error", t.getMessage());
-        } finally {
-            systemOutputInterceptor.stop();
         }
-
-        String output = outputCollector.getStringBuffer().toString().trim();
-        StringBuilder builder = new StringBuilder();
-        for (String line : output.split("\n")) {
-            if (!line.isEmpty()) {
-                String[] tokens = line.split("\\[0;39m ");
-                builder.append(tokens[tokens.length - 1]).append("\n");
-            }
-        }
-        resultMap.put("output", builder.toString());
+//        } finally {
+//            systemOutputInterceptor.stop();
+//        }
+//
+//        String output = outputCollector.getStringBuffer().toString().trim();
+//        StringBuilder builder = new StringBuilder();
+//        for (String line : output.split("\n")) {
+//            if (!line.isEmpty()) {
+//                String[] tokens = line.split("\\[0;39m ");
+//                builder.append(tokens[tokens.length - 1]).append("\n");
+//            }
+//        }
+//        resultMap.put("output", builder.toString());
         resultMap.put("endTime", ZonedDateTime.now());
         return resultMap;
     }
