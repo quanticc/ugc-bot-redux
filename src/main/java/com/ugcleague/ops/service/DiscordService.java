@@ -121,6 +121,11 @@ public class DiscordService implements DiscordSubscriber {
         client.getDispatcher().registerListener(this);
     }
 
+    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 10000L))
+    public void reconnect() throws DiscordException {
+        client.login();
+    }
+
     @EventSubscriber
     public void onReady(ReadyEvent event) {
         log.info("*** Discord bot armed ***");
@@ -169,7 +174,7 @@ public class DiscordService implements DiscordSubscriber {
             lastDisconnectEvent = event;
             lastRestartTime = ZonedDateTime.now();
             try {
-                login();
+                reconnect();
             } catch (DiscordException e) {
                 log.warn("Failed to reconnect bot", e);
             }

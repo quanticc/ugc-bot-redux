@@ -44,7 +44,7 @@ public class PermissionService {
     }
 
     private IUser anyone() {
-        return new User(null, "anyone", "0", "0", "", Presences.OFFLINE);
+        return new User(null, "anyone", "0", "0", "", Presences.OFFLINE, false);
     }
 
     @PostConstruct
