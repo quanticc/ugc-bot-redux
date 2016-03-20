@@ -59,6 +59,7 @@ public class DiscordService implements DiscordSubscriber {
     private final Counter restartCounter;
     private volatile DiscordDisconnectedEvent lastDisconnectEvent = null;
     private volatile ZonedDateTime lastRestartTime = null;
+    private final AtomicBoolean connecting = new AtomicBoolean();
 
     @Autowired
     public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry,
@@ -100,8 +101,12 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 10000L))
+    @Retryable(maxAttempts = 10, backoff = @Backoff(delay = 10000L))
     public void login() throws DiscordException {
+        if (connecting.get()) {
+            log.warn("Already connecting");
+        }
+        connecting.set(true);
         log.debug("Logging in to Discord");
         LeagueProperties.Discord discord = properties.getDiscord();
         client = new ClientBuilder()
@@ -121,14 +126,10 @@ public class DiscordService implements DiscordSubscriber {
         client.getDispatcher().registerListener(this);
     }
 
-    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 10000L))
-    public void reconnect() throws DiscordException {
-        client.login();
-    }
-
     @EventSubscriber
     public void onReady(ReadyEvent event) {
         log.info("*** Discord bot armed ***");
+        connecting.set(false);
         for (String guildId : properties.getDiscord().getQuitting()) {
             IGuild guild = client.getGuildByID(guildId);
             if (guild != null) {
@@ -168,13 +169,13 @@ public class DiscordService implements DiscordSubscriber {
 
     @EventSubscriber
     public void onDisconnect(DiscordDisconnectedEvent event) {
-        if (reconnect.get()) {
+        if (reconnect.get() && event.getReason() != DiscordDisconnectedEvent.Reason.RECONNECTING) {
             log.info("Reconnecting bot due to {}", event.getReason().toString());
             restartCounter.inc();
             lastDisconnectEvent = event;
             lastRestartTime = ZonedDateTime.now();
             try {
-                reconnect();
+                login();
             } catch (DiscordException e) {
                 log.warn("Failed to reconnect bot", e);
             }
