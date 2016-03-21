@@ -1,8 +1,13 @@
 package com.ugcleague.ops.service.discord;
 
+import com.google.code.chatterbotapi.ChatterBot;
+import com.google.code.chatterbotapi.ChatterBotFactory;
+import com.google.code.chatterbotapi.ChatterBotSession;
+import com.google.code.chatterbotapi.ChatterBotType;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import com.ugcleague.ops.service.discord.util.StatusWrapper;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -16,14 +21,19 @@ import org.springframework.xml.xpath.XPathOperations;
 import org.w3c.dom.Element;
 import sx.blah.discord.api.DiscordException;
 import sx.blah.discord.api.MissingPermissionsException;
+import sx.blah.discord.handle.EventSubscriber;
+import sx.blah.discord.handle.impl.events.MentionEvent;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
 import javax.xml.transform.Source;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static java.util.Arrays.asList;
@@ -36,7 +46,7 @@ import static java.util.Arrays.asList;
  * </ul>
  */
 @Service
-public class EtcCommands {
+public class EtcCommands implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(EtcCommands.class);
 
@@ -46,12 +56,15 @@ public class EtcCommands {
     private final XPathOperations xPathTemplate;
     private final Executor taskExecutor;
     private final Random random = new Random();
+    private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
+    private volatile ChatterBotSession currentSession;
 
     private Command rateCommand;
     private OptionSpec<Integer> rateNumberSpec;
     private OptionSpec<Integer> rateWaitSpec;
     private OptionSpec<Boolean> rateStatusSpec;
     private OptionSpec<String> rateNonOptionSpec;
+    private OptionSpec<String> chatterNonOptionSpec;
 
     @Autowired
     public EtcCommands(CommandService commandService, DiscordService discordService,
@@ -67,6 +80,59 @@ public class EtcCommands {
     private void configure() {
         initCatApiCommand();
         initRateTestCommand();
+        initChatterBotSessions();
+        initChatterCommand();
+        discordService.subscribe(this);
+    }
+
+    private void initChatterBotSessions() {
+        ChatterBotFactory factory = new ChatterBotFactory();
+        try {
+            ChatterBot pandora = factory.create(ChatterBotType.PANDORABOTS, "b0dafd24ee35a477");
+            ChatterBotSession pandoraSession = pandora.createSession();
+            chatterBotSessionMap.put("pandora", pandoraSession);
+        } catch (Exception e) {
+            log.warn("Could not create PandoraBots session", e);
+        }
+        try {
+            ChatterBot clever = factory.create(ChatterBotType.CLEVERBOT);
+            ChatterBotSession cleverSession = clever.createSession();
+            chatterBotSessionMap.put("clever", cleverSession);
+            currentSession = cleverSession;
+        } catch (Exception e) {
+            log.warn("Could not create CleverBot session", e);
+        }
+//        try {
+//            ChatterBot jabber = factory.create(ChatterBotType.JABBERWACKY);
+//            ChatterBotSession jabberSession = jabber.createSession();
+//            chatterBotSessionMap.put("jabber", jabberSession);
+//        } catch (Exception e) {
+//            log.warn("Could not create Jabberwacky session", e);
+//        }
+    }
+
+    private void initChatterCommand() {
+        OptionParser parser = newParser();
+        String keys = chatterBotSessionMap.keySet().stream().collect(Collectors.joining(", "));
+        chatterNonOptionSpec = parser.nonOptions("Engine name, one of: " + keys).ofType(String.class);
+        commandService.register(CommandBuilder.anyMatch(".chatter")
+            .description("Configures chatter engine").support().originReplies()
+            .parser(parser).command(this::chatter).build());
+    }
+
+    private String chatter(IMessage message, OptionSet optionSet) {
+        List<String> nonOptions = optionSet.valuesOf(chatterNonOptionSpec);
+        if (optionSet.has("?") || nonOptions.isEmpty()) {
+            return null;
+        }
+        String engine = nonOptions.get(0);
+        ChatterBotSession value = chatterBotSessionMap.get(engine);
+        if (value == null) {
+            String keys = chatterBotSessionMap.keySet().stream().collect(Collectors.joining(", "));
+            return "Invalid chatter engine, must be one of: " + keys;
+        }
+        currentSession = value;
+        return "Chatter engine switched";
     }
 
     private void initCatApiCommand() {
@@ -140,5 +206,19 @@ public class EtcCommands {
             }
         }
         return "";
+    }
+
+    @EventSubscriber
+    public void onMention(MentionEvent event) {
+        IMessage message = event.getMessage();
+        boolean everyone = message.mentionsEveryone();
+        if (!everyone) {
+            String content = message.getContent();
+            try {
+                message.reply(currentSession.think(content));
+            } catch (Exception e) {
+                log.warn("Could not process chatter input", e);
+            }
+        }
     }
 }
