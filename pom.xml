@@ -116,7 +116,7 @@
         <jopt-simple.version>4.9</jopt-simple.version>
         <quartz.version>2.2.2</quartz.version>
         <cron4j.version>2.2.5</cron4j.version>
-        <discord4j.version>dev-2.3.2-g439b1b3-17</discord4j.version>
+        <discord4j.version>dev-2.3.2-gbf2a402-18</discord4j.version>
 
     </properties>
 

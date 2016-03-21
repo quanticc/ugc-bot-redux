@@ -59,7 +59,6 @@ public class DiscordService implements DiscordSubscriber {
     private final Counter restartCounter;
     private volatile DiscordDisconnectedEvent lastDisconnectEvent = null;
     private volatile ZonedDateTime lastRestartTime = null;
-    private final AtomicBoolean connecting = new AtomicBoolean();
 
     @Autowired
     public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry,
@@ -101,19 +100,22 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    private ClientBuilder newClientBuilder() {
+        LeagueProperties.Discord discord = properties.getDiscord();
+        ClientBuilder builder = new ClientBuilder()
+            .withTimeout(discord.getTimeoutDelay())
+            .withPingTimeout(discord.getMaxMissedPings());
+        if (discord.getToken() != null) {
+            return builder.withToken(discord.getToken());
+        } else {
+            return builder.withLogin(discord.getEmail(), discord.getPassword());
+        }
+    }
+
     @Retryable(maxAttempts = 10, backoff = @Backoff(delay = 10000L))
     public void login() throws DiscordException {
-        if (connecting.get()) {
-            log.warn("Already connecting");
-        }
-        connecting.set(true);
         log.debug("Logging in to Discord");
-        LeagueProperties.Discord discord = properties.getDiscord();
-        client = new ClientBuilder()
-            .withLogin(discord.getEmail(), discord.getPassword())
-            .withTimeout(discord.getTimeoutDelay())
-            .withPingTimeout(discord.getMaxMissedPings())
-            .login();
+        client = newClientBuilder().login();
         log.debug("Registering Discord event listeners");
         queuedListeners.forEach(listener -> {
             log.debug("Registering {}", listener.getClass().getCanonicalName());
@@ -129,7 +131,6 @@ public class DiscordService implements DiscordSubscriber {
     @EventSubscriber
     public void onReady(ReadyEvent event) {
         log.info("*** Discord bot armed ***");
-        connecting.set(false);
         for (String guildId : properties.getDiscord().getQuitting()) {
             IGuild guild = client.getGuildByID(guildId);
             if (guild != null) {
