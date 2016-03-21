@@ -57,7 +57,7 @@ public class EtcCommands implements DiscordSubscriber {
     private final Executor taskExecutor;
     private final Random random = new Random();
     private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
-    private volatile ChatterBotSession currentSession;
+    private volatile String currentSession;
 
     private Command rateCommand;
     private OptionSpec<Integer> rateNumberSpec;
@@ -90,15 +90,15 @@ public class EtcCommands implements DiscordSubscriber {
         try {
             ChatterBot pandora = factory.create(ChatterBotType.PANDORABOTS, "b0dafd24ee35a477");
             ChatterBotSession pandoraSession = pandora.createSession();
-            chatterBotSessionMap.put("pandora", pandoraSession);
+            chatterBotSessionMap.put("Pandora", pandoraSession);
         } catch (Exception e) {
             log.warn("Could not create PandoraBots session", e);
         }
         try {
             ChatterBot clever = factory.create(ChatterBotType.CLEVERBOT);
             ChatterBotSession cleverSession = clever.createSession();
-            chatterBotSessionMap.put("clever", cleverSession);
-            currentSession = cleverSession;
+            chatterBotSessionMap.put("CleverBot", cleverSession);
+            currentSession = "CleverBot";
         } catch (Exception e) {
             log.warn("Could not create CleverBot session", e);
         }
@@ -131,7 +131,7 @@ public class EtcCommands implements DiscordSubscriber {
             String keys = chatterBotSessionMap.keySet().stream().collect(Collectors.joining(", "));
             return "Invalid chatter engine, must be one of: " + keys;
         }
-        currentSession = value;
+        currentSession = engine;
         return "Chatter engine switched";
     }
 
@@ -213,12 +213,15 @@ public class EtcCommands implements DiscordSubscriber {
         IMessage message = event.getMessage();
         boolean everyone = message.mentionsEveryone();
         if (!everyone) {
-            String content = message.getContent();
-            try {
-                message.reply(currentSession.think(content));
-            } catch (Exception e) {
-                log.warn("Could not process chatter input", e);
-            }
+            CompletableFuture.runAsync(() -> {
+                String content = message.getContent()
+                    .replace(discordService.getClient().getOurUser().mention(), currentSession);
+                try {
+                    message.reply(chatterBotSessionMap.get(currentSession).think(content));
+                } catch (Exception e) {
+                    log.warn("Could not process chatter input", e);
+                }
+            }, taskExecutor);
         }
     }
 }

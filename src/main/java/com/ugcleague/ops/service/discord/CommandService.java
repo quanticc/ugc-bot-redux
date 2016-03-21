@@ -221,7 +221,7 @@ public class CommandService implements DiscordSubscriber {
                 } else {
                     String a = args;
                     FutureTask<String> task = new FutureTask<>(() -> command.execute(m, a));
-                    statusReplyFrom(m, command, "Executing command... type `.cancel` to interrupt");
+                    statusReplyFrom(m, command, "Executing command...");
                     userTaskMap.put(key, task);
                     CompletableFuture.supplyAsync(() -> {
                         task.run();

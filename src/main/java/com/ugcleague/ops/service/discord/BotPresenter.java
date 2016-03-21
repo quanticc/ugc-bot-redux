@@ -296,7 +296,7 @@ public class BotPresenter {
         builder.append("Hello! I'm here to help with **UGC support**.\n")
             .append("Running `v").append(version).append("` with **Discord4J** library `v")
             .append(Discord4J.VERSION).append("`.\nUptime: ").append(formatHuman(Duration.ofMillis(uptime)))
-            .append("\nCheck the available commands with `.help` or `.examples`");
+            .append("\nCheck the available commands with `.help`");
         return builder.toString();
     }
 }
