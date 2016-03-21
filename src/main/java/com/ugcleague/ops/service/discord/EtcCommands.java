@@ -215,7 +215,7 @@ public class EtcCommands implements DiscordSubscriber {
         if (!everyone) {
             CompletableFuture.runAsync(() -> {
                 String content = message.getContent()
-                    .replace(discordService.getClient().getOurUser().mention(), currentSession);
+                    .replace(discordService.getClient().getOurUser().mention(), "");
                 try {
                     message.reply(chatterBotSessionMap.get(currentSession).think(content));
                 } catch (Exception e) {
