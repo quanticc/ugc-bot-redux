@@ -17,7 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -51,6 +54,7 @@ public class TagPresenter {
     private OptionSpec<String> aliasResetSpec;
     private OptionSpec<String> directEnableSpec;
     private OptionSpec<String> directDisableSpec;
+    private OptionSpec<String> tagEditSpec;
 
     @Autowired
     public TagPresenter(CommandService commandService, DiscordCacheService cacheService, TagRepository tagRepository) {
@@ -84,14 +88,18 @@ public class TagPresenter {
         tagNonOptionSpec = parser.nonOptions("Tagged message contents, only used in add mode").ofType(String.class);
         tagAddSpec = parser.acceptsAll(asList("a", "add", "create"), "Adds a new tagged message")
             .withRequiredArg().describedAs("key");
+        tagEditSpec = parser.acceptsAll(asList("e", "edit", "update"), "Edit an existing tagged message")
+            .withRequiredArg().describedAs("key");
         tagRemoveSpec = parser.acceptsAll(asList("r", "remove", "delete"), "Remove an existing tag")
             .withRequiredArg().describedAs("key");
         tagInfoSpec = parser.acceptsAll(asList("i", "info"), "Retrieves info about an existing tag")
             .withRequiredArg().describedAs("key");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("add", "-a");
-        aliases.put("remove", "-r");
         aliases.put("create", "-a");
+        aliases.put("edit", "-e");
+        aliases.put("update", "-e");
+        aliases.put("remove", "-r");
         aliases.put("delete", "-r");
         aliases.put("info", "-i");
         commandService.register(CommandBuilder.anyMatch(".tag").description("Perform operations to tag and display messages")
@@ -137,8 +145,8 @@ public class TagPresenter {
             return null;
         }
 
-        if (Arrays.asList(optionSet.has(tagAddSpec), optionSet.has(tagRemoveSpec), optionSet.has(tagInfoSpec)).stream()
-            .filter(b -> b).count() > 1) {
+        if (Arrays.asList(optionSet.has(tagAddSpec), optionSet.has(tagEditSpec), optionSet.has(tagRemoveSpec),
+            optionSet.has(tagInfoSpec)).stream().filter(b -> b).count() > 1) {
             return "Please run as separate commands";
         }
 
@@ -158,6 +166,23 @@ public class TagPresenter {
             log.debug("Saving new tag: {}", newTag);
             tagRepository.save(newTag);
             return "Tag '" + key + "' added";
+        }
+
+        if (optionSet.has(tagEditSpec)) {
+            String key = optionSet.valueOf(tagEditSpec).replaceAll("\"|'", "");
+            Optional<Tag> tag = tagRepository.findById(key);
+            if (!tag.isPresent()) {
+                return "No tag exists with this name";
+            }
+            if (nonOptions.isEmpty()) {
+                return "Must add some content to this tag: `.tag edit <name> <content>`";
+            }
+            String content = mergeNonOptions(nonOptions);
+            tag.get().setAuthor(cacheService.getOrCreateUser(message.getAuthor()));
+            tag.get().setContent(content);
+            log.debug("Updating tag: {}", tag.get());
+            tagRepository.save(tag.get());
+            return "Tag '" + key + "' updated";
         }
 
         if (optionSet.has(tagRemoveSpec)) {
