@@ -183,7 +183,7 @@ public class GameServerPresenter {
             }
             if (matched.size() == 1) {
                 server = matched.stream().findFirst().get();
-                rcon = server.getRconPassword();
+                rcon = gameServerService.refreshPasswordAndGet(server);
                 source = gameServerService.getSourceServer(server);
             }
             // only do this if we matched exactly one server

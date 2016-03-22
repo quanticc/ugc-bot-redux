@@ -453,7 +453,7 @@ public class GameServerService {
             .orElse("Could not execute command");
     }
 
-    private String refreshPasswordAndGet(GameServer server) {
+    public String refreshPasswordAndGet(GameServer server) {
         refreshRconPassword(server);
         return server.getRconPassword();
     }
