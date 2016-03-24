@@ -2,7 +2,6 @@ package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordCacheService;
 import com.ugcleague.ops.service.DiscordService;
-import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -58,7 +57,6 @@ public class UserPresenter {
     private OptionSpec<String> mentionsNonOptionSpec;
     private OptionSpec<String> mentionsUserSpec;
     private OptionSpec<Boolean> mentionsDirectSpec;
-    private Command mentionsCommand;
 
     @Autowired
     public UserPresenter(CommandService commandService, DiscordCacheService cacheService, DiscordService discordService) {
@@ -87,7 +85,7 @@ public class UserPresenter {
         aliases.put("of", "--user");
         aliases.put("user", "--user");
         aliases.put("direct", "--direct");
-        mentionsCommand = commandService.register(CommandBuilder.anyMatch(".mentions").description("Check for your latest mentions")
+        commandService.register(CommandBuilder.anyMatch(".mentions").description("Check for your latest mentions")
             .unrestricted().privateReplies().parser(parser).optionAliases(aliases).queued()
             .command(this::executeMentioned).build());
     }
@@ -137,9 +135,6 @@ public class UserPresenter {
         StringBuilder response = new StringBuilder();
         MessageList messageList = message.getChannel().getMessages();
         long lastMessage = System.currentTimeMillis();
-        if (!message.getChannel().isPrivate()) {
-            commandService.statusReplyFrom(message, mentionsCommand, "Looking for recent mentions, replying via PM");
-        }
         for (int i = 0; i < maxMessagesToGet && (maxMentionsToFind == 0 || mentionsFound < maxMentionsToFind); i++) {
             if (Thread.interrupted()) {
                 log.warn("Execution was interrupted");
@@ -164,8 +159,7 @@ public class UserPresenter {
                 if (msg.getMentions().contains(user) || (!excludeEveryoneMentions && msg.mentionsEveryone())) {
                     mentionsFound++;
                     response.append("• Mentioned by ").append(msg.getAuthor().mention())
-                        .append(" `<").append(msg.getAuthor().getID())
-                        .append(">`, ").append(formatRelative(msg.getTimestamp()))
+                        .append(", ").append(formatRelative(msg.getTimestamp()))
                         .append(": ").append(limit(resolveMentions(msg.getContent()), 100)).append("\n");
                 }
             } catch (ArrayIndexOutOfBoundsException e) {
