@@ -210,6 +210,10 @@ public class UgcPresenter {
             .append(repeat('-', TEAM_COLUMN_WIDTH)).append('\n');
         for (Set<UgcResult> results : resultMap.values()) {
             for (UgcResult result : results) {
+                if (Thread.interrupted()) {
+                    log.info("Search interrupted");
+                    return partialResults ? "" : ("```\n" + response.toString() + "\n```");
+                }
                 log.debug("Preparing to search for UGC match #{}: {} ({}) vs {} ({}) @ {}",
                     result.getMatchId(), result.getHomeTeam(), result.getHomeClanId(),
                     result.getAwayTeam(), result.getAwayClanId(), result.getMapName());
