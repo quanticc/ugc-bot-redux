@@ -60,7 +60,7 @@ public class RosterPresenter {
         Matcher statusMatcher = STATUS.matcher(data);
         Matcher logMatcher = LOGLINE.matcher(data);
         Matcher standaloneMatcher = STANDALONE.matcher(data);
-        StringBuilder builder = new StringBuilder("*Roster check results*\n```\n");
+        StringBuilder builder = new StringBuilder("```\n");
         Set<RosterData> players = new LinkedHashSet<>();
         while (statusMatcher.find()) {
             RosterData player = new RosterData();
@@ -78,8 +78,8 @@ public class RosterPresenter {
         }
         while (logMatcher.find()) {
             RosterData player = new RosterData();
-            player.setServerName(statusMatcher.group(1));
-            player.setModernId(statusMatcher.group(3));
+            player.setServerName(logMatcher.group(1));
+            player.setModernId(logMatcher.group(3));
             try {
                 player.setCommunityId(SteamId.convertSteamIdToCommunityId(player.getModernId()));
             } catch (SteamCondenserException e) {
@@ -92,7 +92,7 @@ public class RosterPresenter {
         }
         while (standaloneMatcher.find()) {
             RosterData player = new RosterData();
-            player.setModernId(statusMatcher.group(1));
+            player.setModernId(standaloneMatcher.group(1));
             try {
                 player.setCommunityId(SteamId.convertSteamIdToCommunityId(player.getModernId()));
                 SteamId steamId = SteamId.create(player.getCommunityId());
@@ -169,10 +169,10 @@ public class RosterPresenter {
                 }
             }
         }
-        if (teamIds.size() > 0 && teamIds.size() <= 2) {
-            recentJoinsBuilder.append('\n');
+        if (teamIds.size() > 0) {
+            recentJoinsBuilder.append("\nTeams appearing in the check:\n");
             for (Integer id : teamIds) {
-                recentJoinsBuilder.append("http://www.ugcleague.com/team_page.cfm?clan_id=").append(id).append("\n");
+                recentJoinsBuilder.append("<http://www.ugcleague.com/team_page.cfm?clan_id=").append(id).append(">\n");
             }
         }
         return builder.append("```").append(recentJoinsBuilder.toString()).toString();
