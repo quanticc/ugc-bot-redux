@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class UgcDataService {
         return results;
     }
 
-    public List<RosterData> findPlayers(List<RosterData> request) {
+    public List<RosterData> findPlayers(Collection<RosterData> request) {
         return request.parallelStream()
             .map(rd -> rd.updateUgcData(apiClient.getCurrentPlayer(rd.getCommunityId())))
             .collect(Collectors.toList());

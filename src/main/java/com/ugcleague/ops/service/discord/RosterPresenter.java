@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -30,7 +31,9 @@ public class RosterPresenter {
 
     private static final Logger log = LoggerFactory.getLogger(RosterPresenter.class);
 
-    private final Pattern INDIVIDUAL_PATTERN = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);
+    private final Pattern STATUS = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);
+    private final Pattern LOGLINE = Pattern.compile("^.*\"(.+)<([0-9]+)><(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])>.*$", Pattern.MULTILINE);
+    private final Pattern STANDALONE = Pattern.compile("(\\[U:([0-5]):([0-9]+)(:[0-9]+)?\\])", Pattern.MULTILINE);
     private final Map<String, String> formatConverter = new HashMap<>();
 
     private final CommandService commandService;
@@ -45,7 +48,7 @@ public class RosterPresenter {
     @PostConstruct
     private void configure() {
         commandService.register(CommandBuilder.startsWith(".check")
-            .description("Check UGC rosters from a status command output").unrestricted().originReplies().mention()
+            .description("Check UGC rosters from a status command output").unrestricted().originReplies()
             .queued().noParser().command(this::checkRosters).build());
         formatConverter.put("TF2 Highlander", "9v9");
         formatConverter.put("TF2 6vs6", "6v6");
@@ -54,22 +57,59 @@ public class RosterPresenter {
 
     private String checkRosters(IMessage message, OptionSet optionSet) {
         String data = message.getContent().split(" ", 2)[1];
-        Matcher matcher = INDIVIDUAL_PATTERN.matcher(data);
+        Matcher statusMatcher = STATUS.matcher(data);
+        Matcher logMatcher = LOGLINE.matcher(data);
+        Matcher standaloneMatcher = STANDALONE.matcher(data);
         StringBuilder builder = new StringBuilder("*Roster check results*\n```\n");
-        List<RosterData> players = new ArrayList<>();
-        while (matcher.find()) {
+        Set<RosterData> players = new LinkedHashSet<>();
+        while (statusMatcher.find()) {
             RosterData player = new RosterData();
-            player.setServerName(matcher.group(1));
-            player.setModernId(matcher.group(2));
+            player.setServerName(statusMatcher.group(1));
+            player.setModernId(statusMatcher.group(2));
             try {
                 player.setCommunityId(SteamId.convertSteamIdToCommunityId(player.getModernId()));
             } catch (SteamCondenserException e) {
                 log.warn("Invalid id {}: {}", player.getModernId(), e.toString());
             }
-            players.add(player);
+            if (!players.contains(player)) {
+                log.debug("Matched by status: {}", player);
+                players.add(player);
+            }
+        }
+        while (logMatcher.find()) {
+            RosterData player = new RosterData();
+            player.setServerName(statusMatcher.group(1));
+            player.setModernId(statusMatcher.group(3));
+            try {
+                player.setCommunityId(SteamId.convertSteamIdToCommunityId(player.getModernId()));
+            } catch (SteamCondenserException e) {
+                log.warn("Invalid id {}: {}", player.getModernId(), e.toString());
+            }
+            if (!players.contains(player)) {
+                log.debug("Matched by log: {}", player);
+                players.add(player);
+            }
+        }
+        while (standaloneMatcher.find()) {
+            RosterData player = new RosterData();
+            player.setModernId(statusMatcher.group(1));
+            try {
+                player.setCommunityId(SteamId.convertSteamIdToCommunityId(player.getModernId()));
+                SteamId steamId = SteamId.create(player.getCommunityId());
+                if (needsFetching(steamId)) {
+                    steamId.fetchData();
+                }
+                player.setServerName(steamId.getNickname());
+            } catch (SteamCondenserException e) {
+                log.warn("Invalid id {}: {}", player.getModernId(), e.toString());
+            }
+            if (!players.contains(player)) {
+                log.debug("Matched by Steam3ID: {}", player);
+                players.add(player);
+            }
         }
         if (players.isEmpty()) {
-            return "No `status` command player data found";
+            return "No player data or Steam3IDs found";
         }
         String filter = "";
         if (data.startsWith("HL ") || data.startsWith("hl ") || data.startsWith("9 ") || data.startsWith("9v ") || data.startsWith("9v9 ")) {
@@ -95,6 +135,10 @@ public class RosterPresenter {
         StringBuilder recentJoinsBuilder = new StringBuilder();
         Set<Integer> teamIds = new LinkedHashSet<>();
         for (RosterData player : result) {
+            if (Thread.interrupted()) {
+                log.warn("Roster check interrupted");
+                return "";
+            }
             if (player.getUgcData() == null || player.getUgcData().getTeam() == null || player.getUgcData().getTeam().isEmpty()) {
                 builder.append(rightPad(player.getServerName(), nameWidth)).append("\n");
             } else {
@@ -132,6 +176,11 @@ public class RosterPresenter {
             }
         }
         return builder.append("```").append(recentJoinsBuilder.toString()).toString();
+    }
+
+    private boolean needsFetching(SteamId id) {
+        // fetch max once per hour
+        return !id.isFetched() || Instant.ofEpochMilli(id.getFetchTime()).isBefore(Instant.now().minusSeconds(3600));
     }
 
     private boolean isRecentJoin(UgcPlayerPage.Team team) {

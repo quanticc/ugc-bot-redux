@@ -86,7 +86,7 @@ public class UserPresenter {
         aliases.put("user", "--user");
         aliases.put("direct", "--direct");
         commandService.register(CommandBuilder.anyMatch(".mentions").description("Check for your latest mentions")
-            .unrestricted().originReplies().parser(parser).optionAliases(aliases).queued()
+            .unrestricted().privateReplies().parser(parser).optionAliases(aliases).queued()
             .command(this::executeMentioned).build());
     }
 
@@ -158,7 +158,7 @@ public class UserPresenter {
                 IMessage msg = messageList.get(i);
                 if (msg.getMentions().contains(user) || (!excludeEveryoneMentions && msg.mentionsEveryone())) {
                     mentionsFound++;
-                    response.append("• Mentioned by ").append(msg.getAuthor().getName())
+                    response.append("• Mentioned by ").append(msg.getAuthor().mention())
                         .append(" `<").append(msg.getAuthor().getID())
                         .append(">`, ").append(formatRelative(msg.getTimestamp()))
                         .append(": ").append(limit(resolveMentions(msg.getContent()), 100)).append("\n");
