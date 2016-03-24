@@ -116,7 +116,7 @@ public class GameServerService {
         Map<String, List<Gauge<Integer>>> pingGaugesPerRegion = new LinkedHashMap<>();
         Map<String, List<Gauge<Integer>>> playersGaugesPerRegion = new LinkedHashMap<>();
         for (GameServer server : gameServerRepository.findAll()) {
-            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(2, TimeUnit.MINUTES) {
+            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(5, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     // truncate negative values that signal abnormal conditions
@@ -124,7 +124,7 @@ public class GameServerService {
                     return value != null && value > 0 ? value : null;
                 }
             });
-            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(2, TimeUnit.MINUTES) {
+            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(5, TimeUnit.MINUTES) {
                 @Override
                 protected Integer loadValue() {
                     // truncate negative values that signal abnormal conditions

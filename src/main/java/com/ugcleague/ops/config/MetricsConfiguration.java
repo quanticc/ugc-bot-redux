@@ -159,7 +159,7 @@ public class MetricsConfiguration extends MetricsConfigurerAdapter {
                     .filter(((name, metric) -> properties.getMetrics().getMongo().getIncludedMetrics().stream()
                         .anyMatch(name::startsWith))) // only report if it matches any included metric
                     .build(mongo.getDB(mongoProperties.getDatabase()));
-                mongoDBReporter.start(1, TimeUnit.MINUTES);
+                mongoDBReporter.start(5, TimeUnit.MINUTES);
             }
         }
     }
