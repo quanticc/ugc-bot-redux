@@ -170,6 +170,9 @@ public class CommandService implements DiscordSubscriber {
     }
 
     public StringBuilder appendHelp(StringBuilder b, Command c) {
+        if (c.getParser() == null) {
+            return new StringBuilder(c.getDescription());
+        }
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             c.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
             c.getParser().printHelpOn(stream);
@@ -178,7 +181,7 @@ public class CommandService implements DiscordSubscriber {
                 .append(new String(stream.toByteArray(), "UTF-8")).append("\n");
         } catch (Exception e) {
             b.append("Could not show help for **").append(c.getKey().substring(1)).append("**\n");
-            log.warn("Could not show help: {}", e.toString());
+            log.warn("Could not show help", e);
         }
         return b;
     }
@@ -289,19 +292,14 @@ public class CommandService implements DiscordSubscriber {
     }
 
     public void helpReplyFrom(IMessage message, Command command, String comment) {
-        try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-            command.getParser().formatHelpWith(new CustomHelpFormatter(140, 5));
-            command.getParser().printHelpOn(stream);
-            StringBuilder response = new StringBuilder();
-            if (comment != null) {
-                response.append(comment).append("\n");
-            }
-            response.append(String.format("• Help for **%s**: %s%s\n", command.getKey(), command.getDescription(),
-                command.getPermission() != CommandPermission.NONE ? " (requires `" + command.getPermission() + "` permission)" : ""))
-                .append(new String(stream.toByteArray(), "UTF-8"));
-            replyFrom(message, command, response.toString());
-        } catch (Exception e) {
-            log.warn("Could not show help: {}", e.toString());
+        StringBuilder response = new StringBuilder();
+        if (comment != null) {
+            response.append(comment).append("\n");
+        }
+        try {
+            replyFrom(message, command, appendHelp(response, command).toString());
+        } catch (InterruptedException | DiscordException | MissingPermissionsException e) {
+            e.printStackTrace();
         }
     }
 
