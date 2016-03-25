@@ -361,7 +361,7 @@ public class GameServerPresenter {
 
     private void appendRconResult(StringBuilder message, String command, String result, boolean quiet) {
         if (quiet) {
-            result = "Executed ``rcon " + command + "`` command\n";
+            result = "Executed `rcon " + command + "` command\n";
             message.append(result);
         } else {
             if (command.trim().replace("\"", "").equals("status")) {

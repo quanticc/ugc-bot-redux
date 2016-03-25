@@ -274,12 +274,12 @@ public class UgcPresenter {
                     response.append(" - <no stats found>\n");
                 }
                 if (partialResults) {
-                    commandService.statusReplyFrom(message, statsCommand, "```\n" + response.toString() + "```");
+                    commandService.statusReplyFrom(message, statsCommand, "```\n" + response.toString() + "\n```");
                 }
             }
         }
 
-        return partialResults ? "" : ("```\n" + response.toString() + "```");
+        return partialResults ? "" : ("```\n" + response.toString() + "\n```");
     }
 
     private List<MatchInfo> findStats(UgcTeam home, UgcTeam away, LookupSettings settings) {
