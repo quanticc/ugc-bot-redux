@@ -152,26 +152,26 @@ public class GameServerPresenter {
             }
             StringBuilder message = new StringBuilder();
             for (GameServer server : matched) {
-                server = gameServerService.refreshServerStatus(server);
+                server = gameServerService.refreshServerStatus(server, true);
                 String srvId = gameServerService.toShortName(server);
                 String version = "v" + server.getVersion();
                 String claim = server.getExpireCheckDate().isEqual(EPOCH) ? "non-claimable" :
                     formatExpireDate(server.getExpireDate());
-                String plyrs = server.getPing() > 0 ? server.getPlayers() + "/" + server.getMaxPlayers() : "**Down?**";
+                String plyrs = server.getPing() > 0 ? server.getPlayers() + "/" + server.getMaxPlayers() : "**Last ping failed**";
                 String map = server.getMapName();
                 int tvPort = server.getTvPort();
-                String line = String.format("**%s**\t%s\t%s @ %s\t*%s*%s\n",
+                String line = String.format("**%s**\t%s\t%s @ %s\t%s%s\n",
                     padRight(srvId, 5), padRight(version, 7), padLeft(plyrs, 5), padRight(map, 22), claim,
                     tvPort == 0 ? "" : " with SourceTV at port " + tvPort);
                 message.append(line);
             }
             for (SourceServer server : otherServers) {
                 Map<String, Object> map = gameServerService.refreshServerStatus(server);
-                String plyrs = (int) map.get("ping") > 0 ? map.getOrDefault("players", "-") + "/" + map.getOrDefault("maxPlayers", "-") : "DOWN?";
+                String plyrs = (int) map.get("ping") > 0 ? map.getOrDefault("players", "-") + "/" + map.getOrDefault("maxPlayers", "-") : "";
                 String mapName = (String) map.getOrDefault("mapName", "?");
                 String tvPort = map.getOrDefault("tvPort", "?").toString();
                 String line = String.format("**%s**\t%s\t%s @ %s\t%s\n",
-                    server.toString(), map.getOrDefault("gameVersion", "vUnknown"),
+                    server.toString(), map.getOrDefault("gameVersion", ""),
                     plyrs, mapName, tvPort.equals("?") ? "" : " with SourceTV at port " + tvPort);
                 message.append(line);
             }

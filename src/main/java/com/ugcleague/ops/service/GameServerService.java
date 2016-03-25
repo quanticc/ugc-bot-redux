@@ -301,16 +301,20 @@ public class GameServerService {
     }
 
     public GameServer refreshServerStatus(GameServer server) {
+        return refreshServerStatus(server, false);
+    }
+
+    public GameServer refreshServerStatus(GameServer server, boolean invalidateCachedValues) {
         if (server == null) {
             return null;
         }
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
-            Integer ping = steamCondenserService.ping(source);
+            Integer ping = invalidateCachedValues ? steamCondenserService.ping(source) : pingGaugeValue(server);
             server.setPing(ping);
             if (ping >= 0) {
-                server.setPlayers(playersGaugeValue(server));
+                server.setPlayers(invalidateCachedValues ? steamCondenserService.players(source) : playersGaugeValue(server));
                 Map<String, Object> info = steamCondenserService.info(source);
                 Optional.ofNullable(info.get("maxPlayers")).map(this::safeParse).ifPresent(server::setMaxPlayers);
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
