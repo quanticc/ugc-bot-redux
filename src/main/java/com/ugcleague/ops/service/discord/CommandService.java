@@ -16,13 +16,13 @@ import org.springframework.core.env.MissingRequiredPropertiesException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.api.DiscordException;
-import sx.blah.discord.api.MissingPermissionsException;
-import sx.blah.discord.handle.EventSubscriber;
+import sx.blah.discord.api.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
+import sx.blah.discord.util.DiscordException;
+import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
@@ -299,7 +299,7 @@ public class CommandService implements DiscordSubscriber {
         try {
             replyFrom(message, command, appendHelp(response, command).toString());
         } catch (InterruptedException | DiscordException | MissingPermissionsException e) {
-            e.printStackTrace();
+            log.warn("Could not reply with help", e);
         }
     }
 

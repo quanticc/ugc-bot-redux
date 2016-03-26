@@ -36,9 +36,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import se.maypril.metrics.entity.GaugeEntity;
-import sx.blah.discord.api.DiscordException;
-import sx.blah.discord.api.MissingPermissionsException;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.util.DiscordException;
+import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;

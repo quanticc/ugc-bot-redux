@@ -220,7 +220,7 @@ public class PermissionService {
         set.addAll(mapper.apply(cachedGuild));
 
         // collect bot operation permissions from the roles of the given user in the given guild
-        List<IRole> roles = user.getRolesForGuild(guild.getID());
+        List<IRole> roles = user.getRolesForGuild(guild);
         Set<DiscordRole> cachedRoles = cachedGuild.getRoles();
         boolean rolesModified = false;
         for (IRole role : roles) {

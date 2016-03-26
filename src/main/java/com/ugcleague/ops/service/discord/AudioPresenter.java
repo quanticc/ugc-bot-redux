@@ -11,16 +11,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import sx.blah.discord.api.DiscordException;
-import sx.blah.discord.api.MissingPermissionsException;
-import sx.blah.discord.handle.EventSubscriber;
+import sx.blah.discord.api.EventSubscriber;
+import sx.blah.discord.handle.AudioChannel;
 import sx.blah.discord.handle.impl.events.AudioPlayEvent;
 import sx.blah.discord.handle.impl.events.AudioQueuedEvent;
 import sx.blah.discord.handle.impl.events.AudioStopEvent;
 import sx.blah.discord.handle.impl.events.AudioUnqueuedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IVoiceChannel;
-import sx.blah.discord.util.AudioChannel;
+import sx.blah.discord.util.DiscordException;
+import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.AudioInputStream;
@@ -101,7 +101,17 @@ public class AudioPresenter implements DiscordSubscriber {
             return null;
         }
 
-        AudioChannel audioChannel = discordService.getClient().getAudioChannel();
+        if (message.getChannel().isPrivate()) {
+            return "Must not be called from a private message channel";
+        }
+
+        AudioChannel audioChannel = null;
+        try {
+            audioChannel = message.getGuild().getAudioChannel();
+        } catch (DiscordException e) {
+            log.warn("Could not get audio channel", e);
+            return "Could not get audio channel for this server";
+        }
 
         if (optionSet.has(audioJoinSpec)) {
             Integer join = optionSet.valueOf(audioJoinSpec);
@@ -119,7 +129,8 @@ public class AudioPresenter implements DiscordSubscriber {
         }
 
         if (optionSet.has(audioLeaveSpec)) {
-            Optional<IVoiceChannel> voiceChannel = discordService.getClient().getConnectedVoiceChannel();
+            Optional<IVoiceChannel> voiceChannel = message.getGuild().getVoiceChannels().stream()
+                .filter(IVoiceChannel::isConnected).findAny();
             if (voiceChannel.isPresent()) {
                 log.debug("Leaving voice channel: {} ({})", voiceChannel.get().getName(), voiceChannel.get().getID());
                 voiceChannel.get().leave();
