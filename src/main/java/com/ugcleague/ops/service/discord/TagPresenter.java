@@ -80,6 +80,7 @@ public class TagPresenter {
             .description("Display the tag: " + tag.getId()).unrestricted().originReplies().noParser()
             .command((m, o) ->
                 t.getContent() + " " + m.getContent().substring(tag.getId().length()).trim()
+                    + " -" + m.getAuthor().getName()
             ).build());
     }
 
