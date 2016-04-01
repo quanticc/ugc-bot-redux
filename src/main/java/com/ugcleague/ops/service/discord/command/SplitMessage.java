@@ -1,5 +1,7 @@
 package com.ugcleague.ops.service.discord.command;
 
+import org.springframework.util.StringUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +18,8 @@ public class SplitMessage {
         String str = message;
         int end;
         while (!str.isEmpty()) {
-            if (str.length() <= maxLength) {
+            int codeBlockTags = StringUtils.countOccurrencesOf(str, "```");
+            if (str.length() <= Math.max(1, maxLength - (codeBlockTags > 0 ? 4 : 0))) {
                 splits.add(str);
                 str = "";
             } else {
@@ -24,8 +27,14 @@ public class SplitMessage {
                 if (end <= 0) {
                     end = Math.min(str.length(), maxLength);
                 }
-                splits.add(str.substring(0, end));
+                String split = str.substring(0, end);
                 str = str.substring(end);
+                int tagsAfterSplit = StringUtils.countOccurrencesOf(split, "```");
+                if (codeBlockTags > 0 && tagsAfterSplit < codeBlockTags && tagsAfterSplit % 2 != 0) {
+                    split = split + "\n```";
+                    str = "```\n" + str;
+                }
+                splits.add(split);
             }
         }
         return splits;

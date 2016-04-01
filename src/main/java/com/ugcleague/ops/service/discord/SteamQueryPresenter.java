@@ -65,7 +65,7 @@ public class SteamQueryPresenter {
         } catch (SteamCondenserException e) {
             log.warn("Invalid community id: {}", e.toString());
         }
-        StringBuilder builder = new StringBuilder("```\n");
+        StringBuilder builder = new StringBuilder("```http\n");
         int pad = 11;
         try {
             SteamId steamId = SteamId.create(steamId64);
@@ -80,16 +80,16 @@ public class SteamQueryPresenter {
                 //.append(leftPad("steamRep: ", pad)).append("http://steamrep.com/profiles/").append(steamId64).append("\n")
                 .append(leftPad("Status: ", pad)).append(steamId.getStateMessage()).append("\n");
             if (!steamId.getPrivacyState().equals("public")) {
-                builder.append("* Profile privacy is set to ").append(steamId.getPrivacyState()).append("\n");
+                builder.append(leftPad("Privacy: ", pad)).append(steamId.getPrivacyState()).append("\n");
             } else {
                 builder.append(leftPad("Joined: ", pad)).append(steamId.getMemberSince().toInstant()).append("\n");
                 //.append(leftPad("customURL: ", pad)).append("/id/").append(steamId.getCustomUrl()).append("\n");
             }
             if (steamId.isBanned()) {
-                builder.append("* User is VAC banned\n");
+                builder.append(leftPad("VAC: ", pad)).append("** User is VAC Banned **\n");
             }
             if (!steamId.getTradeBanState().equals("None")) {
-                builder.append("* User has ").append(steamId.getTradeBanState()).append(" trade state\n");
+                builder.append(leftPad("Trading: ", pad)).append(steamId.getTradeBanState()).append("\n");
             }
             builder.append("```\n")
                 .append("<http://www.ugcleague.com/players_page.cfm?player_id=").append(steamId64).append(">");

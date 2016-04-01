@@ -328,8 +328,8 @@ public class GameServerPresenter {
             for (GameServer server : matched) {
                 String password = o.has(rconPasswordSpec) ? o.valueOf(rconPasswordSpec) : server.getRconPassword();
                 try {
-                    message.append("**").append(gameServerService.toShortName(server)).append("** (")
-                        .append(server.getAddress()).append("): ");
+                    message.append("**").append(gameServerService.toShortName(server)).append("** `")
+                        .append(server.getAddress()).append("`");
                     String result = gameServerService.rcon(server, Optional.of(password), command);
                     appendRconResult(message, command, result, quiet);
                 } catch (TimeoutException e) {
@@ -342,7 +342,7 @@ public class GameServerPresenter {
                 if (o.has(rconPasswordSpec)) {
                     try {
                         String password = o.valueOf(rconPasswordSpec);
-                        message.append("**").append(server.toString()).append("**: ");
+                        message.append("`").append(server.toString()).append("`: ");
                         String result = gameServerService.rcon(server, password, command);
                         appendRconResult(message, command, result, quiet);
                     } catch (TimeoutException e) {
@@ -365,7 +365,7 @@ public class GameServerPresenter {
             message.append(result);
         } else {
             if (command.trim().replace("\"", "").equals("status")) {
-                message.append("```\n").append(result).append("\n```\n");
+                message.append("\n```\n").append(result).append("\n```\n");
             } else {
                 message.append(result).append("\n");
             }

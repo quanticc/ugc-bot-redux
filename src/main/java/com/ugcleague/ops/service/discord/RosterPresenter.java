@@ -60,7 +60,7 @@ public class RosterPresenter {
         Matcher statusMatcher = STATUS.matcher(data);
         Matcher logMatcher = LOGLINE.matcher(data);
         Matcher standaloneMatcher = STANDALONE.matcher(data);
-        StringBuilder builder = new StringBuilder("```\n");
+        StringBuilder builder = new StringBuilder("```asciidoc\n");
         Set<RosterData> players = new LinkedHashSet<>();
         while (statusMatcher.find()) {
             RosterData player = new RosterData();
