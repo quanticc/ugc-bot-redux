@@ -21,7 +21,9 @@ import org.springframework.xml.xpath.XPathOperations;
 import org.w3c.dom.Element;
 import sx.blah.discord.api.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MentionEvent;
+import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 
@@ -211,15 +213,22 @@ public class EtcCommands implements DiscordSubscriber {
     @EventSubscriber
     public void onMention(MentionEvent event) {
         IMessage message = event.getMessage();
+        IChannel channel = event.getMessage().getChannel();
+        IUser author = event.getMessage().getAuthor();
         boolean everyone = message.mentionsEveryone();
-        if (!everyone) {
+        boolean dm = channel.isPrivate();
+        boolean self = event.getClient().getOurUser().equals(author);
+        if (!everyone && !dm && !self) {
             CompletableFuture.runAsync(() -> {
+                channel.toggleTypingStatus();
                 String content = message.getContent()
                     .replace(discordService.getClient().getOurUser().mention(), "");
                 try {
-                    message.reply(chatterBotSessionMap.get(currentSession).think(content));
+                    String response = chatterBotSessionMap.get(currentSession).think(content);
+                    discordService.sendMessage(channel, author.mention() + " " + response);
                 } catch (Exception e) {
                     log.warn("Could not process chatter input", e);
+                    channel.toggleTypingStatus();
                 }
             }, taskExecutor);
         }
