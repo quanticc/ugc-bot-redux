@@ -18,6 +18,7 @@ import sx.blah.discord.handle.impl.events.AudioQueuedEvent;
 import sx.blah.discord.handle.impl.events.AudioStopEvent;
 import sx.blah.discord.handle.impl.events.AudioUnqueuedEvent;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
@@ -30,6 +31,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
@@ -94,6 +96,12 @@ public class AudioPresenter implements DiscordSubscriber {
         audioCommand = commandService.register(CommandBuilder.startsWith(".audio").support().originReplies()
             .description("Performs audio-related operations")
             .parser(parser).optionAliases(aliases).command(this::audio).build());
+    }
+
+    public static List<IUser> connectedUsers(IVoiceChannel voiceChannel) {
+        return voiceChannel.getGuild().getUsers().stream()
+            .filter(u -> voiceChannel.equals(u.getVoiceChannel().orElse(null)))
+            .collect(Collectors.toList());
     }
 
     private String audio(IMessage message, OptionSet optionSet) {
