@@ -4,7 +4,7 @@
 
     <groupId>com.ugcleague.ops</groupId>
     <artifactId>ugc-bot-redux</artifactId>
-    <version>0.15.1-SNAPSHOT</version>
+    <version>0.15.1</version>
     <packaging>jar</packaging>
 
     <name>ugc-bot-redux</name>
@@ -33,7 +33,7 @@
         <url>https://github.com/iabarca/ugc-bot-redux</url>
         <connection>scm:git:git://github.com/iabarca/ugc-bot-redux.git</connection>
         <developerConnection>scm:git:git@github.com:iabarca/ugc-bot-redux.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>0.15.1</tag>
     </scm>
 
     <repositories>
