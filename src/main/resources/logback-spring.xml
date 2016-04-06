@@ -4,7 +4,7 @@
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
 
     <logger name="com.ugcleague.ops" level="@logback.loglevel@"/>
-
+    <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="javax.activation" level="WARN"/>
     <logger name="javax.mail" level="WARN"/>
     <logger name="javax.xml.bind" level="WARN"/>
