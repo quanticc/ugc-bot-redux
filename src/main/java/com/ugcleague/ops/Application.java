@@ -3,7 +3,6 @@ package com.ugcleague.ops;
 import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.javafx.JavaFxSupport;
-import com.ugcleague.ops.service.DiscordService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +16,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
-import sx.blah.discord.util.DiscordException;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 
 @EnableAutoConfiguration(exclude = {MetricFilterAutoConfiguration.class, MetricRepositoryAutoConfiguration.class})
 @EnableConfigurationProperties({LeagueProperties.class, LiquibaseProperties.class})
@@ -37,12 +34,6 @@ public class Application {
 
     @Autowired
     private Environment env;
-
-    @Autowired
-    private LeagueProperties properties;
-
-    @Autowired
-    private DiscordService discordService;
 
     /**
      * Initializes the application.
@@ -83,19 +74,6 @@ public class Application {
         app.run(args);
         Thread.setDefaultUncaughtExceptionHandler(Application::uncaught);
         javafx.application.Application.launch(JavaFxSupport.class, args);
-        new Application().login();
-    }
-
-    private void login() {
-        if (properties.getDiscord().isAutologin()) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    discordService.login();
-                } catch (DiscordException e) {
-                    log.error("Could not connect discord bot", e);
-                }
-            });
-        }
     }
 
     private static void uncaught(Thread thread, Throwable throwable) {

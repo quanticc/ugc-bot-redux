@@ -89,15 +89,15 @@ public class DiscordService implements DiscordSubscriber {
                 }
             }
         });
-//        if (properties.getDiscord().isAutologin()) {
-//            CompletableFuture.runAsync(() -> {
-//                try {
-//                    login();
-//                } catch (DiscordException e) {
-//                    log.error("Could not connect discord bot", e);
-//                }
-//            });
-//        }
+        if (properties.getDiscord().isAutologin()) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    login();
+                } catch (DiscordException e) {
+                    log.error("Could not connect discord bot", e);
+                }
+            });
+        }
     }
 
     private ClientBuilder newClientBuilder() {
