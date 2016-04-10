@@ -29,6 +29,8 @@ import static org.apache.commons.lang3.StringUtils.*;
 public class RosterPresenter {
 
     private static final Logger log = LoggerFactory.getLogger(RosterPresenter.class);
+    private static final int NAME_MAX_WIDTH = 20;
+    private static final int TEAM_MAX_WIDTH = 30;
 
     private final Pattern STATUS = Pattern.compile("^.+\"(.+)\"\\s+(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])\\s+.*$", Pattern.MULTILINE);
     private final Pattern LOGLINE = Pattern.compile("^.*\"(.+)<([0-9]+)><(\\[([a-zA-Z]):([0-5]):([0-9]+)(:[0-9]+)?\\])>.*$", Pattern.MULTILINE);
@@ -120,10 +122,10 @@ public class RosterPresenter {
         }
         List<RosterData> result = ugcDataService.findPlayers(players);
         int idWidth = "[U:X:---------]".length() + 1;
-        int nameWidth = Math.min(result.stream().map(d -> d.getServerName().length()).reduce(0, Integer::max), 20) + 2;
+        int nameWidth = Math.min(result.stream().map(d -> d.getServerName().length()).reduce(0, Integer::max), NAME_MAX_WIDTH) + 2;
         int teamWidth = Math.min(result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
-            .map(t -> (t.getClanId() + " ").length() + t.getName().length()).reduce(0, Integer::max), 25) + 2;
+            .map(t -> (t.getClanId() + " ").length() + t.getName().length()).reduce(0, Integer::max), TEAM_MAX_WIDTH) + 2;
         int divWidth = result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
             .map(t -> t.getDivision().length()).reduce(0, Integer::max) + 2;
@@ -140,7 +142,8 @@ public class RosterPresenter {
                 return "";
             }
             if (player.getUgcData() == null || player.getUgcData().getTeam() == null || player.getUgcData().getTeam().isEmpty()) {
-                builder.append(rightPad(player.getServerName(), nameWidth)).append("\n");
+                builder.append(rightPad(player.getModernId(), idWidth))
+                    .append(rightPad(substring(player.getServerName(), 0, NAME_MAX_WIDTH), nameWidth)).append("\n");
             } else {
                 boolean first = true;
                 for (UgcPlayerPage.Team team : player.getUgcData().getTeam()) {
@@ -154,9 +157,9 @@ public class RosterPresenter {
                     }
                     if (filter.isEmpty() || team.getFormat().equals(filter)) {
                         builder.append(rightPad(first ? player.getModernId() : "", idWidth))
-                            .append(rightPad(first ? substring(player.getServerName(), 0, 20) : "", nameWidth))
+                            .append(rightPad(first ? substring(player.getServerName(), 0, NAME_MAX_WIDTH) : "", nameWidth))
                             .append(rightPad(substring((team.getClanId() > 0 ? team.getClanId() + " " : "") +
-                                team.getName(), 0, 25), teamWidth))
+                                team.getName(), 0, TEAM_MAX_WIDTH), teamWidth))
                             .append(rightPad(team.getDivision(), divWidth))
                             .append(rightPad(team.getFormat().equals("9v9") ? "HL" : team.getFormat(), formatWidth))
                             .append("\n");
