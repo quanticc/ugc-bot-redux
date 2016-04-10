@@ -221,10 +221,16 @@ public class EtcCommands implements DiscordSubscriber {
         if (!everyone && !dm && !self) {
             CompletableFuture.runAsync(() -> {
                 channel.toggleTypingStatus();
+                long start = System.currentTimeMillis();
                 String content = message.getContent()
                     .replace(discordService.getClient().getOurUser().mention(), "");
                 try {
                     String response = chatterBotSessionMap.get(currentSession).think(content);
+                    long delay = System.currentTimeMillis() - start;
+                    log.debug("Response took {} ms", delay);
+                    if (delay < 5000L) {
+                        Thread.sleep(5000L - delay);
+                    }
                     discordService.sendMessage(channel, author.mention() + " " + response);
                 } catch (Exception e) {
                     log.warn("Could not process chatter input", e);
