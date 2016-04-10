@@ -78,7 +78,7 @@ public class SteamQueryPresenter {
                 .append(leftPad("steamID32: ", pad)).append(steamId32).append("\n")
                 .append(leftPad("steamID64: ", pad)).append("http://steamcommunity.com/profiles/").append(steamId64).append("\n")
                 //.append(leftPad("steamRep: ", pad)).append("http://steamrep.com/profiles/").append(steamId64).append("\n")
-                .append(leftPad("Status: ", pad)).append(steamId.getStateMessage()).append("\n");
+                .append(leftPad("Status: ", pad)).append(steamId.getStateMessage().replace("<br/>", "/")).append("\n");
             if (!steamId.getPrivacyState().equals("public")) {
                 builder.append(leftPad("Privacy: ", pad)).append(steamId.getPrivacyState()).append("\n");
             } else {
