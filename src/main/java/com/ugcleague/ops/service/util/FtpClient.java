@@ -76,24 +76,13 @@ public class FtpClient {
         client.setSecurity(FTPClient.SECURITY_FTPES);
     }
 
-    public boolean connect(Map<String, String> credentials) {
-        try {
-            retryableConnect(credentials);
-            log.info("Connected to {} FTP server", server.getName());
-            return true;
-        } catch (IOException | FTPIllegalReplyException | FTPException e) {
-            log.warn("Login to {} FTP server failed: {}", server.getName(), e.toString());
-        }
-        return false;
-    }
-
-    @Retryable(backoff = @Backoff(2000L), include = {IOException.class, FTPIllegalReplyException.class, FTPException.class})
-    private void retryableConnect(Map<String, String> credentials)
-        throws IllegalStateException, IOException, FTPIllegalReplyException, FTPException {
+    public void connect(Map<String, String> credentials) throws FTPException, IOException, FTPIllegalReplyException {
         try {
             client.connect(credentials.get("ftp-hostname"));
             client.login(credentials.get("ftp-username"), credentials.get("ftp-password"));
+            log.info("Connected to {} FTP server", server.getName());
         } catch (IllegalStateException | IOException | FTPIllegalReplyException | FTPException e) {
+            log.warn("Login to {} FTP server failed: {}", server.getName(), e.toString());
             client.disconnect(true);
             // rethrow to trigger retrying
             throw e;
@@ -109,17 +98,7 @@ public class FtpClient {
         }
     }
 
-    public SyncGroup updateGroup(SyncGroup group) {
-        try {
-            return retryableUpdateGroup(group);
-        } catch (IllegalStateException | FTPException | IOException | FTPIllegalReplyException e) {
-            log.warn("Could not update {} due to {}", group.getRemoteDir(), e.toString());
-            return null;
-        }
-    }
-
-    @Retryable(backoff = @Backoff(2000L))
-    public SyncGroup retryableUpdateGroup(SyncGroup group) throws FTPException, IOException, FTPIllegalReplyException {
+    public SyncGroup updateGroup(SyncGroup group) throws FTPException, IOException, FTPIllegalReplyException {
         Path localPath = Paths.get(repositoryDir, group.getLocalDir());
         if (!Files.isDirectory(localPath) || !Files.exists(localPath)) {
             log.warn("Skipping missing local folder: {}", localPath);

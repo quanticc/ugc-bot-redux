@@ -9,7 +9,9 @@ import com.ugcleague.ops.repository.RemoteFileRepository;
 import com.ugcleague.ops.repository.SyncGroupRepository;
 import com.ugcleague.ops.service.util.FileShareTask;
 import com.ugcleague.ops.service.util.FtpClient;
+import it.sauronsoftware.ftp4j.FTPException;
 import it.sauronsoftware.ftp4j.FTPFile;
+import it.sauronsoftware.ftp4j.FTPIllegalReplyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,15 +70,11 @@ public class SyncGroupService {
     }
 
     public List<SyncGroup> updateGroups(GameServer server, List<SyncGroup> groups) {
-        return retryableUpdateGroups(server, groups);
-    }
-
-    private List<SyncGroup> retryableUpdateGroups(GameServer server, List<SyncGroup> groups) {
         log.debug("Preparing to update {} with files from {}", server, groups);
         Optional<FtpClient> o = establishFtpConnection(server);
         if (o.isPresent()) {
             final FtpClient client = o.get();
-            List<SyncGroup> successful = groups.stream().map(client::updateGroup)
+            List<SyncGroup> successful = groups.stream().map(g -> updateGroup(g, client))
                 .filter(g -> g != null).collect(Collectors.toList());
             client.disconnect();
             return successful;
@@ -84,18 +82,47 @@ public class SyncGroupService {
         return Collections.emptyList();
     }
 
+    private SyncGroup updateGroup(SyncGroup group, FtpClient client) {
+        try {
+            return retryableUpdateGroup(group, client);
+        } catch (IllegalStateException | FTPException | IOException | FTPIllegalReplyException e) {
+            log.warn("Could not update {} due to {}", group.getRemoteDir(), e.toString());
+            return null;
+        }
+    }
+
+    @Retryable(backoff = @Backoff(5000L))
+    private SyncGroup retryableUpdateGroup(SyncGroup group, FtpClient client) throws FTPException, IOException, FTPIllegalReplyException {
+        return client.updateGroup(group);
+    }
+
     private Optional<FtpClient> establishFtpConnection(GameServer server) {
         FtpClient ftpClient = new FtpClient(server, repositoryDir, gameServerService.isSecure(server));
         Map<String, String> credentials = gameServerService.getFTPConnectInfo(server);
-        if (!ftpClient.connect(credentials)) {
+        if (!connect(ftpClient, credentials)) {
             gameServerService.addInsecureFlag(server);
             ftpClient = new FtpClient(server, repositoryDir, false);
-            if (!ftpClient.connect(credentials)) {
+            if (!connect(ftpClient, credentials)) {
                 log.warn("Unable to login to the FTP server");
                 return Optional.empty();
             }
         }
         return Optional.of(ftpClient);
+    }
+
+    private boolean connect(FtpClient client, Map<String, String> credentials) {
+        try {
+            retryableConnect(client, credentials);
+            return true;
+        } catch (FTPException | IOException | FTPIllegalReplyException e) {
+            log.warn("Could not connect to FTP server after retrying: {}", e.toString());
+            return false;
+        }
+    }
+
+    @Retryable(backoff = @Backoff(5000L), include = {IOException.class, FTPIllegalReplyException.class, FTPException.class})
+    private void retryableConnect(FtpClient client, Map<String, String> credentials) throws FTPException, IOException, FTPIllegalReplyException {
+        client.connect(credentials);
     }
 
     public Optional<SyncGroup> findByLocalDir(String name) {
