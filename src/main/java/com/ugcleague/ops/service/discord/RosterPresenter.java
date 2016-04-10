@@ -23,8 +23,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.apache.commons.lang3.StringUtils.repeat;
-import static org.apache.commons.lang3.StringUtils.rightPad;
+import static org.apache.commons.lang3.StringUtils.*;
 
 @Service
 public class RosterPresenter {
@@ -120,18 +119,19 @@ public class RosterPresenter {
             filter = "4v4";
         }
         List<RosterData> result = ugcDataService.findPlayers(players);
-        int nameWidth = result.stream().map(d -> d.getServerName().length()).reduce(0, Integer::max) + 2;
-        int teamWidth = result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
+        int idWidth = "[U:X:---------]".length() + 1;
+        int nameWidth = Math.min(result.stream().map(d -> d.getServerName().length()).reduce(0, Integer::max), 20) + 2;
+        int teamWidth = Math.min(result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
-            .map(t -> (t.getClanId() + " ").length() + t.getName().length()).reduce(0, Integer::max) + 2;
+            .map(t -> (t.getClanId() + " ").length() + t.getName().length()).reduce(0, Integer::max), 25) + 2;
         int divWidth = result.stream().filter(d -> d.getUgcData() != null && d.getUgcData().getTeam() != null)
             .flatMap(d -> d.getUgcData().getTeam().stream())
             .map(t -> t.getDivision().length()).reduce(0, Integer::max) + 2;
         int formatWidth = "9v9".length() + 2;
-        builder.append(rightPad("Name", nameWidth)).append(rightPad("Team", teamWidth))
-            .append(rightPad("Division", divWidth)).append(rightPad("Mode", formatWidth))
-            .append("\n")
-            .append(repeat('-', nameWidth + teamWidth + divWidth + formatWidth)).append("\n");
+        builder.append(rightPad("Steam3ID", idWidth)).append(rightPad("Name", nameWidth))
+            .append(rightPad("Team", teamWidth)).append(rightPad("Division", divWidth))
+            .append(rightPad("Mode", formatWidth)).append("\n")
+            .append(repeat('-', idWidth + nameWidth + teamWidth + divWidth + formatWidth)).append("\n");
         StringBuilder recentJoinsBuilder = new StringBuilder();
         Set<Integer> teamIds = new LinkedHashSet<>();
         for (RosterData player : result) {
@@ -153,8 +153,10 @@ public class RosterPresenter {
                         team.setJoined(player.getUgcData().getJoined());
                     }
                     if (filter.isEmpty() || team.getFormat().equals(filter)) {
-                        builder.append(rightPad(first ? player.getServerName() : "", nameWidth))
-                            .append(rightPad((team.getClanId() > 0 ? team.getClanId() + " " : "") + team.getName(), teamWidth))
+                        builder.append(rightPad(first ? player.getModernId() : "", idWidth))
+                            .append(rightPad(first ? substring(player.getServerName(), 0, 20) : "", nameWidth))
+                            .append(rightPad(substring((team.getClanId() > 0 ? team.getClanId() + " " : "") +
+                                team.getName(), 0, 25), teamWidth))
                             .append(rightPad(team.getDivision(), divWidth))
                             .append(rightPad(team.getFormat().equals("9v9") ? "HL" : team.getFormat(), formatWidth))
                             .append("\n");
