@@ -254,7 +254,7 @@ public class AnnouncePresenter {
                     IChannel channel = client.getChannelByID(sub.getChannel().getId());
                     if (channel != null) {
                         log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
-                        commandService.answerToChannel(channel, "**<" + publisherName + ">** " + message);
+                        commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message);
                     } else {
                         log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
                     }
