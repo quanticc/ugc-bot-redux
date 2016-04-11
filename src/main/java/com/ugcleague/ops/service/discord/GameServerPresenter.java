@@ -65,6 +65,7 @@ public class GameServerPresenter {
     private OptionSpec<Boolean> insecureValueSpec;
     private OptionSpec<Boolean> rconQuietSpec;
     private OptionSpec<String> installModNonOptionsSpec;
+    private OptionSpec<String> upgradeNonOptionsSpec;
 
     @Autowired
     public GameServerPresenter(GameServerService gameServerService, CommandService commandService) {
@@ -78,6 +79,7 @@ public class GameServerPresenter {
         initStatusCommand();
         initRestartCommand();
         initInstallModCommand();
+        initUpgradeCommand();
         initRconCommand();
         initDeadCommand();
         initInsecureCommand();
@@ -302,7 +304,7 @@ public class GameServerPresenter {
             StringBuilder message = new StringBuilder();
             List<GameServer> servers = gameServerService.findServersMultiple(nonOptions.subList(1, nonOptions.size()));
             if (servers.size() > 0) {
-                message.append("Trying to restart servers matching **")
+                message.append("Trying to install mod to servers matching **")
                     .append(nonOptions.stream().collect(Collectors.joining(", "))).append("**\n");
                 for (GameServer server : servers) {
                     int code = gameServerService.attemptModInstall(server, nonOptions.get(0));
@@ -312,6 +314,41 @@ public class GameServerPresenter {
                         message.append("**").append(server.getName()).append("** installation aborted. Players connected: ").append(code).append("\n");
                     } else {
                         message.append("**").append(server.getName()).append("** installation failed due to error\n");
+                    }
+                }
+            } else {
+                message.append("No servers meet the criteria");
+            }
+            return message.toString();
+        }
+        return null;
+    }
+
+    private void initUpgradeCommand() {
+        // .server upgrade <servers...>
+        OptionParser parser = newParser();
+        upgradeNonOptionsSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
+        commandService.register(CommandBuilder.startsWith(".server upgrade").support().permissionReplies()
+            .description("Upgrades given servers (only empty ones will be affected)").queued().parser(parser)
+            .command(this::executeUpgradeCommand).build());
+    }
+
+    private String executeUpgradeCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(upgradeNonOptionsSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            StringBuilder message = new StringBuilder();
+            List<GameServer> servers = gameServerService.findServersMultiple(nonOptions);
+            if (servers.size() > 0) {
+                message.append("Trying to upgrade servers matching **")
+                    .append(nonOptions.stream().collect(Collectors.joining(", "))).append("**\n");
+                for (GameServer server : servers) {
+                    int code = gameServerService.attemptUpdate(server);
+                    if (code == 0) {
+                        message.append("**").append(server.getName()).append("** upgrade in progress\n");
+                    } else if (code > 0) {
+                        message.append("**").append(server.getName()).append("** upgrade aborted. Players connected: ").append(code).append("\n");
+                    } else {
+                        message.append("**").append(server.getName()).append("** upgrade failed due to error\n");
                     }
                 }
             } else {
