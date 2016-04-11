@@ -52,8 +52,7 @@ public class GameServerService {
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
     private final DeadServerMap deadServerMap = new DeadServerMap();
-
-    public static final Map<String, String> AVAILABLE_MODS = new LinkedHashMap<>();
+    private final Map<String, String> availableMods = new LinkedHashMap<>();
 
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
@@ -198,9 +197,9 @@ public class GameServerService {
             }
         });
 
-        AVAILABLE_MODS.put("metamod", "5171820e847b6");
-        AVAILABLE_MODS.put("sourcemod", "517176e485ca6");
-        AVAILABLE_MODS.put("sourcemod-update", "51796947838dd");
+        availableMods.put("metamod", "5171820e847b6");
+        availableMods.put("sourcemod", "517176e485ca6");
+        availableMods.put("sourcemod-update", "51796947838dd");
     }
 
     public void refreshServerDetails() {
@@ -649,7 +648,7 @@ public class GameServerService {
     }
 
     public int attemptModInstall(GameServer server, String modName) {
-        if (!AVAILABLE_MODS.containsKey(modName)) {
+        if (!availableMods.containsKey(modName)) {
             log.warn("Invalid mod name: {}", modName);
             return -6;
         }
@@ -659,7 +658,7 @@ public class GameServerService {
             return count;
         } else {
             try {
-                boolean success = adminPanelService.installMod(server.getSubId(), AVAILABLE_MODS.get(modName));
+                boolean success = adminPanelService.installMod(server.getSubId(), availableMods.get(modName));
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
                     deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
@@ -672,6 +671,10 @@ public class GameServerService {
                 return -5;
             }
         }
+    }
+
+    public Map<String, String> getAvailableMods() {
+        return availableMods;
     }
 
     public GameServer save(GameServer gameServer) {
