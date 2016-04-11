@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.DateUtil.correctOffsetSameZone;
-import static com.ugcleague.ops.util.Util.humanizeBytes;
 
 public class FtpClient {
     private static final Logger log = LoggerFactory.getLogger(FtpClient.class);
@@ -174,7 +173,6 @@ public class FtpClient {
         String key = parentDir.resolve(file.getName()).toString();
         times.put(key, correctOffsetSameZone(file.getModifiedDate()).toLocalDateTime());
         sizes.put(key, file.getSize());
-        log.debug("Saving attributes: {} -> {} last modified {}", key, humanizeBytes(sizes.get(key)), times.get(key));
     }
 
     private void createDirectories(String dir) throws IOException, FTPIllegalReplyException, FTPException {
