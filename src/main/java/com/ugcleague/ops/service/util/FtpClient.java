@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.util.DateUtil.correctOffsetSameZone;
+import static com.ugcleague.ops.util.Util.humanizeBytes;
 
 public class FtpClient {
     private static final Logger log = LoggerFactory.getLogger(FtpClient.class);
@@ -109,7 +110,13 @@ public class FtpClient {
             .peek(p -> log.info("Preparing to upload {}", p)).collect(Collectors.toList());
         int i = 0;
         for (Path path : toUpload) {
-            log.info("[{}/{}] Uploading {} to {}", ++i, toUpload.size(), path, server.getName());
+            Path remoteDir = Paths.get(group.getRemoteDir())
+                .resolve(
+                    Paths.get(repositoryDir, group.getLocalDir()).toAbsolutePath().relativize(path.toAbsolutePath()))
+                .getParent();
+            String dir = remoteDir.toString().replace("\\", "/");
+            client.changeDirectory(dir);
+            log.info("[{}/{}] Uploading {} to {}: {}", ++i, toUpload.size(), path, server.getName(), dir);
             upload(path);
         }
         return group;
@@ -167,6 +174,7 @@ public class FtpClient {
         String key = parentDir.resolve(file.getName()).toString();
         times.put(key, correctOffsetSameZone(file.getModifiedDate()).toLocalDateTime());
         sizes.put(key, file.getSize());
+        log.debug("Saving attributes: {} -> {} last modified {}", key, humanizeBytes(sizes.get(key)), times.get(key));
     }
 
     private void createDirectories(String dir) throws IOException, FTPIllegalReplyException, FTPException {
