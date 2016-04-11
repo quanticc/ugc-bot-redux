@@ -50,7 +50,6 @@ public class HealthCheckService {
                     headers.set("User-Agent", Constants.USER_AGENT);
                     ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET,
                         new HttpEntity<>(headers), String.class);
-                    log.debug("{} {}", response.getStatusCode(), url);
                     if (response.getStatusCode().is2xxSuccessful()) {
                         return Result.healthy(response.getStatusCode().value() + " " + response.getStatusCode().getReasonPhrase());
                     } else {
