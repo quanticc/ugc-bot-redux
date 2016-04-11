@@ -199,7 +199,15 @@ public class AdminPanelService {
     public boolean upgrade(String subId) throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
             .data("function", "addmod").data("modid", "730").timeout(60000));
-        log.info("-- UPGRADE --");
+        log.info("-- UPGRADING {} --", subId);
+        log.info("Response: {}", document.select("td.content_main").text());
+        return true;
+    }
+
+    public boolean installMod(String subId, String modId) throws IOException {
+        Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
+            .data("function", "addmod2").data("MODID", modId).timeout(60000));
+        log.info("-- INSTALLING MOD {} TO {} --", modId, subId);
         log.info("Response: {}", document.select("td.content_main").text());
         return true;
     }

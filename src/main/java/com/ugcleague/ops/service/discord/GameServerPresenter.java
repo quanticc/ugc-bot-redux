@@ -64,6 +64,7 @@ public class GameServerPresenter {
     private OptionSpec<String> insecureNonOptionSpec;
     private OptionSpec<Boolean> insecureValueSpec;
     private OptionSpec<Boolean> rconQuietSpec;
+    private OptionSpec<String> installModNonOptionsSpec;
 
     @Autowired
     public GameServerPresenter(GameServerService gameServerService, CommandService commandService) {
@@ -76,6 +77,7 @@ public class GameServerPresenter {
         initConnectCommand();
         initStatusCommand();
         initRestartCommand();
+        initInstallModCommand();
         initRconCommand();
         initDeadCommand();
         initInsecureCommand();
@@ -251,7 +253,7 @@ public class GameServerPresenter {
     }
 
     private void initRestartCommand() {
-        // .restart (non-option: search key)
+        // .server restart (non-option: search key)
         OptionParser parser = newParser();
         restartNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".server restart").support().permissionReplies()
@@ -275,6 +277,41 @@ public class GameServerPresenter {
                         message.append("**").append(server.getName()).append("** restart aborted. Players connected: ").append(code).append("\n");
                     } else {
                         message.append("**").append(server.getName()).append("** restart failed due to error\n");
+                    }
+                }
+            } else {
+                message.append("No servers meet the criteria");
+            }
+            return message.toString();
+        }
+        return null;
+    }
+
+    private void initInstallModCommand() {
+        // .server install <mod> <servers...>
+        OptionParser parser = newParser();
+        installModNonOptionsSpec = parser.nonOptions("First non-option is the mod name, then " + nonOptDesc).ofType(String.class);
+        commandService.register(CommandBuilder.startsWith(".server install").support().permissionReplies()
+            .description("Install the given mod to the given servers (only empty ones will be affected)").queued().parser(parser)
+            .command(this::executeInstallModCommand).build());
+    }
+
+    private String executeInstallModCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(installModNonOptionsSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            StringBuilder message = new StringBuilder();
+            List<GameServer> servers = gameServerService.findServersMultiple(nonOptions.subList(1, nonOptions.size()));
+            if (servers.size() > 0) {
+                message.append("Trying to restart servers matching **")
+                    .append(nonOptions.stream().collect(Collectors.joining(", "))).append("**\n");
+                for (GameServer server : servers) {
+                    int code = gameServerService.attemptModInstall(server, nonOptions.get(0));
+                    if (code == 0) {
+                        message.append("**").append(server.getName()).append("** installation in progress\n");
+                    } else if (code > 0) {
+                        message.append("**").append(server.getName()).append("** installation aborted. Players connected: ").append(code).append("\n");
+                    } else {
+                        message.append("**").append(server.getName()).append("** installation failed due to error\n");
                     }
                 }
             } else {

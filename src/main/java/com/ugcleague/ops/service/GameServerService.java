@@ -53,6 +53,8 @@ public class GameServerService {
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
     private final DeadServerMap deadServerMap = new DeadServerMap();
 
+    public static final Map<String, String> AVAILABLE_MODS = new LinkedHashMap<>();
+
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
                              AdminPanelService adminPanelService, FlagRepository flagRepository,
@@ -195,6 +197,10 @@ public class GameServerService {
                     .collect(Collectors.averagingDouble(v -> v));
             }
         });
+
+        AVAILABLE_MODS.put("metamod", "5171820e847b6");
+        AVAILABLE_MODS.put("sourcemod", "517176e485ca6");
+        AVAILABLE_MODS.put("sourcemod-update", "51796947838dd");
     }
 
     public void refreshServerDetails() {
@@ -593,12 +599,16 @@ public class GameServerService {
         return gameServerRepository.findAllWithEagerRelationships();
     }
 
-    public int attemptRestart(GameServer server) {
+    private boolean isEmpty(GameServer server) {
         server = refreshServerStatus(server);
-        int players = server.getPlayers();
-        if (players > 0) {
-            log.info("Not restarting server due to players present: {}", players);
-            return server.getPlayers();
+        return server.getPlayers() == 0;
+    }
+
+    public int attemptRestart(GameServer server) {
+        if (!isEmpty(server)) {
+            int count = server.getPlayers();
+            log.info("Not restarting server due to players present: {}", count);
+            return count;
         } else {
             try {
                 boolean success = adminPanelService.restart(server.getSubId());
@@ -611,6 +621,54 @@ public class GameServerService {
                 }
             } catch (IOException e) {
                 log.warn("Could not restart server: {}", e.toString());
+                return -5;
+            }
+        }
+    }
+
+    public int attemptUpdate(GameServer server) {
+        if (!isEmpty(server)) {
+            int count = server.getPlayers();
+            log.info("Not upgrading server due to players present: {}", count);
+            return count;
+        } else {
+            try {
+                boolean success = adminPanelService.upgrade(server.getSubId());
+                if (success) {
+                    // save status so it's signalled as "dead server" during restart
+                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+                    return 0;
+                } else {
+                    return -1;
+                }
+            } catch (IOException e) {
+                log.warn("Could not upgrade server: {}", e.toString());
+                return -5;
+            }
+        }
+    }
+
+    public int attemptModInstall(GameServer server, String modName) {
+        if (!AVAILABLE_MODS.containsKey(modName)) {
+            log.warn("Invalid mod name: {}", modName);
+            return -6;
+        }
+        if (!isEmpty(server)) {
+            int count = server.getPlayers();
+            log.info("Not installing mod due to players present: {}", count);
+            return count;
+        } else {
+            try {
+                boolean success = adminPanelService.installMod(server.getSubId(), AVAILABLE_MODS.get(modName));
+                if (success) {
+                    // save status so it's signalled as "dead server" during restart
+                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+                    return 0;
+                } else {
+                    return -1;
+                }
+            } catch (IOException e) {
+                log.warn("Could not install mod to server: {}", e.toString());
                 return -5;
             }
         }
