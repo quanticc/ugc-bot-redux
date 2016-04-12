@@ -114,7 +114,11 @@ public class DiscordService implements DiscordSubscriber {
     @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
     public void login() throws DiscordException {
         log.debug("Logging in to Discord");
-        client = newClientBuilder().login();
+        if (client == null) {
+            client = newClientBuilder().login();
+        } else {
+            client.login();
+        }
         log.debug("Registering Discord event listeners");
         queuedListeners.forEach(listener -> {
             log.debug("Registering {}", listener.getClass().getCanonicalName());
@@ -130,18 +134,6 @@ public class DiscordService implements DiscordSubscriber {
     @EventSubscriber
     public void onReady(ReadyEvent event) {
         log.info("*** Discord bot armed ***");
-        for (String guildId : properties.getDiscord().getQuitting()) {
-            IGuild guild = client.getGuildByID(guildId);
-            if (guild != null) {
-                try {
-                    leaveGuild(guild);
-                } catch (InterruptedException e) {
-                    log.warn("Could not leave guild after retrying: {}", e.toString());
-                } catch (DiscordException e) {
-                    log.warn("Discord exception", e);
-                }
-            }
-        }
         List<IGuild> guildList = client.getGuilds();
         for (IGuild guild : guildList) {
             log.info("{}", guildString(guild, client.getOurUser()));
