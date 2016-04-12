@@ -22,7 +22,6 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.IListener;
 import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
-import sx.blah.discord.handle.impl.obj.Invite;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.HTTP429Exception;
@@ -112,7 +111,7 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Retryable(maxAttempts = 10, backoff = @Backoff(delay = 10000L))
+    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
     public void login() throws DiscordException {
         log.debug("Logging in to Discord");
         client = newClientBuilder().login();
@@ -147,25 +146,6 @@ public class DiscordService implements DiscordSubscriber {
         for (IGuild guild : guildList) {
             log.info("{}", guildString(guild, client.getOurUser()));
         }
-        for (String inviteCode : properties.getDiscord().getInvites()) {
-            Invite invite = (Invite) client.getInviteForCode(inviteCode);
-            try {
-                Invite.InviteResponse response = invite.details();
-                if (client.getGuildByID(response.getGuildID()) == null) {
-                    log.info("Accepting invite to {} ({}) @ {} ({})",
-                        response.getChannelName(), response.getChannelID(), response.getGuildName(), response.getGuildID());
-                    invite.accept();
-                    IGuild guild = client.getGuildByID(response.getGuildID());
-                    if (guild != null) {
-                        log.info("{}", guildString(guild, client.getOurUser()));
-                    }
-                } else {
-                    log.info("Invite already accepted: {}", inviteCode);
-                }
-            } catch (Exception e) {
-                log.warn("Could not accept invite {}: {}", inviteCode, e.toString());
-            }
-        }
     }
 
     @EventSubscriber
@@ -176,9 +156,10 @@ public class DiscordService implements DiscordSubscriber {
             lastDisconnectEvent = event;
             lastRestartTime = ZonedDateTime.now();
             try {
+                Thread.sleep(5000L);
                 login();
-            } catch (DiscordException e) {
-                log.warn("Failed to reconnect bot", e);
+            } catch (DiscordException | InterruptedException e) {
+                log.warn("Failed to reconnect bot after retrying", e);
             }
         }
     }
