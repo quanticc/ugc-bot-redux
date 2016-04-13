@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -50,9 +51,11 @@ public class DiscordService implements DiscordSubscriber {
 
     private final LeagueProperties properties;
     private final HealthCheckRegistry healthCheckRegistry;
+    private final Executor taskExecutor;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
+    private final AtomicBoolean connecting = new AtomicBoolean(false);
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
     private final Histogram responseTime;
     private final Counter restartCounter;
@@ -61,9 +64,10 @@ public class DiscordService implements DiscordSubscriber {
 
     @Autowired
     public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry,
-                          HealthCheckRegistry healthCheckRegistry) {
+                          HealthCheckRegistry healthCheckRegistry, Executor taskExecutor) {
         this.properties = properties;
         this.healthCheckRegistry = healthCheckRegistry;
+        this.taskExecutor = taskExecutor;
         this.responseTime = metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM,
             new Histogram(new UniformReservoir()));
         metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE, (Gauge<Long>) this::getMeanResponseTime);
@@ -105,18 +109,24 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    @Async
     public void tryLogin() {
-        try {
-            Thread.sleep(5000L);
-            login();
-        } catch (DiscordException | InterruptedException e) {
-            log.error("Could not connect discord bot", e);
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(5000L);
+                login();
+            } catch (DiscordException | InterruptedException e) {
+                log.error("Could not connect discord bot", e);
+            }
+        }, taskExecutor);
     }
 
     @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
-    public void login() throws DiscordException {
+    public void login() throws DiscordException, InterruptedException {
+        if (connecting.get()) {
+            log.debug("Connection attempt already in progress");
+            return;
+        }
+        connecting.set(true);
         log.debug("Logging in to Discord");
         if (client != null) {
             client.login();
@@ -132,6 +142,11 @@ public class DiscordService implements DiscordSubscriber {
                 client.getDispatcher().registerListener(subscriber);
             });
             client.getDispatcher().registerListener(this);
+        }
+        Thread.sleep(10000L);
+        connecting.set(false);
+        if (!client.isReady()) {
+            throw new DiscordException("Failed to login - retrying");
         }
     }
 
