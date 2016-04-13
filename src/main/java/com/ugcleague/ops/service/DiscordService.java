@@ -89,13 +89,7 @@ public class DiscordService implements DiscordSubscriber {
             }
         });
         if (properties.getDiscord().isAutologin()) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    login();
-                } catch (DiscordException e) {
-                    log.error("Could not connect discord bot", e);
-                }
-            });
+            tryLogin();
         }
     }
 
@@ -111,24 +105,34 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    public void tryLogin() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                login();
+            } catch (DiscordException e) {
+                log.error("Could not connect discord bot", e);
+            }
+        });
+    }
+
     @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
     public void login() throws DiscordException {
         log.debug("Logging in to Discord");
-        if (client == null) {
-            client = newClientBuilder().login();
-        } else {
+        if (client != null) {
             client.login();
+        } else {
+            client = newClientBuilder().login();
+            log.debug("Registering Discord event listeners");
+            queuedListeners.forEach(listener -> {
+                log.debug("Registering {}", listener.getClass().getCanonicalName());
+                client.getDispatcher().registerListener(listener);
+            });
+            queuedSubscribers.forEach(subscriber -> {
+                log.debug("Registering {}", subscriber.getClass().getCanonicalName());
+                client.getDispatcher().registerListener(subscriber);
+            });
+            client.getDispatcher().registerListener(this);
         }
-        log.debug("Registering Discord event listeners");
-        queuedListeners.forEach(listener -> {
-            log.debug("Registering {}", listener.getClass().getCanonicalName());
-            client.getDispatcher().registerListener(listener);
-        });
-        queuedSubscribers.forEach(subscriber -> {
-            log.debug("Registering {}", subscriber.getClass().getCanonicalName());
-            client.getDispatcher().registerListener(subscriber);
-        });
-        client.getDispatcher().registerListener(this);
     }
 
     @EventSubscriber
@@ -149,8 +153,8 @@ public class DiscordService implements DiscordSubscriber {
             lastRestartTime = ZonedDateTime.now();
             try {
                 Thread.sleep(5000L);
-                login();
-            } catch (DiscordException | InterruptedException e) {
+                tryLogin();
+            } catch (InterruptedException e) {
                 log.warn("Failed to reconnect bot after retrying", e);
             }
         }
