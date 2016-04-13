@@ -105,14 +105,14 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
+    @Async
     public void tryLogin() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                login();
-            } catch (DiscordException e) {
-                log.error("Could not connect discord bot", e);
-            }
-        });
+        try {
+            Thread.sleep(5000L);
+            login();
+        } catch (DiscordException | InterruptedException e) {
+            log.error("Could not connect discord bot", e);
+        }
     }
 
     @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
@@ -151,12 +151,7 @@ public class DiscordService implements DiscordSubscriber {
             restartCounter.inc();
             lastDisconnectEvent = event;
             lastRestartTime = ZonedDateTime.now();
-            try {
-                Thread.sleep(5000L);
-                tryLogin();
-            } catch (InterruptedException e) {
-                log.warn("Failed to reconnect bot after retrying", e);
-            }
+            tryLogin();
         }
     }
 
