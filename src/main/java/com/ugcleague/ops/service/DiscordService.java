@@ -112,7 +112,7 @@ public class DiscordService implements DiscordSubscriber {
     public void tryLogin() {
         CompletableFuture.runAsync(() -> {
             try {
-                Thread.sleep(5000L);
+                Thread.sleep(5000L); // 1/5 API rate limit for logging in
                 login();
             } catch (DiscordException | InterruptedException e) {
                 log.error("Could not connect discord bot", e);
@@ -123,7 +123,7 @@ public class DiscordService implements DiscordSubscriber {
     @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
     public void login() throws DiscordException, InterruptedException {
         if (connecting.get()) {
-            log.debug("Connection attempt already in progress");
+            log.debug("Login attempt already in progress");
             return;
         }
         connecting.set(true);
@@ -143,10 +143,12 @@ public class DiscordService implements DiscordSubscriber {
             });
             client.getDispatcher().registerListener(this);
         }
-        Thread.sleep(10000L);
+        long timeout = properties.getDiscord().getTimeoutDelay();
+        Thread.sleep(timeout);
         connecting.set(false);
         if (!client.isReady()) {
-            throw new DiscordException("Failed to login - retrying");
+            log.warn("Failed to ready up after {}ms - retrying", timeout);
+            throw new DiscordException("Timed out");
         }
     }
 
