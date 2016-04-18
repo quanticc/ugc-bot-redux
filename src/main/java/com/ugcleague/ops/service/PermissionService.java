@@ -6,6 +6,7 @@ import com.ugcleague.ops.domain.document.*;
 import com.ugcleague.ops.domain.util.PermissionProvider;
 import com.ugcleague.ops.repository.mongo.PermissionRepository;
 import com.ugcleague.ops.service.discord.command.Command;
+import com.ugcleague.ops.service.discord.util.DiscordUtil;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,10 +170,14 @@ public class PermissionService {
             return cached;
         } else {
             boolean result = slowCanPerform(permissionName, user, channel);
-            log.debug("Caching result of {} -> {}", key, result);
+            log.debug("Caching result of {} -> {}", keyToString(permissionName, user, channel), result);
             permissionCache.put(key, result);
             return result;
         }
+    }
+
+    public String keyToString(String permissionName, IUser user, IChannel channel) {
+        return permissionName + " by " + DiscordUtil.toString(user) + " on " + DiscordUtil.toString(channel);
     }
 
     private boolean slowCanPerform(String permissionName, IUser user, IChannel channel) {

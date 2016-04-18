@@ -6,6 +6,7 @@ import com.ugcleague.ops.repository.mongo.DiscordGuildRepository;
 import com.ugcleague.ops.repository.mongo.DiscordMessageRepository;
 import com.ugcleague.ops.repository.mongo.DiscordUserRepository;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
+import com.ugcleague.ops.service.discord.util.DiscordUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -81,7 +82,10 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     public void onMessageUpdated(MessageUpdateEvent event) {
         IMessage oldMessage = event.getOldMessage();
         IMessage newMessage = event.getNewMessage();
-        if (oldMessage.getContent().startsWith(".")) {
+        if (oldMessage == null || oldMessage.getContent() == null) {
+            log.warn("Old message was deleted or removed from cache: {}",
+                DiscordUtil.toString(event.getNewMessage()));
+        } else if (oldMessage.getContent().startsWith(".")) {
             Optional<DiscordMessage> o = messageRepository.findById(oldMessage.getID());
             if (o.isPresent()) {
                 saveAll(o.isPresent() ? updateMessage(o.get(), newMessage) : newMessage(newMessage));

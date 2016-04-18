@@ -472,8 +472,8 @@ public class SupportPresenter implements DiscordSubscriber {
         if (!enabled) {
             return false;
         }
+        // a null start/finish is equivalent to having 'always' mode
         if (start == null || finish == null) {
-            log.warn("Defaulting to always ON mode due to missing start or finish date: {}", sub);
             return true;
         }
         if (mode == Subscription.Mode.ALWAYS) {

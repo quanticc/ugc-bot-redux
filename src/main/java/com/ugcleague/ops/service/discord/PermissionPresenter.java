@@ -325,6 +325,6 @@ public class PermissionPresenter {
     }
 
     private enum Operation {
-        ALLOW, DENY, RESET;
+        ALLOW, DENY, RESET
     }
 }

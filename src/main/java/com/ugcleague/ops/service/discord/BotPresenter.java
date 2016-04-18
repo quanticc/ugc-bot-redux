@@ -2,6 +2,7 @@ package com.ugcleague.ops.service.discord;
 
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
+import com.ugcleague.ops.service.discord.util.DiscordUtil;
 import com.ugcleague.ops.service.util.GitProperties;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -16,10 +17,7 @@ import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IGuild;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.Presences;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.HTTP429Exception;
-import sx.blah.discord.util.Image;
-import sx.blah.discord.util.MissingPermissionsException;
+import sx.blah.discord.util.*;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
@@ -255,33 +253,49 @@ public class BotPresenter {
         if (optionSet.has("?")) {
             return null;
         }
-        long limit = 1;
+        int limit = 1;
         if (!nonOptions.isEmpty()) {
             String arg = nonOptions.get(0);
             if (arg.matches("[0-9]+")) {
-                limit = Long.parseLong(arg);
+                try {
+                    limit = Integer.parseInt(arg);
+                } catch (NumberFormatException e) {
+                    log.warn("{} tried to input {} as limit", DiscordUtil.toString(m.getAuthor()), arg);
+                }
             }
         }
         deleteLastMessages(m, limit);
         return "";
     }
 
-    private void deleteLastMessages(IMessage m, long limit) {
+    private void deleteLastMessages(IMessage m, int limit) {
+        int maxDepth = 1000;
+        limit = Math.min(maxDepth, limit);
         IDiscordClient client = discordService.getClient();
         IChannel c = client.getChannelByID(m.getChannel().getID());
         if (c != null) {
-            c.getMessages().stream().filter(message -> message.getAuthor().getID()
-                .equalsIgnoreCase(client.getOurUser().getID())).limit(limit).forEach(message -> {
-                try {
-                    discordService.deleteMessage(message);
-                } catch (MissingPermissionsException e) {
-                    log.warn("No permission to perform action: {}", e.toString());
-                } catch (InterruptedException e) {
-                    log.warn("Operation was interrupted");
-                } catch (DiscordException e) {
-                    log.warn("Discord exception", e);
+            log.info("Preparing to delete last {} bot messages to channel {}", limit, c.getName());
+            int cap = c.getMessages().getCacheCapacity();
+            c.getMessages().setCacheCapacity(MessageList.UNLIMITED_CAPACITY);
+            int deleted = 0;
+            int i = 0;
+            while (deleted < limit && i < maxDepth) {
+                IMessage msg = c.getMessages().get(i++);
+                if (msg.getAuthor().equals(client.getOurUser())) {
+                    try {
+                        discordService.deleteMessage(msg);
+                        deleted++;
+                    } catch (MissingPermissionsException e) {
+                        log.warn("No permission to perform action: {}", e.toString());
+                    } catch (InterruptedException e) {
+                        log.warn("Operation was interrupted");
+                    } catch (DiscordException e) {
+                        log.warn("Discord exception", e);
+                    }
                 }
-            });
+            }
+            log.info("Deleted {} of the bot's last messages after searching through {}", deleted, i);
+            c.getMessages().setCacheCapacity(cap);
         }
     }
 
