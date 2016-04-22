@@ -90,21 +90,25 @@ public class AdminPanelService {
      */
     @Retryable(backoff = @Backoff(2000L))
     public Map<String, String> getServerInfo(String subId) throws IOException {
-        Map<String, String> result = new HashMap<>();
+        Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL).data("view", "server_information").data("SUBID", subId).timeout(10000));
+        Result result = extractResult(document.select("td.content_main").text());
+        if (result != Result.SUCCESSFUL) {
+            map.put("result", result.name());
+        }
         Elements infos = document.select("div.server_info > a");
         String surl = infos.first().text();
         if (surl.startsWith("ftp://")) {
             URL url = new URL(surl);
-            result.put("ftp-hostname", url.getHost());
+            map.put("ftp-hostname", url.getHost());
             String[] userInfo = Optional.ofNullable(url.getUserInfo()).orElse("").split(":");
             if (userInfo.length == 2) {
-                result.put("ftp-username", userInfo[0]);
-                result.put("ftp-password", userInfo[1]);
+                map.put("ftp-username", userInfo[0]);
+                map.put("ftp-password", userInfo[1]);
             }
         }
-        return result;
+        return map;
     }
 
     @Retryable(backoff = @Backoff(2000L))
@@ -112,6 +116,10 @@ public class AdminPanelService {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL).data("view", "server_configuration").data("SUBID", subId).timeout(10000));
+        Result result = extractResult(document.select("td.content_main").text());
+        if (result != Result.SUCCESSFUL) {
+            map.put("result", result.name());
+        }
         Elements elements = document.select("input");
         for (Element el : elements) {
             map.put(el.attr("name"), el.attr("value"));
@@ -164,12 +172,17 @@ public class AdminPanelService {
      * successful or not.
      * @throws IOException
      */
-    public boolean restart(String subId) throws IOException {
+    public Result restart(String subId) throws IOException {
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "restart").timeout(60000));
-        log.info("-- RESTART --");
-        log.info("Response: {}", document.select("table.global").text());
-        return true;
+        Result result = extractResult(document.text());
+        if (result == Result.SUCCESSFUL) {
+            log.info("*** Server RESTART in progress: {} --", subId);
+            //log.debug("Response: {}", document.select("table.global").text());
+        } else {
+            log.warn("Could not restart server {}: {}", subId, result);
+        }
+        return result;
     }
 
     /**
@@ -180,12 +193,17 @@ public class AdminPanelService {
      * successful or not.
      * @throws IOException
      */
-    public boolean stop(String subId) throws IOException {
+    public Result stop(String subId) throws IOException {
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "stop").timeout(60000));
-        log.info("-- STOP --");
-        log.info("Response: {}", document.select("table.global").text());
-        return true;
+        Result result = extractResult(document.text());
+        if (result == Result.SUCCESSFUL) {
+            log.info("*** Server STOP in progress: {} ***", subId);
+            //log.debug("Response: {}", document.select("table.global").text());
+        } else {
+            log.warn("Could not stop server {}: {}", subId, result);
+        }
+        return result;
     }
 
     /**
@@ -196,25 +214,55 @@ public class AdminPanelService {
      * successful or not.
      * @throws IOException
      */
-    public boolean upgrade(String subId) throws IOException {
+    public Result upgrade(String subId) throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
             .data("function", "addmod").data("modid", "730").timeout(60000));
-        log.info("-- UPGRADING {} --", subId);
-        log.info("Response: {}", document.select("td.content_main").text());
-        return true;
+        String response = document.select("td.content_main").text();
+        Result result = extractResult(response);
+        if (result == Result.SUCCESSFUL) {
+            log.info("*** Server UPGRADE in progress: {} ***", subId);
+            //log.debug("Response: {}", response);
+        } else {
+            log.warn("Could not upgrade server {}: {}", subId, result);
+        }
+        return result;
     }
 
-    public boolean installMod(String subId, String modId) throws IOException {
+    public Result installMod(String subId, String modId) throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
             .data("function", "addmod2").data("MODID", modId).timeout(60000));
-        log.info("-- INSTALLING MOD {} TO {} --", modId, subId);
-        log.info("Response: {}", document.select("td.content_main").text());
-        return true;
+        String response = document.select("td.content_main").text();
+        Result result = extractResult(response);
+        if (result == Result.SUCCESSFUL) {
+            log.info("*** Server MOD {} INSTALL in progress: {} ***", modId, subId);
+            //log.debug("Response: {}", document.select("td.content_main").text());
+        } else {
+            log.warn("Could not install mod to server {}: {}", subId, result);
+        }
+        return result;
     }
 
     /*
      * Utility methods
      */
+
+    private Result extractResult(String response) {
+        if (response.contains("Please wait")) {
+            // This mod has been recently installed to your server. Please wait awhile before attempting another install
+            return Result.TOO_MANY_INSTALLS;
+        } else if (response.contains("Server is currently offline")) {
+            // Server is currently offline and this action cannot be performed
+            return Result.SERVER_OFFLINE;
+        } else if (response.contains("We have detected an outage")) {
+            /* We have detected an outage with your server and are currently working to resolve this issue.
+            During this time, configuration management is disabled. Server crashes are generally solved within
+            30 minutes and extended mass outages will be reported via the members area alert system.
+             */
+            return Result.OUTAGE_DETECTED;
+        } else {
+            return Result.SUCCESSFUL; // or a result we don't know
+        }
+    }
 
     private synchronized boolean login() throws IOException {
         log.info("Authenticating to GS admin panel");
@@ -263,6 +311,10 @@ public class AdminPanelService {
         connectInfo.put("ftp-username", leagueProperties.getGameServers().getUsername());
         connectInfo.put("ftp-password", leagueProperties.getGameServers().getPassword());
         return connectInfo;
+    }
+
+    public enum Result {
+        SUCCESSFUL, SERVER_OFFLINE, OUTAGE_DETECTED, TOO_MANY_INSTALLS
     }
 
 }

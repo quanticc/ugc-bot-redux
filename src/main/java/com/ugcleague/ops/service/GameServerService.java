@@ -255,9 +255,16 @@ public class GameServerService {
         }
         log.debug("Refreshing RCON password data: {}", server.getName());
         try {
+            // TODO: signal abnormal conditions through incidents instead of just logging
             Map<String, String> result = adminPanelService.getServerConfig(server.getSubId());
+            if (!result.getOrDefault("result", "").equals("")) {
+                log.warn("RCON refresh failed for {}: {}", server.toShortString(), result.get("result"));
+            }
             server.setRconPassword(result.get("rcon_password")); // can be null if the server is bugged
             server.setSvPassword(result.get("sv_password")); // can be null if the server is bugged
+            if (server.getRconPassword() == null || server.getSvPassword() == null) {
+                log.warn("RCON refresh with invalid data for {}", server.toShortString());
+            }
             server.setLastRconDate(ZonedDateTime.now());
             return gameServerRepository.save(server);
         } catch (RemoteAccessException | IOException e) {
@@ -414,11 +421,12 @@ public class GameServerService {
             result.getAttempts().incrementAndGet();
         } else {
             try {
-                if (adminPanelService.upgrade(server.getSubId())) {
-                    // save status so it's signalled as "dead server" during restart
-                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-                    server.setLastGameUpdate(ZonedDateTime.now());
-                }
+                AdminPanelService.Result response = adminPanelService.upgrade(server.getSubId());
+                // save status so it's signalled as "dead server" during restart
+                // TODO: use incidents instead
+                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts()
+                    .addAndGet(response == AdminPanelService.Result.SUCCESSFUL ? 1 : 5);
+                server.setLastGameUpdate(ZonedDateTime.now());
             } catch (IOException e) {
                 log.warn("Could not perform game update: {}", e.toString());
             }
@@ -610,7 +618,9 @@ public class GameServerService {
             return count;
         } else {
             try {
-                boolean success = adminPanelService.restart(server.getSubId());
+                // TODO: improve return
+                AdminPanelService.Result response = adminPanelService.restart(server.getSubId());
+                boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
                     deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
@@ -632,7 +642,9 @@ public class GameServerService {
             return count;
         } else {
             try {
-                boolean success = adminPanelService.upgrade(server.getSubId());
+                // TODO: improve return
+                AdminPanelService.Result response = adminPanelService.upgrade(server.getSubId());
+                boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
                     deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
@@ -658,7 +670,9 @@ public class GameServerService {
             return count;
         } else {
             try {
-                boolean success = adminPanelService.installMod(server.getSubId(), availableMods.get(modName));
+                // TODO: improve return
+                AdminPanelService.Result response = adminPanelService.installMod(server.getSubId(), availableMods.get(modName));
+                boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
                     deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
