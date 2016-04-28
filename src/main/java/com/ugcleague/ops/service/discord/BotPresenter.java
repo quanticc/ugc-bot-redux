@@ -283,6 +283,7 @@ public class BotPresenter {
                 IMessage msg = c.getMessages().get(i++);
                 if (msg.getAuthor().equals(client.getOurUser())) {
                     try {
+                        log.debug("Deleting {}", DiscordUtil.toString(msg));
                         discordService.deleteMessage(msg);
                         deleted++;
                     } catch (MissingPermissionsException e) {
