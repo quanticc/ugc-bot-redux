@@ -464,6 +464,10 @@ public class CommandService implements DiscordSubscriber {
     }
 
     public void unregister(Command command) {
+        if (command == null) {
+            log.warn("Can't unregister a null command");
+            return;
+        }
         log.info("Removing {}", command.getKey());
         commandList.remove(command);
     }

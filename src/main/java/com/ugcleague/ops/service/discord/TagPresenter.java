@@ -183,6 +183,11 @@ public class TagPresenter {
             tag.get().setContent(content);
             log.debug("Updating tag: {}", tag.get());
             tagRepository.save(tag.get());
+            // recreate reply command if existed
+            if (replyCommands.containsKey(tag.get())) {
+                commandService.unregister(replyCommands.remove(tag.get()));
+                replyCommands.put(tag.get(), registerReplyCommand(tag.get()));
+            }
             return "Tag '" + key + "' updated";
         }
 
@@ -202,6 +207,10 @@ public class TagPresenter {
 
             log.debug("Deleting tag: {}", key);
             tagRepository.delete(key);
+            // remove reply command if existed
+            if (replyCommands.containsKey(tag.get())) {
+                commandService.unregister(replyCommands.remove(tag.get()));
+            }
             return "Tag '" + key + "' removed";
         }
 
