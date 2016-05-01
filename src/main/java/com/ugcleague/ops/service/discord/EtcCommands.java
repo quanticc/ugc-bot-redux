@@ -12,6 +12,7 @@ import com.ugcleague.ops.service.discord.util.StatusWrapper;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -226,10 +227,11 @@ public class EtcCommands implements DiscordSubscriber {
                     .replace(discordService.getClient().getOurUser().mention(), "");
                 try {
                     String response = chatterBotSessionMap.get(currentSession).think(content);
+                    response = StringEscapeUtils.unescapeHtml4(response);
                     long delay = System.currentTimeMillis() - start;
                     log.debug("Response took {} ms", delay);
-                    if (delay < 5000L) {
-                        Thread.sleep(5000L - delay);
+                    if (delay < 4000L) {
+                        Thread.sleep(4000L - delay);
                     }
                     discordService.sendMessage(channel, author.mention() + " " + response);
                 } catch (Exception e) {
