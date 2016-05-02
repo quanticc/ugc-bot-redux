@@ -9,6 +9,7 @@ import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import com.ugcleague.ops.service.discord.util.StatusWrapper;
+import com.vdurmont.emoji.EmojiParser;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -223,15 +224,16 @@ public class EtcCommands implements DiscordSubscriber {
             CompletableFuture.runAsync(() -> {
                 channel.toggleTypingStatus();
                 long start = System.currentTimeMillis();
-                String content = message.getContent()
-                    .replace(discordService.getClient().getOurUser().mention(), "");
+                String content = EmojiParser.parseToAliases(message.getContent()
+                    .replace(discordService.getClient().getOurUser().mention(), ""),
+                    EmojiParser.FitzpatrickAction.REMOVE);
                 try {
                     String response = chatterBotSessionMap.get(currentSession).think(content);
                     response = StringEscapeUtils.unescapeHtml4(response);
                     long delay = System.currentTimeMillis() - start;
                     log.debug("Response took {} ms", delay);
-                    if (delay < 4000L) {
-                        Thread.sleep(4000L - delay);
+                    if (delay < 3000L) {
+                        Thread.sleep(3000L - delay);
                     }
                     discordService.sendMessage(channel, author.mention() + " " + response);
                 } catch (Exception e) {
