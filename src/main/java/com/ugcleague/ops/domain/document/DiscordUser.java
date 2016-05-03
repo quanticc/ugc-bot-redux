@@ -22,7 +22,6 @@ public class DiscordUser extends AbstractAuditingEntity implements PermissionPro
     private Set<Permission> allowed = new LinkedHashSet<>();
     @DBRef
     private Set<Permission> denied = new LinkedHashSet<>();
-    private List<Event> events = new ArrayList<>();
     @Field("last_connect")
     private ZonedDateTime lastConnect = ZonedDateTime.now();
     @Field("last_disconnect")
@@ -71,14 +70,6 @@ public class DiscordUser extends AbstractAuditingEntity implements PermissionPro
 
     public void setDenied(Set<Permission> denied) {
         this.denied = denied;
-    }
-
-    public List<Event> getEvents() {
-        return events;
-    }
-
-    public void setEvents(List<Event> events) {
-        this.events = events;
     }
 
     public ZonedDateTime getLastConnect() {

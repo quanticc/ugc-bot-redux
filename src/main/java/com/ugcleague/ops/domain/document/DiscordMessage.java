@@ -6,8 +6,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Document(collection = "discord_message")
@@ -22,7 +20,6 @@ public class DiscordMessage extends AbstractAuditingEntity {
     @DBRef
     private DiscordChannel channel;
     private boolean deleted;
-    private List<Event> events = new ArrayList<>();
 
     public String getId() {
         return id;
@@ -70,14 +67,6 @@ public class DiscordMessage extends AbstractAuditingEntity {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
-    }
-
-    public List<Event> getEvents() {
-        return events;
-    }
-
-    public void setEvents(List<Event> events) {
-        this.events = events;
     }
 
     @Override

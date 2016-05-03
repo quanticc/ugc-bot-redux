@@ -23,7 +23,6 @@ public class DiscordGuild extends AbstractAuditingEntity implements PermissionPr
     private Set<Permission> allowed = new LinkedHashSet<>();
     @DBRef
     private Set<Permission> denied = new LinkedHashSet<>();
-    private List<Event> events = new ArrayList<>();
 
     public DiscordGuild() {
 
@@ -84,14 +83,6 @@ public class DiscordGuild extends AbstractAuditingEntity implements PermissionPr
 
     public void setDenied(Set<Permission> denied) {
         this.denied = denied;
-    }
-
-    public List<Event> getEvents() {
-        return events;
-    }
-
-    public void setEvents(List<Event> events) {
-        this.events = events;
     }
 
     @Override

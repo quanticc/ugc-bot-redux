@@ -1,6 +1,9 @@
 package com.ugcleague.ops.service;
 
-import com.ugcleague.ops.domain.document.*;
+import com.ugcleague.ops.domain.document.DiscordChannel;
+import com.ugcleague.ops.domain.document.DiscordGuild;
+import com.ugcleague.ops.domain.document.DiscordMessage;
+import com.ugcleague.ops.domain.document.DiscordUser;
 import com.ugcleague.ops.repository.mongo.DiscordChannelRepository;
 import com.ugcleague.ops.repository.mongo.DiscordGuildRepository;
 import com.ugcleague.ops.repository.mongo.DiscordMessageRepository;
@@ -19,7 +22,6 @@ import sx.blah.discord.handle.impl.events.*;
 import sx.blah.discord.handle.obj.*;
 
 import javax.annotation.PostConstruct;
-import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -112,7 +114,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         if (message != null && message.getContent() != null && message.getContent().startsWith(".")) {
             messageRepository.findById(message.getID()).ifPresent(msg -> {
                 msg.setDeleted(true);
-                msg.getEvents().add(new Event("deleted_message"));
                 messageRepository.save(msg);
             });
         }
@@ -122,11 +123,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     public void onUserJoin(UserJoinEvent event) {
         IUser user = event.getUser();
         DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
-        Event joined = new Event();
-        joined.setType("guild_join");
-        joined.getProperties().put("guild_id", event.getGuild().getID());
-        joined.getProperties().put("join_time", event.getJoinTime());
-        u.getEvents().add(joined);
         userRepository.save(u);
     }
 
@@ -143,10 +139,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
     public void onUserLeave(UserLeaveEvent event) {
         IUser user = event.getUser();
         DiscordUser u = userRepository.findById(user.getID()).orElseGet(() -> new DiscordUser(user));
-        Event left = new Event();
-        left.setType("guild_leave");
-        left.getProperties().put("guild_id", event.getGuild().getID());
-        u.getEvents().add(left);
         userRepository.save(u);
     }
 
@@ -228,10 +220,6 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
 
     private DiscordUser checkout(DiscordUser u) {
         u.setLastDisconnect(ZonedDateTime.now());
-        Event dc = new Event();
-        dc.setType("disconnected");
-        dc.getProperties().put("millis_connected", Duration.between(u.getLastConnect(), u.getLastDisconnect()).toMillis());
-        u.getEvents().add(dc);
         return u;
     }
 
