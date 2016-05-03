@@ -1,4 +1,4 @@
-package com.ugcleague.ops.web.websocket.dto;
+package com.ugcleague.ops.web.dto;
 
 import java.io.Serializable;
 

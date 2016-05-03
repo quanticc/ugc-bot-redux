@@ -1,6 +1,6 @@
-package com.ugcleague.ops.web.websocket.event;
+package com.ugcleague.ops.event;
 
-import com.ugcleague.ops.web.websocket.dto.ConsoleMessage;
+import com.ugcleague.ops.web.dto.ConsoleMessage;
 import org.springframework.context.ApplicationEvent;
 
 public class ConsoleMessageEvent extends ApplicationEvent {

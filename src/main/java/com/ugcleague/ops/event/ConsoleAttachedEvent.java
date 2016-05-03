@@ -1,13 +1,13 @@
-package com.ugcleague.ops.web.websocket.event;
+package com.ugcleague.ops.event;
 
 import com.ugcleague.ops.domain.GameServer;
 import org.springframework.context.ApplicationEvent;
 
-public class ConsoleDetachedEvent extends ApplicationEvent {
+public class ConsoleAttachedEvent extends ApplicationEvent {
 
     private static final long serialVersionUID = 1L;
 
-    public ConsoleDetachedEvent(GameServer server) {
+    public ConsoleAttachedEvent(GameServer server) {
         super(server);
     }
 
