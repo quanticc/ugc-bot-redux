@@ -37,6 +37,8 @@ import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
@@ -53,6 +55,7 @@ import static java.util.Arrays.asList;
 public class EtcCommands implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(EtcCommands.class);
+    private static final Pattern UNICODE = Pattern.compile("\\|([\\da-fA-F]+)");
 
     private final CommandService commandService;
     private final DiscordService discordService;
@@ -222,6 +225,7 @@ public class EtcCommands implements DiscordSubscriber {
         boolean self = event.getClient().getOurUser().equals(author);
         if (!everyone && !dm && !self) {
             CompletableFuture.runAsync(() -> {
+                // TODO handle typing status concurrent requests
                 channel.toggleTypingStatus();
                 long start = System.currentTimeMillis();
                 String content = EmojiParser.parseToAliases(message.getContent()
@@ -230,6 +234,11 @@ public class EtcCommands implements DiscordSubscriber {
                 try {
                     String response = chatterBotSessionMap.get(currentSession).think(content);
                     response = StringEscapeUtils.unescapeHtml4(response);
+                    Matcher matcher = UNICODE.matcher(response);
+                    while (matcher.find()) {
+                        String hex = matcher.group(1);
+                        response = matcher.replaceFirst(new String(Character.toChars(Integer.parseInt(hex, 16))));
+                    }
                     long delay = System.currentTimeMillis() - start;
                     log.debug("Response took {} ms", delay);
                     if (delay < 3000L) {
