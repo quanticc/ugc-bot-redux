@@ -2,7 +2,6 @@ package com.ugcleague.ops;
 
 import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.javafx.JavaFxSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,7 +72,6 @@ public class Application {
         addDefaultProfile(app, source);
         app.run(args);
         Thread.setDefaultUncaughtExceptionHandler(Application::uncaught);
-        javafx.application.Application.launch(JavaFxSupport.class, args);
     }
 
     private static void uncaught(Thread thread, Throwable throwable) {
