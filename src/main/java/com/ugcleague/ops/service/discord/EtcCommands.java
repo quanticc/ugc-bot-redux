@@ -5,10 +5,8 @@ import com.google.code.chatterbotapi.ChatterBotFactory;
 import com.google.code.chatterbotapi.ChatterBotSession;
 import com.google.code.chatterbotapi.ChatterBotType;
 import com.ugcleague.ops.service.DiscordService;
-import com.ugcleague.ops.service.discord.command.Command;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
-import com.ugcleague.ops.service.discord.util.StatusWrapper;
 import com.vdurmont.emoji.EmojiParser;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -33,7 +31,6 @@ import javax.annotation.PostConstruct;
 import javax.xml.transform.Source;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -42,7 +39,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
-import static java.util.Arrays.asList;
 
 /**
  * Miscellaneous commands that do not fit in another category.
@@ -62,15 +58,9 @@ public class EtcCommands implements DiscordSubscriber {
     private final RestOperations restTemplate;
     private final XPathOperations xPathTemplate;
     private final Executor taskExecutor;
-    private final Random random = new Random();
     private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
     private volatile String currentSession;
 
-    private Command rateCommand;
-    private OptionSpec<Integer> rateNumberSpec;
-    private OptionSpec<Integer> rateWaitSpec;
-    private OptionSpec<Boolean> rateStatusSpec;
-    private OptionSpec<String> rateNonOptionSpec;
     private OptionSpec<String> chatterNonOptionSpec;
 
     @Autowired
@@ -86,7 +76,6 @@ public class EtcCommands implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         initCatApiCommand();
-        initRateTestCommand();
         initChatterBotSessions();
         initChatterCommand();
         discordService.subscribe(this);
@@ -168,51 +157,6 @@ public class EtcCommands implements DiscordSubscriber {
                 });
                 return "";
             }).build());
-    }
-
-    private void initRateTestCommand() {
-        OptionParser parser = newParser();
-        rateNumberSpec = parser.acceptsAll(asList("n", "number"), "Number of messages to send")
-            .withRequiredArg().ofType(Integer.class);
-        rateWaitSpec = parser.acceptsAll(asList("w", "wait"), "Milliseconds before each message")
-            .withRequiredArg().ofType(Integer.class).defaultsTo(1000);
-        rateStatusSpec = parser.acceptsAll(asList("s", "status"), "Display progress with successive edits to the initial reply")
-            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        rateNonOptionSpec = parser.nonOptions("Messages to be displayed").ofType(String.class);
-        rateCommand = CommandBuilder.anyMatch(".echo")
-            .description("Echo a series of messages").support().originReplies().queued().parser(parser)
-            .command(this::echo).build();
-        commandService.register(rateCommand);
-    }
-
-    private String echo(IMessage message, OptionSet optionSet) {
-        if (optionSet.has("?")) {
-            return null;
-        }
-        List<String> messages = optionSet.valuesOf(rateNonOptionSpec);
-        int limit = optionSet.has(rateNumberSpec) ? Math.max(1, optionSet.valueOf(rateNumberSpec)) : (messages.isEmpty() ? 10 : messages.size());
-        long sleep = Math.max(1, optionSet.valueOf(rateWaitSpec));
-        boolean status = optionSet.has(rateStatusSpec) ? optionSet.valueOf(rateStatusSpec) : false;
-        String[] table = {"(╯°□°）╯︵ ┻━┻", "┬─┬\uFEFF ノ( ゜-゜ノ)"};
-        String[] dancing = {"╚(ಠ_ಠ)╗ ♪ ♫ ♪", "╔(ಠ_ಠ)╝ ♫ ♪ ♫"};
-        String[] states = random.nextBoolean() ? table : dancing;
-        for (int i = 0; i < limit; i++) {
-            try {
-                if (status) {
-                    String content = messages.isEmpty() ? states[i % states.length] : messages.get(i % messages.size());
-                    commandService.statusReplyFrom(message, rateCommand,
-                        StatusWrapper.ofWork(i + 1, limit)
-                            .withMessage(content).bar().text());
-                } else {
-                    String content = messages.isEmpty() ? states[i % states.length] : messages.get(i % messages.size());
-                    commandService.replyFrom(message, rateCommand, content);
-                }
-                Thread.sleep(sleep);
-            } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
-                log.warn("Could not send test message", e);
-            }
-        }
-        return "";
     }
 
     @EventSubscriber
