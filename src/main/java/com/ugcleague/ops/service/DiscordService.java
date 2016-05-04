@@ -10,8 +10,6 @@ import com.ugcleague.ops.service.util.MetricNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -55,7 +53,6 @@ public class DiscordService implements DiscordSubscriber {
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
-    private final AtomicBoolean connecting = new AtomicBoolean(false);
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
     private final Histogram responseTime;
     private final Counter restartCounter;
@@ -115,18 +112,16 @@ public class DiscordService implements DiscordSubscriber {
                 Thread.sleep(5000L); // 1/5 API rate limit for logging in
                 login();
             } catch (DiscordException | InterruptedException e) {
-                log.error("Could not connect discord bot", e);
+                throw new RuntimeException(e); // rethrow to handle retry
             }
-        }, taskExecutor);
+        }, taskExecutor).exceptionally(e -> {
+            log.error("Could not connect discord bot", e);
+            tryLogin();
+            return null;
+        });
     }
 
-    @Retryable(maxAttempts = 100, backoff = @Backoff(delay = 1000L, multiplier = 1.5, maxDelay = 300000L))
     public void login() throws DiscordException, InterruptedException {
-        if (connecting.get()) {
-            log.debug("Login attempt already in progress");
-            return;
-        }
-        connecting.set(true);
         log.debug("Logging in to Discord");
         if (client != null) {
             client.login();
@@ -142,13 +137,6 @@ public class DiscordService implements DiscordSubscriber {
                 client.getDispatcher().registerListener(subscriber);
             });
             client.getDispatcher().registerListener(this);
-        }
-        long timeout = properties.getDiscord().getTimeoutDelay();
-        Thread.sleep(timeout);
-        connecting.set(false);
-        if (!client.isReady()) {
-            log.warn("Failed to ready up after {}ms - retrying", timeout);
-            throw new DiscordException("Timed out");
         }
     }
 
