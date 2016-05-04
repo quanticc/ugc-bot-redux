@@ -165,13 +165,13 @@ public class DateUtil {
             return humanizeCronPattern(patterns);
         } else {
             return Arrays.asList(array).stream().map(DateUtil::humanizeCronPattern)
-                .filter(s -> s != null).collect(Collectors.joining(". "));
+                .filter(s -> s != null).collect(Collectors.joining(".\n"));
         }
     }
 
     public static String humanizeCronPattern(String pattern) {
         try {
-            return CronExpressionDescriptor.getDescription(pattern, Locale.ENGLISH);
+            return "• " + CronExpressionDescriptor.getDescription(pattern, Locale.ENGLISH);
         } catch (ParseException e) {
             return null;
         }

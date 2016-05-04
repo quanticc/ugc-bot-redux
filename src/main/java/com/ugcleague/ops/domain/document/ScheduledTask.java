@@ -110,8 +110,8 @@ public class ScheduledTask extends AbstractAuditingEntity {
     }
 
     public String humanString() {
-        return String.format("**%s** is %s and scheduled to run: %s (next run %s)", name,
-            enabled != null && enabled ? "enabled" : "disabled", humanizeCronPatterns(pattern),
-            relativeNextTriggerFromCron(pattern));
+        return String.format("**%s** is %s and scheduled to run %s\n%s\nRaw Pattern: `%s`", name,
+            enabled != null && enabled ? "enabled" : "disabled", relativeNextTriggerFromCron(pattern),
+            humanizeCronPatterns(pattern), pattern);
     }
 }
