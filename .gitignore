@@ -17,6 +17,7 @@ release.sh
 /metrics
 /config
 /prod.yml
+/config.json
 
 ######################
 # Node
