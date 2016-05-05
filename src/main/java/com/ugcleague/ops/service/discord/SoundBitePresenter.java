@@ -62,20 +62,25 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
+        aliases.put("enable", "--enable");
+        aliases.put("disable", "--disable");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
-            .command(this::soundbites).parser(parser).optionAliases(aliases).build());
+            .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
     }
 
     private String soundbites(IMessage message, OptionSet optionSet) {
-        if (message.getChannel().isPrivate()) {
-            return "Does not work with private channels yet";
-        }
         List<String> nonOptions = optionSet.valuesOf(soundbitesNonOptionSpec);
         if (optionSet.has(soundbitesEnableSpec)) {
+            if (message.getChannel().isPrivate()) {
+                return "Does not work with private channels yet";
+            }
             // .sounds enable
             settingsService.getSettings().getSoundBitesWhitelist().add(message.getChannel().getGuild().getID());
         } else if (optionSet.has(soundbitesDisableSpec)) {
+            if (message.getChannel().isPrivate()) {
+                return "Does not work with private channels yet";
+            }
             // .sounds disable
             settingsService.getSettings().getSoundBitesWhitelist().remove(message.getChannel().getGuild().getID());
         } else if (nonOptions.size() > 1) {
@@ -87,7 +92,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         } else {
             return null;
         }
-        return ":ok_hand";
+        return ":ok_hand:";
     }
 
     private SoundBite newSoundBite(String alias, String path) {
