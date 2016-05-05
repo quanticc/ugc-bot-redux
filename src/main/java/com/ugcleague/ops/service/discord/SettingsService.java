@@ -55,9 +55,18 @@ public class SettingsService {
 
     public static class Settings {
         private final Set<String> soundBitesWhitelist = new ConcurrentSkipListSet<>();
+        private volatile String randomSoundDir = "audio";
 
         public Set<String> getSoundBitesWhitelist() {
             return soundBitesWhitelist;
+        }
+
+        public String getRandomSoundDir() {
+            return randomSoundDir;
+        }
+
+        public void setRandomSoundDir(String randomSoundDir) {
+            this.randomSoundDir = randomSoundDir;
         }
     }
 }

@@ -8,6 +8,7 @@ import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,10 @@ import sx.blah.discord.util.DiscordException;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +49,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
     private OptionSpec<String> soundbitesNonOptionSpec;
+    private OptionSpec<String> soundbitesRemoveSpec;
+    private OptionSpec<Void> soundbitesListSpec;
+    private OptionSpec<String> soundbitesRandomSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -60,10 +68,17 @@ public class SoundBitePresenter implements DiscordSubscriber {
         OptionParser parser = newParser();
         soundbitesEnableSpec = parser.accepts("enable", "Enable soundbites in this guild");
         soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
+        soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
+            .withRequiredArg().describedAs("alias");
+        soundbitesListSpec = parser.accepts("list", "List all soundbites");
+        soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
+            .withRequiredArg().describedAs("folder");
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
         aliases.put("disable", "--disable");
+        aliases.put("remove", "--remove");
+        aliases.put("random", "--random");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
@@ -83,6 +98,22 @@ public class SoundBitePresenter implements DiscordSubscriber {
             }
             // .sounds disable
             settingsService.getSettings().getSoundBitesWhitelist().remove(message.getChannel().getGuild().getID());
+        } else if (optionSet.has(soundbitesRemoveSpec)) {
+            String key = optionSet.valueOf(soundbitesRemoveSpec);
+            if (!soundBiteRepository.exists(key)) {
+                return "No sound found with that alias!";
+            }
+            soundBiteRepository.delete(key);
+        } else if (optionSet.has(soundbitesListSpec)) {
+            return soundBiteRepository.findAll().stream().map(SoundBite::getId).collect(Collectors.joining(", "));
+        } else if (optionSet.has(soundbitesRandomSpec)) {
+            String dir = optionSet.valueOf(soundbitesRandomSpec);
+            Path path = Paths.get(dir);
+            if (Files.exists(path) && Files.isDirectory(path)) {
+                settingsService.getSettings().setRandomSoundDir(path.toString());
+            } else {
+                return "Invalid directory!";
+            }
         } else if (nonOptions.size() > 1) {
             // .sounds <alias...> <path>
             String path = nonOptions.get(nonOptions.size() - 1);
@@ -107,26 +138,43 @@ public class SoundBitePresenter implements DiscordSubscriber {
         IMessage message = e.getMessage();
         if (!message.getChannel().isPrivate()
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
-            Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
-            if (soundBite.isPresent()) {
-                try {
-                    Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
-                    if (voiceChannel.isPresent()) {
-                        if (!voiceChannel.get().isConnected()) {
-                            voiceChannel.get().join();
-                        }
-                        AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
-                        File source = new File(soundBite.get().getPath());
-                        if (source.exists()) {
-                            audioChannel.queueFile(source);
-                        } else {
-                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                        }
+            if (message.getContent().equals("!w")) {
+                String dirStr = settingsService.getSettings().getRandomSoundDir();
+                if (dirStr != null) {
+                    Path dir = Paths.get(dirStr);
+                    try {
+                        List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
+                            .collect(Collectors.toList());
+                        play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
+                    } catch (IOException e1) {
+                        log.warn("Could not create list of random sounds", e1);
                     }
-                } catch (DiscordException ex) {
-                    log.warn("Unable to play sound bite", ex);
+                }
+            } else {
+                Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
+                if (soundBite.isPresent()) {
+                    File source = new File(soundBite.get().getPath());
+                    if (!source.exists()) {
+                        log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                    }
+                    play(source, message);
                 }
             }
+        }
+    }
+
+    private void play(File source, IMessage message) {
+        try {
+            Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
+            if (voiceChannel.isPresent()) {
+                if (!voiceChannel.get().isConnected()) {
+                    voiceChannel.get().join();
+                }
+                AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
+                audioChannel.queueFile(source);
+            }
+        } catch (DiscordException e) {
+            log.warn("Unable to play sound bite", e);
         }
     }
 
