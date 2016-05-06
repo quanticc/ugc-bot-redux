@@ -286,6 +286,7 @@ public class BotPresenter {
                     IMessage msg = c.getMessages().get(i++);
                     if (msg.getAuthor().equals(client.getOurUser())) {
                         toDelete.add(msg);
+                        deleted++;
                     }
                 } catch (ArrayIndexOutOfBoundsException e) {
                     // we reached the end apparently
@@ -300,10 +301,10 @@ public class BotPresenter {
                         log.warn("Deletion interrupted");
                         break;
                     }
+                    Thread.sleep(1000);
                     log.debug("Deleting message #{} by {} @ {}", m.getID(), DiscordUtil.toString(m.getAuthor()),
                         DiscordUtil.toString(m.getChannel()));
                     discordService.deleteMessage(msg);
-                    deleted++;
                 } catch (MissingPermissionsException e) {
                     log.warn("No permission to perform action: {}", e.toString());
                 } catch (InterruptedException e) {
