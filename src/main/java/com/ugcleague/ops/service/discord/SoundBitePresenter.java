@@ -79,6 +79,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         aliases.put("disable", "--disable");
         aliases.put("remove", "--remove");
         aliases.put("random", "--random");
+        aliases.put("list", "--list");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());

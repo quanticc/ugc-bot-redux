@@ -19,9 +19,9 @@ public class CustomHelpFormatter extends BuiltinHelpFormatter {
     @Override
     protected void addHeaders(Collection<? extends OptionDescriptor> options) {
         if (hasRequiredOption(options)) {
-            addOptionRow("*Option* (* = required)", "*Description*");
+            addOptionRow("Parameters:\n*Option* (* = required)", "*Description*");
         } else {
-            addOptionRow("*Option*", "*Description*");
+            addOptionRow("Parameters:\n*Option*", "*Description*");
         }
     }
 
@@ -32,5 +32,10 @@ public class CustomHelpFormatter extends BuiltinHelpFormatter {
                 addOptionRow("**" + createOptionDisplay(each) + "**", createDescriptionDisplay(each));
             }
         }
+    }
+
+    @Override
+    protected String optionLeader(String option) {
+        return option.length() > 1 ? "" : "-";
     }
 }
