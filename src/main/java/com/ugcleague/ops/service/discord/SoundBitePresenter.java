@@ -20,6 +20,7 @@ import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
+import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
@@ -30,6 +31,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -174,6 +176,20 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                 audioChannel.queueFile(source);
             }
+            // cleanup message
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    log.warn("Interrupted while waiting");
+                }
+            }).thenRun(() -> {
+                try {
+                    discordService.deleteMessage(message);
+                } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
+                    log.warn("Could not perform cleanup: {}", e.toString());
+                }
+            });
         } catch (DiscordException e) {
             log.warn("Unable to play sound bite", e);
         }
