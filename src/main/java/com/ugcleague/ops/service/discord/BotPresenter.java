@@ -27,6 +27,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.charset.Charset;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -279,20 +280,36 @@ public class BotPresenter {
             c.getMessages().setCacheCapacity(MessageList.UNLIMITED_CAPACITY);
             int deleted = 0;
             int i = 0;
+            List<IMessage> toDelete = new ArrayList<>();
             while (deleted < limit && i < maxDepth) {
-                IMessage msg = c.getMessages().get(i++);
-                if (msg.getAuthor().equals(client.getOurUser())) {
-                    try {
-                        log.debug("Deleting {}", DiscordUtil.toString(msg));
-                        discordService.deleteMessage(msg);
-                        deleted++;
-                    } catch (MissingPermissionsException e) {
-                        log.warn("No permission to perform action: {}", e.toString());
-                    } catch (InterruptedException e) {
-                        log.warn("Operation was interrupted");
-                    } catch (DiscordException e) {
-                        log.warn("Discord exception", e);
+                try {
+                    IMessage msg = c.getMessages().get(i++);
+                    if (msg.getAuthor().equals(client.getOurUser())) {
+                        toDelete.add(msg);
                     }
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    // we reached the end apparently
+                    log.warn("Could not retrieve messages to delete", e);
+                    break;
+                }
+            }
+            log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(c));
+            for (IMessage msg : toDelete) {
+                try {
+                    if (Thread.interrupted()) {
+                        log.warn("Deletion interrupted");
+                        break;
+                    }
+                    log.debug("Deleting message #{} by {} @ {}", m.getID(), DiscordUtil.toString(m.getAuthor()),
+                        DiscordUtil.toString(m.getChannel()));
+                    discordService.deleteMessage(msg);
+                    deleted++;
+                } catch (MissingPermissionsException e) {
+                    log.warn("No permission to perform action: {}", e.toString());
+                } catch (InterruptedException e) {
+                    log.warn("Operation was interrupted");
+                } catch (DiscordException e) {
+                    log.warn("Discord exception", e);
                 }
             }
             log.info("Deleted {} of the bot's last messages after searching through {}", deleted, i);
