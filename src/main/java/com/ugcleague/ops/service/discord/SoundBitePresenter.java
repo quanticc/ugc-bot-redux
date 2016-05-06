@@ -180,11 +180,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
             CompletableFuture.runAsync(() -> {
                 try {
                     Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    log.warn("Interrupted while waiting");
-                }
-            }).thenRun(() -> {
-                try {
                     discordService.deleteMessage(message);
                 } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
                     log.warn("Could not perform cleanup: {}", e.toString());
