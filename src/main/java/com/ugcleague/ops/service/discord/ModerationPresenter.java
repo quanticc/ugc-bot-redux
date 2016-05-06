@@ -65,10 +65,11 @@ public class ModerationPresenter {
         aliases.put("after", "--after");
         aliases.put("since", "--since");
         deleteLastSpec = parser.accepts("last", "Limit deletion to the latest N").withRequiredArg()
-            .ofType(Integer.class).describedAs("N");
+            .ofType(Integer.class).describedAs("N").defaultsTo(100);
         deleteMatchingSpec = parser.accepts("matching", "Delete messages matching this regex").withRequiredArg()
             .describedAs("regex");
-        deleteLikeSpec = parser.accepts("like", "Delete messages containing this string").withRequiredArg();
+        deleteLikeSpec = parser.accepts("like", "Delete messages containing this string").withRequiredArg()
+            .describedAs("string");
         deleteFromSpec = parser.accepts("from", "Delete messages from this user (@mention, name or ID)").withRequiredArg()
             .describedAs("user");
         deleteBeforeSpec = parser.acceptsAll(asList("before", "until"), "Delete messages before this time").withRequiredArg()
