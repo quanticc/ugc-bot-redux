@@ -56,6 +56,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
     private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
+    private final Object lock = new Object();
 
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
@@ -191,13 +192,15 @@ public class SoundBitePresenter implements DiscordSubscriber {
         try {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
             if (voiceChannel.isPresent()) {
-                voiceChannel.get().join();
-                AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
-                playing.put(source, voiceChannel.get());
-                queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
-                Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
-                settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
-                audioChannel.queueFile(source);
+                synchronized (lock) {
+                    voiceChannel.get().join();
+                    AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
+                    playing.put(source, voiceChannel.get());
+                    queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
+                    Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
+                    settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
+                    audioChannel.queueFile(source);
+                }
             }
             CompletableFuture.runAsync(() -> {
                 try {
@@ -217,15 +220,17 @@ public class SoundBitePresenter implements DiscordSubscriber {
         Optional<File> source = event.getFileSource();
         if (source.isPresent()) {
             CompletableFuture.runAsync(() -> {
-                IVoiceChannel channel = playing.get(source.get());
-                if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
-                    try {
-                        Thread.sleep(750);
-                    } catch (InterruptedException ignore) {
+                synchronized (lock) {
+                    IVoiceChannel channel = playing.get(source.get());
+                    if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
+                        try {
+                            Thread.sleep(750);
+                        } catch (InterruptedException ignore) {
+                        }
+                        log.debug("Leaving {}", DiscordUtil.toString(channel));
+                        channel.leave();
+                        playing.remove(source.get());
                     }
-                    log.debug("Leaving {}", DiscordUtil.toString(channel));
-                    channel.leave();
-                    playing.remove(source.get());
                 }
             }, taskExecutor);
         }
