@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 @Service
@@ -56,6 +58,7 @@ public class SettingsService {
     public static class Settings {
         private final Set<String> soundBitesWhitelist = new ConcurrentSkipListSet<>();
         private volatile String randomSoundDir = "audio";
+        private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
 
         public Set<String> getSoundBitesWhitelist() {
             return soundBitesWhitelist;
@@ -67,6 +70,10 @@ public class SettingsService {
 
         public void setRandomSoundDir(String randomSoundDir) {
             this.randomSoundDir = randomSoundDir;
+        }
+
+        public Map<String, Integer> getPlayCount() {
+            return playCount;
         }
     }
 }

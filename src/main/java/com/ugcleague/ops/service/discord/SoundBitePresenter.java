@@ -5,6 +5,7 @@ import com.ugcleague.ops.repository.mongo.SoundBiteRepository;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
+import com.ugcleague.ops.service.discord.util.DiscordUtil;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.EventSubscriber;
 import sx.blah.discord.handle.AudioChannel;
+import sx.blah.discord.handle.impl.events.AudioStopEvent;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IVoiceChannel;
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -47,6 +50,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private final SoundBiteRepository soundBiteRepository;
     private final SettingsService settingsService;
     private final CommandService commandService;
+
+    private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
 
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
@@ -85,6 +90,17 @@ public class SoundBitePresenter implements DiscordSubscriber {
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
+        commandService.register(CommandBuilder.equalsTo(".soundstats").unrestricted().originReplies()
+            .description("Sound playback statistics").noParser().command((message, optionSet) -> {
+                if (!message.getChannel().isPrivate()
+                    && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
+                    return settingsService.getSettings().getPlayCount().entrySet()
+                        .stream().map(e -> "`" + e.getValue() + "` " + e.getKey())
+                        .collect(Collectors.joining("\n"));
+                } else {
+                    return "";
+                }
+            }).build());
     }
 
     private String soundbites(IMessage message, OptionSet optionSet) {
@@ -170,11 +186,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
         try {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
             if (voiceChannel.isPresent()) {
-                if (!voiceChannel.get().isConnected()) {
-                    voiceChannel.get().join();
-                }
+                voiceChannel.get().join();
                 AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                 audioChannel.queueFile(source);
+                playing.put(source, voiceChannel.get());
+                Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
+                settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
             }
             // cleanup message
             CompletableFuture.runAsync(() -> {
@@ -187,6 +204,19 @@ public class SoundBitePresenter implements DiscordSubscriber {
             });
         } catch (DiscordException e) {
             log.warn("Unable to play sound bite", e);
+        }
+    }
+
+    @EventSubscriber
+    public void onAudioStopped(AudioStopEvent event) {
+        Optional<File> source = event.getFileSource();
+        if (source.isPresent()) {
+            IVoiceChannel channel = playing.get(source.get());
+            if (channel != null) {
+                log.debug("Leaving {}", DiscordUtil.toString(channel));
+                channel.leave();
+                playing.remove(source.get());
+            }
         }
     }
 
