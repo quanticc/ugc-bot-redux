@@ -5,7 +5,6 @@ import com.ugcleague.ops.repository.mongo.SoundBiteRepository;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
-import com.ugcleague.ops.service.discord.util.DiscordUtil;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.EventSubscriber;
 import sx.blah.discord.handle.AudioChannel;
-import sx.blah.discord.handle.impl.events.AudioStopEvent;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IVoiceChannel;
@@ -34,9 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -54,8 +50,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private final CommandService commandService;
     private final Executor taskExecutor;
 
-    private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
-    private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
+    //private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
+    //private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
     private final Object lock = new Object();
 
     private OptionSpec<Void> soundbitesEnableSpec;
@@ -100,13 +96,32 @@ public class SoundBitePresenter implements DiscordSubscriber {
             .description("Sound playback statistics").noParser().command((message, optionSet) -> {
                 if (!message.getChannel().isPrivate()
                     && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
-                    return settingsService.getSettings().getPlayCount().entrySet()
-                        .stream().map(e -> "`" + e.getValue() + "` " + e.getKey())
+                    return settingsService.getSettings().getPlayCount().entrySet().stream()
+                        .map(e -> new PlayCount(e.getValue(), e.getKey()))
+                        .filter(p -> p.count > 1)
+                        .sorted()
+                        .map(p -> "`" + p.count + "` " + p.name)
                         .collect(Collectors.joining("\n"));
                 } else {
                     return "";
                 }
             }).build());
+    }
+
+    private static class PlayCount implements Comparable<PlayCount> {
+        private final int count;
+        private final String name;
+
+        private PlayCount(int count, String name) {
+            this.count = count;
+            this.name = name;
+        }
+
+
+        @Override
+        public int compareTo(PlayCount o) {
+            return Integer.compare(count, o.count);
+        }
     }
 
     private String soundbites(IMessage message, OptionSet optionSet) {
@@ -195,8 +210,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 synchronized (lock) {
                     voiceChannel.get().join();
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
-                    playing.put(source, voiceChannel.get());
-                    queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
+                    //playing.put(source, voiceChannel.get());
+                    //queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
                     Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                     settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
                     audioChannel.queueFile(source);
@@ -215,25 +230,25 @@ public class SoundBitePresenter implements DiscordSubscriber {
         }
     }
 
-    @EventSubscriber
-    public void onAudioStopped(AudioStopEvent event) {
-        Optional<File> source = event.getFileSource();
-        if (source.isPresent()) {
-            CompletableFuture.runAsync(() -> {
-                synchronized (lock) {
-                    IVoiceChannel channel = playing.get(source.get());
-                    if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
-                        try {
-                            Thread.sleep(750);
-                        } catch (InterruptedException ignore) {
-                        }
-                        log.debug("Leaving {}", DiscordUtil.toString(channel));
-                        channel.leave();
-                        playing.remove(source.get());
-                    }
-                }
-            }, taskExecutor);
-        }
-    }
+//    @EventSubscriber
+//    public void onAudioStopped(AudioStopEvent event) {
+//        Optional<File> source = event.getFileSource();
+//        if (source.isPresent()) {
+//            CompletableFuture.runAsync(() -> {
+//                synchronized (lock) {
+//                    IVoiceChannel channel = playing.get(source.get());
+//                    if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
+//                        try {
+//                            Thread.sleep(750);
+//                        } catch (InterruptedException ignore) {
+//                        }
+//                        log.debug("Leaving {}", DiscordUtil.toString(channel));
+//                        channel.leave();
+//                        playing.remove(source.get());
+//                    }
+//                }
+//            }, taskExecutor);
+//        }
+//    }
 
 }

@@ -191,6 +191,10 @@ public class EtcCommands implements DiscordSubscriber {
                     discordService.sendMessage(channel, author.mention() + " " + response);
                 } catch (Exception e) {
                     log.warn("Could not process chatter input", e);
+                    try {
+                        discordService.sendMessage(channel, author.mention() + " Error: (╯°□°）╯︵ ┻━┻");
+                    } catch (DiscordException | MissingPermissionsException | InterruptedException ignore) {
+                    }
                     channel.toggleTypingStatus();
                 }
             }, taskExecutor);
