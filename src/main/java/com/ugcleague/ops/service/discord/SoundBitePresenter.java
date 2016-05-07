@@ -211,12 +211,18 @@ public class SoundBitePresenter implements DiscordSubscriber {
     public void onAudioStopped(AudioStopEvent event) {
         Optional<File> source = event.getFileSource();
         if (source.isPresent()) {
-            IVoiceChannel channel = playing.get(source.get());
-            if (channel != null) {
-                log.debug("Leaving {}", DiscordUtil.toString(channel));
-                channel.leave();
-                playing.remove(source.get());
-            }
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ignore) {
+                }
+                IVoiceChannel channel = playing.get(source.get());
+                if (channel != null) {
+                    log.debug("Leaving {}", DiscordUtil.toString(channel));
+                    channel.leave();
+                    playing.remove(source.get());
+                }
+            });
         }
     }
 
