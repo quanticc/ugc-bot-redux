@@ -96,12 +96,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
             .description("Sound playback statistics").noParser().command((message, optionSet) -> {
                 if (!message.getChannel().isPrivate()
                     && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
-                    return settingsService.getSettings().getPlayCount().entrySet().stream()
-                        .map(e -> new PlayCount(e.getValue(), e.getKey()))
-                        .filter(p -> p.count > 1)
-                        .sorted()
-                        .map(p -> "`" + p.count + "` " + p.name)
-                        .collect(Collectors.joining("\n"));
+                    List<PlayCount> counts = settingsService.getSettings().getPlayCount().entrySet().stream()
+                        .map(e -> new PlayCount(e.getValue(), e.getKey())).collect(Collectors.toList());
+                    int sum = counts.stream().map(p -> p.count).reduce(0, Integer::sum);
+                    return "`" + sum + "` total plays of `" + counts.size() + "` unique sounds\n**Top 25**\n" +
+                        counts.stream().filter(p -> p.count > 1)
+                            .sorted().limit(25)
+                            .map(p -> "`" + p.count + "` " + p.name)
+                            .collect(Collectors.joining("\n"));
                 } else {
                     return "";
                 }
@@ -120,7 +122,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
         @Override
         public int compareTo(PlayCount o) {
-            return Integer.compare(count, o.count);
+            return -Integer.compare(count, o.count);
         }
     }
 
