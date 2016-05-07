@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -50,8 +52,10 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private final SoundBiteRepository soundBiteRepository;
     private final SettingsService settingsService;
     private final CommandService commandService;
+    private final Executor taskExecutor;
 
     private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
+    private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
 
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
@@ -62,11 +66,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
-                              SettingsService settingsService, CommandService commandService) {
+                              SettingsService settingsService, CommandService commandService, Executor taskExecutor) {
         this.discordService = discordService;
         this.soundBiteRepository = soundBiteRepository;
         this.settingsService = settingsService;
         this.commandService = commandService;
+        this.taskExecutor = taskExecutor;
     }
 
     @PostConstruct
@@ -188,12 +193,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (voiceChannel.isPresent()) {
                 voiceChannel.get().join();
                 AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
-                audioChannel.queueFile(source);
                 playing.put(source, voiceChannel.get());
+                queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(1)).incrementAndGet();
                 Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                 settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
+                audioChannel.queueFile(source);
             }
-            // cleanup message
             CompletableFuture.runAsync(() -> {
                 try {
                     Thread.sleep(3000);
@@ -201,7 +206,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
                     log.warn("Could not perform cleanup: {}", e.toString());
                 }
-            });
+            }, taskExecutor);
         } catch (DiscordException e) {
             log.warn("Unable to play sound bite", e);
         }
@@ -212,17 +217,17 @@ public class SoundBitePresenter implements DiscordSubscriber {
         Optional<File> source = event.getFileSource();
         if (source.isPresent()) {
             CompletableFuture.runAsync(() -> {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException ignore) {
-                }
                 IVoiceChannel channel = playing.get(source.get());
-                if (channel != null) {
+                if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
+                    try {
+                        Thread.sleep(750);
+                    } catch (InterruptedException ignore) {
+                    }
                     log.debug("Leaving {}", DiscordUtil.toString(channel));
                     channel.leave();
                     playing.remove(source.get());
                 }
-            });
+            }, taskExecutor);
         }
     }
 
