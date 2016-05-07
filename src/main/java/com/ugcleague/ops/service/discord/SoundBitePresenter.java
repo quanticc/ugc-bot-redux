@@ -194,7 +194,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 voiceChannel.get().join();
                 AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                 playing.put(source, voiceChannel.get());
-                queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(1)).incrementAndGet();
+                queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
                 Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                 settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
                 audioChannel.queueFile(source);
