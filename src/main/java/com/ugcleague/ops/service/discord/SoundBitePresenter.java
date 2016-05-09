@@ -32,7 +32,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -219,8 +221,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
             try {
                 List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
                     .collect(Collectors.toList());
-                play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
                 CompletableFuture.runAsync(() -> {
+                    play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
                     try {
                         Thread.sleep(3000);
                         discordService.deleteMessage(message);
@@ -240,6 +242,19 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (voiceChannel.isPresent()) {
                 synchronized (lock) {
                     voiceChannel.get().join();
+                    CountDownLatch latch = new CountDownLatch(1);
+                    // block until we connect
+                    CompletableFuture.runAsync(() -> {
+                        while (!voiceChannel.get().isConnected()) {
+                            try {
+                                Thread.sleep(250);
+                            } catch (InterruptedException e) {
+                                log.warn("Interrupted while waiting for connection", e);
+                            }
+                        }
+                        latch.countDown();
+                    }, taskExecutor);
+                    latch.await(1, TimeUnit.MINUTES);
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                     //playing.put(source, voiceChannel.get());
                     //queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
@@ -248,7 +263,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     audioChannel.queueFile(source);
                 }
             }
-        } catch (DiscordException e) {
+        } catch (DiscordException | InterruptedException e) {
             log.warn("Unable to play sound bite", e);
         }
     }
