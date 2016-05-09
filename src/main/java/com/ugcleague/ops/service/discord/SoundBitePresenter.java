@@ -242,19 +242,21 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (voiceChannel.isPresent()) {
                 synchronized (lock) {
                     voiceChannel.get().join();
-                    CountDownLatch latch = new CountDownLatch(1);
-                    // block until we connect
-                    CompletableFuture.runAsync(() -> {
-                        while (!voiceChannel.get().isConnected()) {
-                            try {
-                                Thread.sleep(250);
-                            } catch (InterruptedException e) {
-                                log.warn("Interrupted while waiting for connection", e);
+                    if (!voiceChannel.get().isConnected()) {
+                        CountDownLatch latch = new CountDownLatch(1);
+                        // block until we connect
+                        CompletableFuture.runAsync(() -> {
+                            while (!voiceChannel.get().isConnected()) {
+                                try {
+                                    Thread.sleep(250);
+                                } catch (InterruptedException e) {
+                                    log.warn("Interrupted while waiting for connection", e);
+                                }
                             }
-                        }
-                        latch.countDown();
-                    }, taskExecutor);
-                    latch.await(1, TimeUnit.MINUTES);
+                            latch.countDown();
+                        }, taskExecutor);
+                        latch.await(1, TimeUnit.MINUTES);
+                    }
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                     //playing.put(source, voiceChannel.get());
                     //queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
