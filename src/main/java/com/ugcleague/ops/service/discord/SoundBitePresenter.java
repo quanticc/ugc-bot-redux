@@ -196,7 +196,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message);
             } else if (message.getContent().endsWith("?")) {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(750);
                 } catch (InterruptedException ignore) {
                 }
                 playFromDir(settingsService.getSettings().getAnswerSoundDir(), message);
