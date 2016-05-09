@@ -196,11 +196,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
             if (message.getContent().toLowerCase().equals("!w")) {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true);
-            } else if (message.getContent().endsWith("?")) {
-                try {
-                    Thread.sleep(750);
-                } catch (InterruptedException ignore) {
-                }
+            } else if (message.getContent().endsWith("?") || message.getContent().toLowerCase().equals("!")) {
                 playFromDir(settingsService.getSettings().getAnswerSoundDir(), message, false);
             } else {
                 Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
