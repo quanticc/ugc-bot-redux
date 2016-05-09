@@ -60,6 +60,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<String> soundbitesRemoveSpec;
     private OptionSpec<Void> soundbitesListSpec;
     private OptionSpec<String> soundbitesRandomSpec;
+    private OptionSpec<String> soundbitesAnswerSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -82,12 +83,15 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesListSpec = parser.accepts("list", "List all soundbites");
         soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
             .withRequiredArg().describedAs("folder");
+        soundbitesAnswerSpec = parser.accepts("answer", "Define a folder as the pool of 8ball sounds")
+            .withRequiredArg().describedAs("folder");
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
         aliases.put("disable", "--disable");
         aliases.put("remove", "--remove");
         aliases.put("random", "--random");
+        aliases.put("answer", "--answer");
         aliases.put("list", "--list");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
@@ -156,6 +160,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
             } else {
                 return "Invalid directory!";
             }
+        } else if (optionSet.has(soundbitesAnswerSpec)) {
+            String dir = optionSet.valueOf(soundbitesAnswerSpec);
+            Path path = Paths.get(dir);
+            if (Files.exists(path) && Files.isDirectory(path)) {
+                settingsService.getSettings().setAnswerSoundDir(path.toString());
+            } else {
+                return "Invalid directory!";
+            }
         } else if (nonOptions.size() > 1) {
             // .sounds <alias...> <path>
             String path = nonOptions.get(nonOptions.size() - 1);
@@ -180,18 +192,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
         IMessage message = e.getMessage();
         if (!message.getChannel().isPrivate()
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
-            if (message.getContent().equals("!w")) {
-                String dirStr = settingsService.getSettings().getRandomSoundDir();
-                if (dirStr != null) {
-                    Path dir = Paths.get(dirStr);
-                    try {
-                        List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
-                            .collect(Collectors.toList());
-                        play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
-                    } catch (IOException e1) {
-                        log.warn("Could not create list of random sounds", e1);
-                    }
+            if (message.getContent().toLowerCase().equals("!w")) {
+                playFromDir(settingsService.getSettings().getRandomSoundDir(), message);
+            } else if (message.getContent().endsWith("?")) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {
                 }
+                playFromDir(settingsService.getSettings().getAnswerSoundDir(), message);
             } else {
                 Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
                 if (soundBite.isPresent()) {
@@ -201,6 +209,27 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     }
                     play(source, message);
                 }
+            }
+        }
+    }
+
+    private void playFromDir(String dirStr, IMessage message) {
+        if (dirStr != null) {
+            Path dir = Paths.get(dirStr);
+            try {
+                List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
+                    .collect(Collectors.toList());
+                play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Thread.sleep(3000);
+                        discordService.deleteMessage(message);
+                    } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
+                        log.warn("Could not perform cleanup: {}", ex.toString());
+                    }
+                }, taskExecutor);
+            } catch (IOException e1) {
+                log.warn("Could not create list of random sounds", e1);
             }
         }
     }
@@ -219,14 +248,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     audioChannel.queueFile(source);
                 }
             }
-            CompletableFuture.runAsync(() -> {
-                try {
-                    Thread.sleep(3000);
-                    discordService.deleteMessage(message);
-                } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
-                    log.warn("Could not perform cleanup: {}", e.toString());
-                }
-            }, taskExecutor);
         } catch (DiscordException e) {
             log.warn("Unable to play sound bite", e);
         }

@@ -58,6 +58,7 @@ public class SettingsService {
     public static class Settings {
         private final Set<String> soundBitesWhitelist = new ConcurrentSkipListSet<>();
         private volatile String randomSoundDir = "audio";
+        private volatile String answerSoundDir = "audio";
         private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
 
         public Set<String> getSoundBitesWhitelist() {
@@ -74,6 +75,14 @@ public class SettingsService {
 
         public Map<String, Integer> getPlayCount() {
             return playCount;
+        }
+
+        public String getAnswerSoundDir() {
+            return answerSoundDir;
+        }
+
+        public void setAnswerSoundDir(String answerSoundDir) {
+            this.answerSoundDir = answerSoundDir;
         }
     }
 }
