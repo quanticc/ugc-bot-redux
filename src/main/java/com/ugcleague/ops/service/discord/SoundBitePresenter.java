@@ -195,13 +195,13 @@ public class SoundBitePresenter implements DiscordSubscriber {
         if (!message.getChannel().isPrivate()
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
             if (message.getContent().toLowerCase().equals("!w")) {
-                playFromDir(settingsService.getSettings().getRandomSoundDir(), message);
+                playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true);
             } else if (message.getContent().endsWith("?")) {
                 try {
                     Thread.sleep(750);
                 } catch (InterruptedException ignore) {
                 }
-                playFromDir(settingsService.getSettings().getAnswerSoundDir(), message);
+                playFromDir(settingsService.getSettings().getAnswerSoundDir(), message, false);
             } else {
                 Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
                 if (soundBite.isPresent()) {
@@ -215,7 +215,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         }
     }
 
-    private void playFromDir(String dirStr, IMessage message) {
+    private void playFromDir(String dirStr, IMessage message, boolean delete) {
         if (dirStr != null) {
             Path dir = Paths.get(dirStr);
             try {
@@ -223,11 +223,13 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     .collect(Collectors.toList());
                 CompletableFuture.runAsync(() -> {
                     play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
-                    try {
-                        Thread.sleep(3000);
-                        discordService.deleteMessage(message);
-                    } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
-                        log.warn("Could not perform cleanup: {}", ex.toString());
+                    if (delete) {
+                        try {
+                            Thread.sleep(3000);
+                            discordService.deleteMessage(message);
+                        } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
+                            log.warn("Could not perform cleanup: {}", ex.toString());
+                        }
                     }
                 }, taskExecutor);
             } catch (IOException e1) {
