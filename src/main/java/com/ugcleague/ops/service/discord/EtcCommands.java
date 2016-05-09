@@ -7,11 +7,9 @@ import com.google.code.chatterbotapi.ChatterBotType;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
-import com.vdurmont.emoji.EmojiParser;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestOperations;
 import org.springframework.xml.xpath.XPathOperations;
 import org.w3c.dom.Element;
-import sx.blah.discord.api.EventSubscriber;
-import sx.blah.discord.handle.impl.events.MentionEvent;
-import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 
@@ -34,7 +28,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -159,45 +152,41 @@ public class EtcCommands implements DiscordSubscriber {
             }).build());
     }
 
-    @EventSubscriber
-    public void onMention(MentionEvent event) {
-        IMessage message = event.getMessage();
-        IChannel channel = event.getMessage().getChannel();
-        IUser author = event.getMessage().getAuthor();
-        boolean everyone = message.mentionsEveryone();
-        boolean dm = channel.isPrivate();
-        boolean self = event.getClient().getOurUser().equals(author);
-        if (!everyone && !dm && !self) {
-            CompletableFuture.runAsync(() -> {
-                // TODO handle typing status concurrent requests
-                channel.toggleTypingStatus();
-                long start = System.currentTimeMillis();
-                String content = EmojiParser.parseToAliases(message.getContent()
-                    .replace(discordService.getClient().getOurUser().mention(), ""),
-                    EmojiParser.FitzpatrickAction.REMOVE);
-                try {
-                    String response = chatterBotSessionMap.get(currentSession).think(content);
-                    response = StringEscapeUtils.unescapeHtml4(response);
-                    Matcher matcher = UNICODE.matcher(response);
-                    while (matcher.find()) {
-                        String hex = matcher.group(1);
-                        response = matcher.replaceFirst(new String(Character.toChars(Integer.parseInt(hex, 16))));
-                    }
-                    long delay = System.currentTimeMillis() - start;
-                    log.debug("Response took {} ms", delay);
-                    if (delay < 3000L) {
-                        Thread.sleep(3000L - delay);
-                    }
-                    discordService.sendMessage(channel, author.mention() + " " + response);
-                } catch (Exception e) {
-                    log.warn("Could not process chatter input", e);
-                    try {
-                        discordService.sendMessage(channel, author.mention() + " Error: (╯°□°）╯︵ ┻━┻");
-                    } catch (DiscordException | MissingPermissionsException | InterruptedException ignore) {
-                    }
-                    channel.toggleTypingStatus();
-                }
-            }, taskExecutor);
-        }
-    }
+//    @EventSubscriber
+//    public void onMention(MentionEvent event) {
+//        IMessage message = event.getMessage();
+//        IChannel channel = event.getMessage().getChannel();
+//        IUser author = event.getMessage().getAuthor();
+//        boolean everyone = message.mentionsEveryone();
+//        boolean dm = channel.isPrivate();
+//        boolean self = event.getClient().getOurUser().equals(author);
+//        if (!everyone && !dm && !self) {
+//            CompletableFuture.runAsync(() -> {
+//                // TODO handle typing status concurrent requests
+//                channel.toggleTypingStatus();
+//                long start = System.currentTimeMillis();
+//                String content = EmojiParser.parseToAliases(message.getContent()
+//                    .replace(discordService.getClient().getOurUser().mention(), ""),
+//                    EmojiParser.FitzpatrickAction.REMOVE);
+//                try {
+//                    String response = chatterBotSessionMap.get(currentSession).think(content);
+//                    response = StringEscapeUtils.unescapeHtml4(response);
+//                    Matcher matcher = UNICODE.matcher(response);
+//                    while (matcher.find()) {
+//                        String hex = matcher.group(1);
+//                        response = matcher.replaceFirst(new String(Character.toChars(Integer.parseInt(hex, 16))));
+//                    }
+//                    long delay = System.currentTimeMillis() - start;
+//                    log.debug("Response took {} ms", delay);
+//                    if (delay < 3000L) {
+//                        Thread.sleep(3000L - delay);
+//                    }
+//                    discordService.sendMessage(channel, author.mention() + " " + response);
+//                } catch (Exception e) {
+//                    log.warn("Could not process chatter input", e);
+//                    channel.toggleTypingStatus();
+//                }
+//            }, taskExecutor);
+//        }
+//    }
 }
