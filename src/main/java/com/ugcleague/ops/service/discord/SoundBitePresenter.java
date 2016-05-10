@@ -323,7 +323,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                             }
                             latch.countDown();
                         }, taskExecutor);
-                        latch.await(1, TimeUnit.MINUTES);
+                        latch.await(5, TimeUnit.SECONDS);
                     }
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                     //playing.put(source, voiceChannel.get());
