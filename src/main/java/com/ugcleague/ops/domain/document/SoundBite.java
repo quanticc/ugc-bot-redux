@@ -65,6 +65,6 @@ public class SoundBite {
     }
 
     public enum PlaybackMode {
-        SINGLE, SERIES, POOL
+        SINGLE, SERIES, POOL, FOLDER
     }
 }

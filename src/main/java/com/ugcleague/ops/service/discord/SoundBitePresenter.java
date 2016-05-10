@@ -66,6 +66,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Void> soundbitesPoolSpec;
     private OptionSpec<Void> soundbitesSeriesSpec;
     private OptionSpec<String> soundbitesInfoSpec;
+    private OptionSpec<Void> soundbitesFolderSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -92,8 +93,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
             .withRequiredArg().describedAs("folder");
         soundbitesAnswerSpec = parser.accepts("answer", "Define a folder as the pool of 8ball sounds")
             .withRequiredArg().describedAs("folder");
-        soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds as a pool");
+        soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds and pick a random one to play");
         soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
+        soundbitesFolderSpec = parser.accepts("folder", "Define a folder of sounds and pick a random one to play");
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
@@ -202,20 +204,31 @@ public class SoundBitePresenter implements DiscordSubscriber {
             String key = nonOptions.get(0);
             List<String> paths = nonOptions.subList(1, nonOptions.size());
             if (paths.size() == 1) {
-                // single type
                 SoundBite bite = new SoundBite();
-                bite.setId(key);
+                bite.setId(key.toLowerCase());
                 bite.setPath(paths.get(0));
+                File file = new File(bite.getPath());
+                if (optionSet.has(soundbitesFolderSpec)) {
+                    bite.setMode(SoundBite.PlaybackMode.FOLDER);
+                    if (!file.exists() || !file.isDirectory()) {
+                        return "Given path must be a directory";
+                    }
+                } else {
+                    if (!file.exists()) {
+                        return "Given path must exist";
+                    }
+                    bite.setMode(SoundBite.PlaybackMode.SINGLE);
+                }
                 soundBiteRepository.save(bite);
             } else if (optionSet.has(soundbitesSeriesSpec)) {
                 SoundBite bite = new SoundBite();
-                bite.setId(key);
+                bite.setId(key.toLowerCase());
                 bite.setPaths(paths);
                 bite.setMode(SoundBite.PlaybackMode.SERIES);
                 soundBiteRepository.save(bite);
             } else if (optionSet.has(soundbitesPoolSpec)) {
                 SoundBite bite = new SoundBite();
-                bite.setId(key);
+                bite.setId(key.toLowerCase());
                 bite.setPaths(paths);
                 bite.setMode(SoundBite.PlaybackMode.POOL);
                 soundBiteRepository.save(bite);
@@ -235,7 +248,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     private SoundBite newSoundBite(String alias, String path) {
         SoundBite bite = new SoundBite();
-        bite.setId(alias);
+        bite.setId(alias.toLowerCase());
         bite.setPath(path);
         return bite;
     }
@@ -250,7 +263,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
             } else if (message.getContent().endsWith("?") || message.getContent().toLowerCase().equals("!")) {
                 playFromDir(settingsService.getSettings().getAnswerSoundDir(), message, false);
             } else {
-                Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
+                Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent().toLowerCase());
                 if (soundBite.isPresent()) {
                     SoundBite bite = soundBite.get();
                     SoundBite.PlaybackMode mode = bite.getMode();
@@ -267,6 +280,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
                             bite.getPaths().stream().map(File::new).filter(File::exists)
                                 .forEach(f -> play(f, message));
                             break;
+                        case FOLDER:
+                            source = new File(bite.getPath());
+                            if (!source.exists() || !source.isDirectory()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            playFromDir(source.toString(), message, true);
                         default:
                         case SINGLE:
                             source = new File(bite.getPath());
