@@ -108,6 +108,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         aliases.put("list", "--list");
         aliases.put("pool", "--pool");
         aliases.put("series", "--series");
+        aliases.put("folder", "--folder");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
