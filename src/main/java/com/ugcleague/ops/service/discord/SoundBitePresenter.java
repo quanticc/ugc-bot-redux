@@ -67,6 +67,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Void> soundbitesSeriesSpec;
     private OptionSpec<String> soundbitesInfoSpec;
     private OptionSpec<Void> soundbitesFolderSpec;
+    private OptionSpec<Integer> volumeNonOptionSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -126,6 +127,55 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     return "";
                 }
             }).build());
+        configureVolumeCommand();
+    }
+
+    private void configureVolumeCommand() {
+        OptionParser parser = newParser();
+        volumeNonOptionSpec = parser.nonOptions("0-100 volume percentage").ofType(Integer.class);
+        commandService.register(CommandBuilder.startsWith(".volume").unrestricted()
+            .description("Set volume % (0-100)").parser(parser).command((message, optionSet) -> {
+                List<Integer> values = optionSet.valuesOf(volumeNonOptionSpec);
+                AudioChannel audioChannel = null;
+                try {
+                    audioChannel = message.getGuild().getAudioChannel();
+                } catch (DiscordException e) {
+                    log.warn("Could not get audio channel", e);
+                    return "Could not get audio channel for this server";
+                }
+                if (values.size() == 0) {
+                    return "Enter a 0-100 value.";
+                } else if (values.size() == 1) {
+                    int volume = values.get(0);
+                    volume = Math.max(0, Math.min(100, volume));
+                    log.debug("Setting volume to {}% ({})", volume, volume / 100f);
+                    audioChannel.setVolume(volume / 100f);
+                } else if (values.size() == 2) {
+                    // sliding volume in 5 seconds
+                    slideVolume(audioChannel, values.get(0), values.get(1), 5);
+                } else {
+                    slideVolume(audioChannel, values.get(0), values.get(1), Math.max(1, values.get(2)));
+                }
+                return ":ok_hand:";
+            }).build());
+    }
+
+    private void slideVolume(AudioChannel channel, int start, int end, int seconds) {
+        // use 100ms resolution
+        CompletableFuture.runAsync(() -> {
+            int volume = Math.max(0, Math.min(100, start));
+            float step = (float) (Math.max(0, Math.min(100, end)) - volume) / (seconds * 10);
+            try {
+                log.debug("Sliding volume from {} to {} in {} seconds", start, end, seconds);
+                for (int i = 0; i <= seconds * 10; i++) {
+                    channel.setVolume((volume + step * i) / 100f);
+                    Thread.sleep(100);
+                }
+            } catch (InterruptedException e) {
+                log.warn("Interrupted volume sliding");
+                channel.setVolume(Math.max(0, Math.min(100, end)) / 100f);
+            }
+        }, taskExecutor);
     }
 
     private static class PlayCount implements Comparable<PlayCount> {
