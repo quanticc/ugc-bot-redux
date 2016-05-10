@@ -134,7 +134,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private void configureVolumeCommand() {
         OptionParser parser = newParser();
         volumeNonOptionSpec = parser.nonOptions("0-100 volume percentage").ofType(Integer.class);
-        commandService.register(CommandBuilder.startsWith(".volume").unrestricted()
+        commandService.register(CommandBuilder.startsWith(".volume").unrestricted().originReplies()
             .description("Set volume % (0-100)").parser(parser).command((message, optionSet) -> {
                 List<Integer> values = optionSet.valuesOf(volumeNonOptionSpec);
                 AudioChannel audioChannel = null;
