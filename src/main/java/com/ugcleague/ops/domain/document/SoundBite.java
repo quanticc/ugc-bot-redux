@@ -3,6 +3,8 @@ package com.ugcleague.ops.domain.document;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Document(collection = "sound_bite")
@@ -12,6 +14,10 @@ public class SoundBite {
     private String id;
 
     private String path;
+
+    private PlaybackMode mode = PlaybackMode.SINGLE;
+
+    private List<String> paths = new ArrayList<>();
 
     public String getId() {
         return id;
@@ -29,6 +35,22 @@ public class SoundBite {
         this.path = path;
     }
 
+    public PlaybackMode getMode() {
+        return mode;
+    }
+
+    public void setMode(PlaybackMode mode) {
+        this.mode = mode;
+    }
+
+    public List<String> getPaths() {
+        return paths;
+    }
+
+    public void setPaths(List<String> paths) {
+        this.paths = paths;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -40,5 +62,9 @@ public class SoundBite {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public enum PlaybackMode {
+        SINGLE, SERIES, POOL
     }
 }

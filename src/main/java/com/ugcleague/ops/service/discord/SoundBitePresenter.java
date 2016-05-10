@@ -63,6 +63,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Void> soundbitesListSpec;
     private OptionSpec<String> soundbitesRandomSpec;
     private OptionSpec<String> soundbitesAnswerSpec;
+    private OptionSpec<Void> soundbitesPoolSpec;
+    private OptionSpec<Void> soundbitesSeriesSpec;
+    private OptionSpec<String> soundbitesInfoSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -82,19 +85,26 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
         soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
             .withRequiredArg().describedAs("alias");
+        soundbitesInfoSpec = parser.accepts("info", "Get info of a soundbite")
+            .withRequiredArg().describedAs("alias");
         soundbitesListSpec = parser.accepts("list", "List all soundbites");
         soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
             .withRequiredArg().describedAs("folder");
         soundbitesAnswerSpec = parser.accepts("answer", "Define a folder as the pool of 8ball sounds")
             .withRequiredArg().describedAs("folder");
+        soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds as a pool");
+        soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
         aliases.put("disable", "--disable");
         aliases.put("remove", "--remove");
+        aliases.put("info", "--info");
         aliases.put("random", "--random");
         aliases.put("answer", "--answer");
         aliases.put("list", "--list");
+        aliases.put("pool", "--pool");
+        aliases.put("series", "--series");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
@@ -152,6 +162,23 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 return "No sound found with that alias!";
             }
             soundBiteRepository.delete(key);
+        } else if (optionSet.has(soundbitesInfoSpec)) {
+            String key = optionSet.valueOf(soundbitesInfoSpec);
+            if (!soundBiteRepository.exists(key)) {
+                return "No sound found with that alias!";
+            } else {
+                SoundBite bite = soundBiteRepository.findOne(key);
+                SoundBite.PlaybackMode mode = bite.getMode();
+                switch (mode) {
+                    case SERIES:
+                        return "Key: " + bite.getId() + "\nPlaylist: " + bite.getPaths();
+                    case POOL:
+                        return "Key: " + bite.getId() + "\nPool: " + bite.getPaths();
+                    case SINGLE:
+                    default:
+                        return "Key: " + bite.getId() + "\nPath: " + bite.getPath();
+                }
+            }
         } else if (optionSet.has(soundbitesListSpec)) {
             return soundBiteRepository.findAll().stream().map(SoundBite::getId).collect(Collectors.joining(", "));
         } else if (optionSet.has(soundbitesRandomSpec)) {
@@ -171,11 +198,35 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 return "Invalid directory!";
             }
         } else if (nonOptions.size() > 1) {
-            // .sounds <alias...> <path>
-            String path = nonOptions.get(nonOptions.size() - 1);
-            List<String> aliases = nonOptions.subList(0, nonOptions.size() - 1);
-            List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path)).collect(Collectors.toList());
-            soundBiteRepository.save(soundBites);
+            // .sounds <key> <paths...>
+            String key = nonOptions.get(0);
+            List<String> paths = nonOptions.subList(1, nonOptions.size());
+            if (paths.size() == 1) {
+                // single type
+                SoundBite bite = new SoundBite();
+                bite.setId(key);
+                bite.setPath(paths.get(0));
+                soundBiteRepository.save(bite);
+            } else if (optionSet.has(soundbitesSeriesSpec)) {
+                SoundBite bite = new SoundBite();
+                bite.setId(key);
+                bite.setPaths(paths);
+                bite.setMode(SoundBite.PlaybackMode.SERIES);
+                soundBiteRepository.save(bite);
+            } else if (optionSet.has(soundbitesPoolSpec)) {
+                SoundBite bite = new SoundBite();
+                bite.setId(key);
+                bite.setPaths(paths);
+                bite.setMode(SoundBite.PlaybackMode.POOL);
+                soundBiteRepository.save(bite);
+            } else {
+                // treat as multiple aliases to a single sound
+                // .sounds <alias...> <path>
+                String path = nonOptions.get(nonOptions.size() - 1);
+                List<String> aliases = nonOptions.subList(0, nonOptions.size() - 1);
+                List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path)).collect(Collectors.toList());
+                soundBiteRepository.save(soundBites);
+            }
         } else {
             return null;
         }
@@ -201,11 +252,30 @@ public class SoundBitePresenter implements DiscordSubscriber {
             } else {
                 Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent());
                 if (soundBite.isPresent()) {
-                    File source = new File(soundBite.get().getPath());
-                    if (!source.exists()) {
-                        log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                    SoundBite bite = soundBite.get();
+                    SoundBite.PlaybackMode mode = bite.getMode();
+                    File source;
+                    switch (mode) {
+                        case POOL:
+                            source = new File(bite.getPaths().get(RandomUtils.nextInt(0, bite.getPaths().size())));
+                            if (!source.exists()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            play(source, message);
+                            break;
+                        case SERIES:
+                            bite.getPaths().stream().map(File::new).filter(File::exists)
+                                .forEach(f -> play(f, message));
+                            break;
+                        default:
+                        case SINGLE:
+                            source = new File(bite.getPath());
+                            if (!source.exists()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            play(source, message);
+                            break;
                     }
-                    play(source, message);
                 }
             }
         }
