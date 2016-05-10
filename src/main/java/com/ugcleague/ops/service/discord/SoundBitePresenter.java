@@ -345,6 +345,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                                 log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
                             }
                             playFromDir(source.toString(), message, true);
+                            break;
                         default:
                         case SINGLE:
                             source = new File(bite.getPath());
