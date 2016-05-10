@@ -288,7 +288,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 // .sounds <alias...> <path>
                 String path = nonOptions.get(nonOptions.size() - 1);
                 List<String> aliases = nonOptions.subList(0, nonOptions.size() - 1);
-                List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path)).collect(Collectors.toList());
+                boolean folderMode = optionSet.has(soundbitesFolderSpec);
+                List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path, folderMode)).collect(Collectors.toList());
                 soundBiteRepository.save(soundBites);
             }
         } else {
@@ -297,10 +298,15 @@ public class SoundBitePresenter implements DiscordSubscriber {
         return ":ok_hand:";
     }
 
-    private SoundBite newSoundBite(String alias, String path) {
+    private SoundBite newSoundBite(String alias, String path, boolean folderMode) {
         SoundBite bite = new SoundBite();
         bite.setId(alias.toLowerCase());
         bite.setPath(path);
+        if (folderMode) {
+            bite.setMode(SoundBite.PlaybackMode.FOLDER);
+        } else {
+            bite.setMode(SoundBite.PlaybackMode.SINGLE);
+        }
         return bite;
     }
 
