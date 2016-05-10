@@ -223,6 +223,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 SoundBite bite = soundBiteRepository.findOne(key);
                 SoundBite.PlaybackMode mode = bite.getMode();
                 switch (mode) {
+                    case FOLDER:
+                        return "Key: " + bite.getId() + "\nFolder: " + bite.getPath();
                     case SERIES:
                         return "Key: " + bite.getId() + "\nPlaylist: " + bite.getPaths();
                     case POOL:
