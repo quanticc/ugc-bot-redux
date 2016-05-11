@@ -19,6 +19,8 @@ public class SoundBite {
 
     private List<String> paths = new ArrayList<>();
 
+    private Integer volume = 100;
+
     public String getId() {
         return id;
     }
@@ -49,6 +51,14 @@ public class SoundBite {
 
     public void setPaths(List<String> paths) {
         this.paths = paths;
+    }
+
+    public Integer getVolume() {
+        return volume;
+    }
+
+    public void setVolume(Integer volume) {
+        this.volume = volume;
     }
 
     @Override

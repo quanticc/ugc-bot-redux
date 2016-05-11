@@ -68,6 +68,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<String> soundbitesInfoSpec;
     private OptionSpec<Void> soundbitesFolderSpec;
     private OptionSpec<Integer> volumeNonOptionSpec;
+    private OptionSpec<Integer> soundbitesVolumeSpec;
+    private OptionSpec<String> soundbitesEditSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -87,6 +89,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
         soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
             .withRequiredArg().describedAs("alias");
+        soundbitesEditSpec = parser.accepts("update", "Update a soundbite")
+            .withRequiredArg().describedAs("alias");
         soundbitesInfoSpec = parser.accepts("info", "Get info of a soundbite")
             .withRequiredArg().describedAs("alias");
         soundbitesListSpec = parser.accepts("list", "List all soundbites");
@@ -97,6 +101,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds and pick a random one to play");
         soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
         soundbitesFolderSpec = parser.accepts("folder", "Define a folder of sounds and pick a random one to play");
+        soundbitesVolumeSpec = parser.accepts("volume", "Set the volume to use when playing this sound")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(100);
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
@@ -109,6 +115,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         aliases.put("pool", "--pool");
         aliases.put("series", "--series");
         aliases.put("folder", "--folder");
+        aliases.put("volume", "--volume");
+        aliases.put("update", "--update");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
@@ -197,6 +205,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     private String soundbites(IMessage message, OptionSet optionSet) {
         List<String> nonOptions = optionSet.valuesOf(soundbitesNonOptionSpec);
+        int volume = Math.min(100, Math.max(0, optionSet.valueOf(soundbitesVolumeSpec)));
         if (optionSet.has(soundbitesEnableSpec)) {
             if (message.getChannel().isPrivate()) {
                 return "Does not work with private channels yet";
@@ -234,6 +243,18 @@ public class SoundBitePresenter implements DiscordSubscriber {
                         return "Key: " + bite.getId() + "\nPath: " + bite.getPath();
                 }
             }
+        } else if (optionSet.has(soundbitesEditSpec)) {
+            String key = optionSet.valueOf(soundbitesEditSpec);
+            if (!soundBiteRepository.exists(key)) {
+                return "No sound found with that alias!";
+            } else {
+                // TODO add other cases - needs refactor
+                SoundBite bite = soundBiteRepository.findOne(key);
+                if (optionSet.has(soundbitesVolumeSpec)) {
+                    bite.setVolume(volume);
+                }
+                soundBiteRepository.save(bite);
+            }
         } else if (optionSet.has(soundbitesListSpec)) {
             return soundBiteRepository.findAll().stream().map(SoundBite::getId).collect(Collectors.joining(", "));
         } else if (optionSet.has(soundbitesRandomSpec)) {
@@ -260,6 +281,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 SoundBite bite = new SoundBite();
                 bite.setId(key.toLowerCase());
                 bite.setPath(paths.get(0));
+                bite.setVolume(volume);
                 File file = new File(bite.getPath());
                 if (optionSet.has(soundbitesFolderSpec)) {
                     bite.setMode(SoundBite.PlaybackMode.FOLDER);
@@ -278,12 +300,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 bite.setId(key.toLowerCase());
                 bite.setPaths(paths);
                 bite.setMode(SoundBite.PlaybackMode.SERIES);
+                bite.setVolume(volume);
                 soundBiteRepository.save(bite);
             } else if (optionSet.has(soundbitesPoolSpec)) {
                 SoundBite bite = new SoundBite();
                 bite.setId(key.toLowerCase());
                 bite.setPaths(paths);
                 bite.setMode(SoundBite.PlaybackMode.POOL);
+                bite.setVolume(volume);
                 soundBiteRepository.save(bite);
             } else {
                 // treat as multiple aliases to a single sound
@@ -291,7 +315,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 String path = nonOptions.get(nonOptions.size() - 1);
                 List<String> aliases = nonOptions.subList(0, nonOptions.size() - 1);
                 boolean folderMode = optionSet.has(soundbitesFolderSpec);
-                List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path, folderMode)).collect(Collectors.toList());
+                List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path, folderMode, volume)).collect(Collectors.toList());
                 soundBiteRepository.save(soundBites);
             }
         } else {
@@ -300,10 +324,11 @@ public class SoundBitePresenter implements DiscordSubscriber {
         return ":ok_hand:";
     }
 
-    private SoundBite newSoundBite(String alias, String path, boolean folderMode) {
+    private SoundBite newSoundBite(String alias, String path, boolean folderMode, int volume) {
         SoundBite bite = new SoundBite();
         bite.setId(alias.toLowerCase());
         bite.setPath(path);
+        bite.setVolume(volume);
         if (folderMode) {
             bite.setMode(SoundBite.PlaybackMode.FOLDER);
         } else {
@@ -318,9 +343,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
         if (!message.getChannel().isPrivate()
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
             if (message.getContent().toLowerCase().equals("!w")) {
-                playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true);
+                playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true, null);
             } else if (message.getContent().endsWith("?") || message.getContent().toLowerCase().equals("!")) {
-                playFromDir(settingsService.getSettings().getAnswerSoundDir(), message, false);
+                playFromDir(settingsService.getSettings().getAnswerSoundDir(), message, false, null);
             } else {
                 Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent().toLowerCase());
                 if (soundBite.isPresent()) {
@@ -333,18 +358,18 @@ public class SoundBitePresenter implements DiscordSubscriber {
                             if (!source.exists()) {
                                 log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
                             }
-                            play(source, message);
+                            play(source, message, bite.getVolume());
                             break;
                         case SERIES:
                             bite.getPaths().stream().map(File::new).filter(File::exists)
-                                .forEach(f -> play(f, message));
+                                .forEach(f -> play(f, message, bite.getVolume()));
                             break;
                         case FOLDER:
                             source = new File(bite.getPath());
                             if (!source.exists() || !source.isDirectory()) {
                                 log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
                             }
-                            playFromDir(source.toString(), message, false);
+                            playFromDir(source.toString(), message, false, bite.getVolume());
                             break;
                         default:
                         case SINGLE:
@@ -352,7 +377,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                             if (!source.exists()) {
                                 log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
                             }
-                            play(source, message);
+                            play(source, message, bite.getVolume());
                             break;
                     }
                 }
@@ -360,14 +385,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
         }
     }
 
-    private void playFromDir(String dirStr, IMessage message, boolean delete) {
+    private void playFromDir(String dirStr, IMessage message, boolean delete, Integer volume) {
         if (dirStr != null) {
             Path dir = Paths.get(dirStr);
             try {
                 List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
                     .collect(Collectors.toList());
                 CompletableFuture.runAsync(() -> {
-                    play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message);
+                    play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message, volume);
                     if (delete) {
                         try {
                             Thread.sleep(3000);
@@ -383,7 +408,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         }
     }
 
-    private void play(File source, IMessage message) {
+    private void play(File source, IMessage message, Integer volume) {
         try {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
             if (voiceChannel.isPresent()) {
@@ -409,6 +434,11 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     //queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
                     Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                     settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
+                    if (volume != null) {
+                        audioChannel.setVolume(volume / 100f);
+                    } else {
+                        audioChannel.setVolume(0.8f);
+                    }
                     audioChannel.queueFile(source);
                 }
             }
