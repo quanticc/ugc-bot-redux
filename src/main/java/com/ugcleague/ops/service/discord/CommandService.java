@@ -243,11 +243,13 @@ public class CommandService implements DiscordSubscriber {
                             } else {
                                 return ":no_good: Something happened. Something happened.";
                             }
-                        }).thenApply(s -> {
-                        log.info("Command execution done: {} -> {}", key, command.getKey());
-                        userTaskMap.remove(key);
-                        return s;
-                    }).thenAccept(response -> handleResponse(m, command, response))
+                        })
+                        .thenApply(s -> {
+                            log.info("Command execution done: {} -> {}", key, command.getKey());
+                            userTaskMap.remove(key);
+                            return s;
+                        })
+                        .thenAccept(response -> handleResponse(m, command, response))
                         .thenRun(() -> statusReplyFrom(m, command, (String) null));
                 }
             } else {
