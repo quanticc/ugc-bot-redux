@@ -61,7 +61,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<String> soundbitesRemoveSpec;
     private OptionSpec<Void> soundbitesListSpec;
     private OptionSpec<String> soundbitesRandomSpec;
-    private OptionSpec<String> soundbitesAnswerSpec;
     private OptionSpec<Void> soundbitesPoolSpec;
     private OptionSpec<Void> soundbitesSeriesSpec;
     private OptionSpec<String> soundbitesInfoSpec;
@@ -94,8 +93,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
             .withRequiredArg().describedAs("alias");
         soundbitesListSpec = parser.accepts("list", "List all soundbites");
         soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
-            .withRequiredArg().describedAs("folder");
-        soundbitesAnswerSpec = parser.accepts("answer", "Define a folder as the pool of 8ball sounds")
             .withRequiredArg().describedAs("folder");
         soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds and pick a random one to play");
         soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
@@ -264,14 +261,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
             } else {
                 return "Invalid directory!";
             }
-        } else if (optionSet.has(soundbitesAnswerSpec)) {
-            String dir = optionSet.valueOf(soundbitesAnswerSpec);
-            Path path = Paths.get(dir);
-            if (Files.exists(path) && Files.isDirectory(path)) {
-                settingsService.getSettings().setAnswerSoundDir(path.toString());
-            } else {
-                return "Invalid directory!";
-            }
         } else if (nonOptions.size() > 1) {
             // .sounds <key> <paths...>
             String key = nonOptions.get(0);
@@ -348,34 +337,28 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 if (soundBite.isPresent()) {
                     SoundBite bite = soundBite.get();
                     SoundBite.PlaybackMode mode = bite.getMode();
-                    File source;
-                    switch (mode) {
-                        case POOL:
-                            source = new File(bite.getPaths().get(RandomUtils.nextInt(0, bite.getPaths().size())));
-                            if (!source.exists()) {
-                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                            }
-                            play(source, message, bite.getVolume());
-                            break;
-                        case SERIES:
-                            bite.getPaths().stream().map(File::new).filter(File::exists)
-                                .forEach(f -> play(f, message, bite.getVolume()));
-                            break;
-                        case FOLDER:
-                            source = new File(bite.getPath());
-                            if (!source.exists() || !source.isDirectory()) {
-                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                            }
-                            playFromDir(source.toString(), message, false, bite.getVolume());
-                            break;
-                        default:
-                        case SINGLE:
-                            source = new File(bite.getPath());
-                            if (!source.exists()) {
-                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                            }
-                            play(source, message, bite.getVolume());
-                            break;
+                    // TODO refactor
+                    if (mode == SoundBite.PlaybackMode.POOL) {
+                        File source = new File(bite.getPaths().get(RandomUtils.nextInt(0, bite.getPaths().size())));
+                        if (!source.exists()) {
+                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                        }
+                        play(source, message, bite.getVolume());
+                    } else if (mode == SoundBite.PlaybackMode.SERIES) {
+                        bite.getPaths().stream().map(File::new).filter(File::exists)
+                            .forEach(f -> play(f, message, bite.getVolume()));
+                    } else if (mode == SoundBite.PlaybackMode.FOLDER) {
+                        File source = new File(bite.getPath());
+                        if (!source.exists() || !source.isDirectory()) {
+                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                        }
+                        playFromDir(source.toString(), message, false, bite.getVolume());
+                    } else {
+                        File source = new File(bite.getPath());
+                        if (!source.exists()) {
+                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                        }
+                        play(source, message, bite.getVolume());
                     }
                 }
             }
@@ -417,14 +400,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
                         CompletableFuture.runAsync(() -> {
                             while (!voiceChannel.get().isConnected()) {
                                 try {
-                                    Thread.sleep(250);
+                                    Thread.sleep(100);
                                 } catch (InterruptedException e) {
                                     log.warn("Interrupted while waiting for connection", e);
                                 }
                             }
                             latch.countDown();
                         }, taskExecutor);
-                        latch.await(5, TimeUnit.SECONDS);
+                        latch.await(10, TimeUnit.SECONDS); // or timeout
                     }
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                     //playing.put(source, voiceChannel.get());
