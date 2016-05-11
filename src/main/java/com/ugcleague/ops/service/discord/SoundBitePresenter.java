@@ -233,14 +233,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 SoundBite.PlaybackMode mode = bite.getMode();
                 switch (mode) {
                     case FOLDER:
-                        return "Key: " + bite.getId() + "\nFolder: " + bite.getPath();
+                        return "Key: " + bite.getId() + "\nFolder: " + bite.getPath() + "\nVolume: " + bite.getVolume();
                     case SERIES:
-                        return "Key: " + bite.getId() + "\nPlaylist: " + bite.getPaths();
+                        return "Key: " + bite.getId() + "\nPlaylist: " + bite.getPaths() + "\nVolume: " + bite.getVolume();
                     case POOL:
-                        return "Key: " + bite.getId() + "\nPool: " + bite.getPaths();
+                        return "Key: " + bite.getId() + "\nPool: " + bite.getPaths() + "\nVolume: " + bite.getVolume();
                     case SINGLE:
                     default:
-                        return "Key: " + bite.getId() + "\nPath: " + bite.getPath();
+                        return "Key: " + bite.getId() + "\nPath: " + bite.getPath() + "\nVolume: " + bite.getVolume();
                 }
             }
         } else if (optionSet.has(soundbitesEditSpec)) {
