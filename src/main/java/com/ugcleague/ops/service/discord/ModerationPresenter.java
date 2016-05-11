@@ -82,6 +82,15 @@ public class ModerationPresenter {
     }
 
     private String delete(IMessage message, OptionSet optionSet) {
+        if (!optionSet.has(deleteLastSpec)
+            && !optionSet.has(deleteMatchingSpec)
+            && !optionSet.has(deleteLikeSpec)
+            && !optionSet.has(deleteFromSpec)
+            && !optionSet.has(deleteBeforeSpec)
+            && !optionSet.has(deleteAfterSpec)) {
+            // require at least 1 explicit criteria
+            return "Please specify at least 1 deletion criteria";
+        }
         IChannel channel = message.getChannel();
         MessageList messages = channel.getMessages();
         int capacity = messages.getCacheCapacity();
@@ -116,7 +125,7 @@ public class ModerationPresenter {
         // collect all offending messages
         List<IMessage> toDelete = new ArrayList<>();
         int i = 0;
-        int max = Math.max(1, optionSet.valueOf(deleteLastSpec));
+        int max = !optionSet.has(deleteLastSpec) ? 100 : Math.max(1, optionSet.valueOf(deleteLastSpec));
         log.debug("Searching for up to {} messages from {}", max, DiscordUtil.toString(channel));
         while (i < max) {
             try {
