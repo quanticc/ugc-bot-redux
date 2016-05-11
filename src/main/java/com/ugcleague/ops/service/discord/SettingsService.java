@@ -58,8 +58,8 @@ public class SettingsService {
     public static class Settings {
         private final Set<String> soundBitesWhitelist = new ConcurrentSkipListSet<>();
         private volatile String randomSoundDir = "audio";
-        private volatile String answerSoundDir = "audio";
         private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
+        private final Map<String, AnnounceData> lastAnnounce = new ConcurrentHashMap<>();
 
         public Set<String> getSoundBitesWhitelist() {
             return soundBitesWhitelist;
@@ -77,12 +77,26 @@ public class SettingsService {
             return playCount;
         }
 
-        public String getAnswerSoundDir() {
-            return answerSoundDir;
+        public Map<String, AnnounceData> getLastAnnounce() {
+            return lastAnnounce;
+        }
+    }
+
+    public static class AnnounceData {
+        private final long timestamp;
+        private final String message;
+
+        public AnnounceData(String message) {
+            this.timestamp = System.currentTimeMillis();
+            this.message = message;
         }
 
-        public void setAnswerSoundDir(String answerSoundDir) {
-            this.answerSoundDir = answerSoundDir;
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public String getMessage() {
+            return message;
         }
     }
 }

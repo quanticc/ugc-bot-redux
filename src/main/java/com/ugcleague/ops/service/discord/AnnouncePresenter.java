@@ -26,6 +26,7 @@ import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class AnnouncePresenter {
     private final PublisherRepository publisherRepository;
     private final DiscordCacheService cacheService;
     private final CommandService commandService;
+    private final SettingsService settingsService;
 
     private OptionSpec<String> startNonOptionSpec;
     private OptionSpec<String> stopNonOptionSpec;
@@ -60,11 +62,13 @@ public class AnnouncePresenter {
 
     @Autowired
     public AnnouncePresenter(DiscordService discordService, PublisherRepository publisherRepository,
-                             DiscordCacheService cacheService, CommandService commandService) {
+                             DiscordCacheService cacheService, CommandService commandService,
+                             SettingsService settingsService) {
         this.discordService = discordService;
         this.publisherRepository = publisherRepository;
         this.cacheService = cacheService;
         this.commandService = commandService;
+        this.settingsService = settingsService;
     }
 
     @PostConstruct
@@ -247,21 +251,27 @@ public class AnnouncePresenter {
 
     public void announce(String publisherName, String message) {
         publisherRepository.findById(publisherName).ifPresent(pub -> {
-            Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
-            subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
-                try {
-                    IDiscordClient client = discordService.getClient();
-                    IChannel channel = client.getChannelByID(sub.getChannel().getId());
-                    if (channel != null) {
-                        log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
-                        commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message);
-                    } else {
-                        log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
+            Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
+            if (latest.get(publisherName).getMessage().equals(message)) {
+                log.debug("Not publishing identical announcement to {}", publisherName);
+            } else {
+                latest.put(publisherName, new SettingsService.AnnounceData(message));
+                Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
+                subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
+                    try {
+                        IDiscordClient client = discordService.getClient();
+                        IChannel channel = client.getChannelByID(sub.getChannel().getId());
+                        if (channel != null) {
+                            log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
+                            commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message);
+                        } else {
+                            log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not send message to '{}': {}", publisherName, e.toString());
                     }
-                } catch (Exception e) {
-                    log.warn("Could not send message to '{}': {}", publisherName, e.toString());
-                }
-            });
+                });
+            }
         });
     }
 }
