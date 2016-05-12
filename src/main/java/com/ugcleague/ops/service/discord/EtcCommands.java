@@ -58,6 +58,7 @@ public class EtcCommands implements DiscordSubscriber {
     private final RestOperations restTemplate;
     private final XPathOperations xPathTemplate;
     private final Executor taskExecutor;
+    private final SettingsService settingsService;
     private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
     private volatile String currentSession;
 
@@ -65,12 +66,14 @@ public class EtcCommands implements DiscordSubscriber {
 
     @Autowired
     public EtcCommands(CommandService commandService, DiscordService discordService,
-                       RestOperations restTemplate, XPathOperations xPathTemplate, Executor taskExecutor) {
+                       RestOperations restTemplate, XPathOperations xPathTemplate, Executor taskExecutor,
+                       SettingsService settingsService) {
         this.commandService = commandService;
         this.discordService = discordService;
         this.restTemplate = restTemplate;
         this.xPathTemplate = xPathTemplate;
         this.taskExecutor = taskExecutor;
+        this.settingsService = settingsService;
     }
 
     @PostConstruct
@@ -167,7 +170,8 @@ public class EtcCommands implements DiscordSubscriber {
         boolean everyone = message.mentionsEveryone();
         boolean dm = channel.isPrivate();
         boolean self = event.getClient().getOurUser().equals(author);
-        if (!everyone && !dm && !self) {
+        boolean bl = settingsService.getSettings().getSoundBitesBlacklist().contains(message.getChannel().getID());
+        if (!everyone && !dm && !self && !bl) {
             CompletableFuture.runAsync(() -> {
                 // TODO handle the typing status on concurrent requests
                 channel.toggleTypingStatus();
