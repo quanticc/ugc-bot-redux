@@ -57,6 +57,7 @@ public class SettingsService {
 
     public static class Settings {
         private final Set<String> soundBitesWhitelist = new ConcurrentSkipListSet<>();
+        private final Set<String> soundBitesBlacklist = new ConcurrentSkipListSet<>();
         private volatile String randomSoundDir = "audio";
         private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
         private final Map<String, AnnounceData> lastAnnounce = new ConcurrentHashMap<>();
@@ -79,6 +80,10 @@ public class SettingsService {
 
         public Map<String, AnnounceData> getLastAnnounce() {
             return lastAnnounce;
+        }
+
+        public Set<String> getSoundBitesBlacklist() {
+            return soundBitesBlacklist;
         }
     }
 

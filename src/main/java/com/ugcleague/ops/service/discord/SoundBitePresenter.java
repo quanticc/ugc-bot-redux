@@ -68,6 +68,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Integer> volumeNonOptionSpec;
     private OptionSpec<Integer> soundbitesVolumeSpec;
     private OptionSpec<String> soundbitesEditSpec;
+    private OptionSpec<Void> soundbitesBlacklistAddSpec;
+    private OptionSpec<Void> soundbitesBlacklistRemoveSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -85,6 +87,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         OptionParser parser = newParser();
         soundbitesEnableSpec = parser.accepts("enable", "Enable soundbites in this guild");
         soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
+        soundbitesBlacklistAddSpec = parser.accepts("blacklist-add", "Blacklist soundbites in this channel");
+        soundbitesBlacklistRemoveSpec = parser.accepts("blacklist-remove", "Remove soundbite blacklist in this channel");
         soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
             .withRequiredArg().describedAs("alias");
         soundbitesEditSpec = parser.accepts("update", "Update a soundbite")
@@ -103,6 +107,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         Map<String, String> aliases = newAliasesMap();
         aliases.put("enable", "--enable");
         aliases.put("disable", "--disable");
+        aliases.put("blacklist-add", "--blacklist-add");
+        aliases.put("blacklist-remove", "--blacklist-remove");
         aliases.put("remove", "--remove");
         aliases.put("info", "--info");
         aliases.put("random", "--random");
@@ -306,6 +312,16 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 List<SoundBite> soundBites = aliases.stream().map(s -> newSoundBite(s, path, folderMode, volume)).collect(Collectors.toList());
                 soundBiteRepository.save(soundBites);
             }
+        } else if (optionSet.has(soundbitesBlacklistAddSpec)) {
+            if (message.getChannel().isPrivate()) {
+                return "Does not work with private channels yet";
+            }
+            settingsService.getSettings().getSoundBitesBlacklist().add(message.getChannel().getID());
+        } else if (optionSet.has(soundbitesBlacklistRemoveSpec)) {
+            if (message.getChannel().isPrivate()) {
+                return "Does not work with private channels yet";
+            }
+            settingsService.getSettings().getSoundBitesBlacklist().remove(message.getChannel().getID());
         } else {
             return null;
         }
@@ -329,7 +345,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
     public void onMessage(MessageReceivedEvent e) {
         IMessage message = e.getMessage();
         if (!message.getChannel().isPrivate()
-            && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
+            && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())
+            && !settingsService.getSettings().getSoundBitesBlacklist().contains(message.getChannel().getID())) {
             if (message.getContent().toLowerCase().equals("!w")) {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true, null);
             } else {
