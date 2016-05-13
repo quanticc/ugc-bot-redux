@@ -252,7 +252,7 @@ public class AnnouncePresenter {
     public void announce(String publisherName, String message) {
         publisherRepository.findById(publisherName).ifPresent(pub -> {
             Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
-            if (latest.get(publisherName).getMessage().equals(message)) {
+            if (latest.containsKey(publisherName) && message.equals(latest.get(publisherName).getMessage())) {
                 log.debug("Not publishing identical announcement to {}", publisherName);
             } else {
                 latest.put(publisherName, new SettingsService.AnnounceData(message));
