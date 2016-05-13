@@ -388,17 +388,17 @@ public class SoundBitePresenter implements DiscordSubscriber {
             try {
                 List<Path> list = Files.list(dir).filter(p -> !Files.isDirectory(p))
                     .collect(Collectors.toList());
-                CompletableFuture.runAsync(() -> {
-                    play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message, volume);
-                    if (delete) {
+                play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message, volume);
+                if (delete) {
+                    CompletableFuture.runAsync(() -> {
                         try {
                             Thread.sleep(3000);
                             discordService.deleteMessage(message);
                         } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
                             log.warn("Could not perform cleanup: {}", ex.toString());
                         }
-                    }
-                }, taskExecutor);
+                    }, taskExecutor);
+                }
             } catch (IOException e1) {
                 log.warn("Could not create list of random sounds", e1);
             }
@@ -414,7 +414,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     if (!voiceChannel.get().isConnected()) {
                         CountDownLatch latch = new CountDownLatch(1);
                         // block until we connect
-                        CompletableFuture.runAsync(() -> {
+                        FutureTask<Void> task = new FutureTask<>(() -> {
                             while (!voiceChannel.get().isConnected()) {
                                 try {
                                     Thread.sleep(100);
@@ -423,8 +423,13 @@ public class SoundBitePresenter implements DiscordSubscriber {
                                 }
                             }
                             latch.countDown();
-                        }, taskExecutor);
-                        latch.await(10, TimeUnit.SECONDS); // or timeout
+                            return null;
+                        });
+                        taskExecutor.execute(task);
+                        // or timeout
+                        if (!latch.await(10, TimeUnit.SECONDS)) {
+                            task.cancel(true);
+                        }
                     }
                     AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
                     //playing.put(source, voiceChannel.get());
