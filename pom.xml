@@ -131,6 +131,7 @@
         <chatter-bot-api.version>1.4.1-SNAPSHOT</chatter-bot-api.version>
         <jetty.version>9.3.8.v20160314</jetty.version>
         <emoji-java.version>3.1.1</emoji-java.version>
+        <janino.version>2.7.8</janino.version>
     </properties>
 
     <dependencyManagement>
@@ -494,6 +495,11 @@
             <groupId>com.vdurmont</groupId>
             <artifactId>emoji-java</artifactId>
             <version>${emoji-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <version>${janino.version}</version>
         </dependency>
     </dependencies>
 
