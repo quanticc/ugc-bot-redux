@@ -49,6 +49,7 @@ public class SettingsService {
     @PreDestroy
     private void cleanup() {
         try {
+            mapper.writeValue(Paths.get("config." + System.currentTimeMillis() + ".json").toFile(), settings);
             mapper.writeValue(Paths.get("config.json").toFile(), settings);
         } catch (IOException e) {
             log.warn("Could not write settings to file", e);
@@ -90,6 +91,10 @@ public class SettingsService {
     public static class AnnounceData {
         private final long timestamp;
         private final String message;
+
+        public AnnounceData() {
+            this("");
+        }
 
         public AnnounceData(String message) {
             this.timestamp = System.currentTimeMillis();
