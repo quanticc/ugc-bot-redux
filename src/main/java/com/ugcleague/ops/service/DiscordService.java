@@ -19,6 +19,7 @@ import sx.blah.discord.api.EventSubscriber;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.IListener;
 import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
+import sx.blah.discord.handle.impl.events.GuildCreateEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.DiscordException;
@@ -147,6 +148,11 @@ public class DiscordService implements DiscordSubscriber {
         for (IGuild guild : guildList) {
             log.info("{}", guildString(guild, client.getOurUser()));
         }
+    }
+
+    @EventSubscriber
+    public void onGuildCreate(GuildCreateEvent event) {
+        log.info("{}", guildString(event.getGuild(), client.getOurUser()));
     }
 
     @EventSubscriber
