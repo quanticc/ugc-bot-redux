@@ -104,24 +104,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
         soundbitesVolumeSpec = parser.accepts("volume", "Set the volume to use when playing this sound")
             .withRequiredArg().ofType(Integer.class).defaultsTo(100);
         soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
-        Map<String, String> aliases = newAliasesMap();
-        aliases.put("enable", "--enable");
-        aliases.put("disable", "--disable");
-        aliases.put("blacklist-add", "--blacklist-add");
-        aliases.put("blacklist-remove", "--blacklist-remove");
-        aliases.put("remove", "--remove");
-        aliases.put("info", "--info");
-        aliases.put("random", "--random");
-        aliases.put("answer", "--answer");
-        aliases.put("list", "--list");
-        aliases.put("pool", "--pool");
-        aliases.put("series", "--series");
-        aliases.put("folder", "--folder");
-        aliases.put("volume", "--volume");
-        aliases.put("update", "--update");
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
-            .command(this::soundbites).parser(parser).optionAliases(aliases).originReplies().build());
+            .command(this::soundbites).parser(parser).optionAliases(newAliasesMap(parser)).originReplies().build());
         commandService.register(CommandBuilder.equalsTo(".soundstats").unrestricted().originReplies()
             .description("Sound playback statistics").noParser().command((message, optionSet) -> {
                 if (!message.getChannel().isPrivate()
@@ -410,8 +395,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
             if (voiceChannel.isPresent()) {
                 synchronized (lock) {
-                    voiceChannel.get().join();
                     if (!voiceChannel.get().isConnected()) {
+                        voiceChannel.get().join();
                         CountDownLatch latch = new CountDownLatch(1);
                         // block until we connect
                         FutureTask<Void> task = new FutureTask<>(() -> {

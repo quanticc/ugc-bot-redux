@@ -122,6 +122,16 @@ public class CommandService implements DiscordSubscriber {
     public static Map<String, String> newAliasesMap() {
         Map<String, String> map = new HashMap<>();
         map.put("?", "-?");
+        map.put("help", "-?");
+        return map;
+    }
+
+    public static Map<String, String> newAliasesMap(OptionParser parser) {
+        Map<String, String> map = new HashMap<>();
+        map.put("?", "-?");
+        parser.recognizedOptions().keySet().stream()
+            .filter(k -> k.length() > 1)
+            .forEach(k -> map.put(k, "--" + k));
         return map;
     }
 
