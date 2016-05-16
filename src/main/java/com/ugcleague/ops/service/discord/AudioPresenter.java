@@ -220,8 +220,13 @@ public class AudioPresenter implements DiscordSubscriber {
                 "%(id)s", optionSet.valueOf(audioYoutubeSpec));
             try {
                 Process process = builder.start();
-                audioChannel.queue(AudioSystem.getAudioInputStream(process.getInputStream()));
-            } catch (IOException | UnsupportedAudioFileException e) {
+                try {
+                    audioChannel.queue(AudioSystem.getAudioInputStream(process.getInputStream()));
+                } catch (UnsupportedAudioFileException e) {
+                    log.warn("Could not queue audio", e);
+                    process.destroyForcibly();
+                }
+            } catch (IOException e) {
                 log.warn("Could not start process", e);
             }
         }
