@@ -1,6 +1,6 @@
 package com.ugcleague.ops.service;
 
-import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.domain.document.GameServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +43,8 @@ public class ExpireStatusService {
         log.debug("==== Refreshing expire dates of ALL servers ====");
         ZonedDateTime now = ZonedDateTime.now();
         Map<String, Integer> map = getExpireSeconds();
-        long count = gameServerService.findAll().stream().filter(s -> map.containsKey(s.getSubId()))
-            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getSubId()))).map(gameServerService::save).count();
+        long count = gameServerService.findAll().stream().filter(s -> map.containsKey(s.getId()))
+            .map(s -> refreshExpireDate(s, now, (Integer) map.get(s.getId()))).map(gameServerService::save).count();
         log.info("{} expire dates refreshed", count);
         gameServerService.refreshRconPasswords();
     }

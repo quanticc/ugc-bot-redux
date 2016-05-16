@@ -1,11 +1,11 @@
 package com.ugcleague.ops.service;
 
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.domain.RemoteFile;
+import com.ugcleague.ops.domain.document.GameServer;
+import com.ugcleague.ops.domain.document.RemoteFile;
 import com.ugcleague.ops.domain.SyncGroup;
 import com.ugcleague.ops.domain.enumeration.FileGroupType;
-import com.ugcleague.ops.repository.RemoteFileRepository;
+import com.ugcleague.ops.repository.mongo.RemoteFileRepository;
 import com.ugcleague.ops.repository.SyncGroupRepository;
 import com.ugcleague.ops.service.util.FileShareTask;
 import com.ugcleague.ops.service.util.FtpClient;
@@ -97,7 +97,7 @@ public class SyncGroupService {
     }
 
     private Optional<FtpClient> establishFtpConnection(GameServer server) {
-        FtpClient ftpClient = new FtpClient(server, repositoryDir, gameServerService.isSecure(server));
+        FtpClient ftpClient = new FtpClient(server, repositoryDir, server.isSecure());
         Map<String, String> credentials = gameServerService.getFTPConnectInfo(server);
         if (!connect(ftpClient, credentials)) {
             gameServerService.addInsecureFlag(server);
@@ -188,7 +188,7 @@ public class SyncGroupService {
     }
 
     private RemoteFile updateIfNeeded(RemoteFile f) {
-        RemoteFile remote = remoteFileRepository.findByFolderAndFilenameAndOwner(f.getFolder(), f.getFilename(), f.getOwner()).orElse(f);
+        RemoteFile remote = remoteFileRepository.findByServerAndFolderAndFilename(f.getServer(), f.getFolder(), f.getFilename()).orElse(f);
         remote.setSize(f.getSize());
         remote.setModified(f.getModified());
         return remote;
@@ -198,7 +198,7 @@ public class SyncGroupService {
         RemoteFile remote = new RemoteFile();
         remote.setFilename(file.getName());
         remote.setFolder(dir);
-        remote.setOwner(server);
+        remote.setServer(server.getShortName());
         remote.setSize(file.getSize());
         Date modifiedDate = file.getModifiedDate();
         if (modifiedDate != null) {
@@ -296,7 +296,7 @@ public class SyncGroupService {
     public File getLocalFile(RemoteFile remoteFile) {
         // TODO check for clean input
         return Paths.get(downloadsDir)
-            .resolve(remoteFile.getOwner().getShortName() + remoteFile.getFolder())
+            .resolve(remoteFile.getServer() + remoteFile.getFolder())
             .resolve(remoteFile.getFilename()).toFile();
     }
 }

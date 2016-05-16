@@ -1,6 +1,6 @@
 package com.ugcleague.ops.service.util;
 
-import com.ugcleague.ops.domain.RemoteFile;
+import com.ugcleague.ops.domain.document.RemoteFile;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -14,6 +14,7 @@ import java.util.Set;
 /**
  * A Flag.
  */
+@Deprecated
 @Entity
 @Table(name = "flag")
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)

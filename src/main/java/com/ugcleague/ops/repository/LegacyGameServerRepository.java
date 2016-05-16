@@ -15,7 +15,8 @@ import java.util.stream.Stream;
 /**
  * Spring Data JPA repository for the GameServer entity.
  */
-public interface GameServerRepository extends JpaRepository<GameServer, Long> {
+@Deprecated
+public interface LegacyGameServerRepository extends JpaRepository<GameServer, Long> {
 
     @EntityGraph(value = "GameServer.detail", type = EntityGraphType.LOAD)
     Optional<GameServer> findByAddress(String address);

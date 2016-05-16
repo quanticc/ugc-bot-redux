@@ -16,6 +16,7 @@ import java.util.Set;
 /**
  * A GameServer.
  */
+@Deprecated
 @Entity
 @DynamicUpdate
 @Table(name = "game_server")

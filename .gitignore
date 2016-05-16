@@ -18,6 +18,7 @@ release.sh
 /config
 /prod.yml
 /config.*json
+/*.exe
 
 ######################
 # Node

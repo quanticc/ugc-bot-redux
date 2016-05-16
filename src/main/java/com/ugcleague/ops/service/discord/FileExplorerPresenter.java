@@ -1,7 +1,7 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.domain.RemoteFile;
+import com.ugcleague.ops.domain.document.GameServer;
+import com.ugcleague.ops.domain.document.RemoteFile;
 import com.ugcleague.ops.service.GameServerService;
 import com.ugcleague.ops.service.SyncGroupService;
 import com.ugcleague.ops.service.discord.command.Command;

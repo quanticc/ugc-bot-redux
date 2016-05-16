@@ -8,6 +8,7 @@ import java.util.Optional;
 /**
  * Spring Data JPA repository for the Flag entity.
  */
+@Deprecated
 public interface FlagRepository extends JpaRepository<Flag, Long> {
 
     Optional<Flag> findByName(String name);

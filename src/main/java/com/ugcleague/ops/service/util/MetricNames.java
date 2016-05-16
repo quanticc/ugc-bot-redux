@@ -1,7 +1,7 @@
 package com.ugcleague.ops.service.util;
 
 import com.codahale.metrics.MetricRegistry;
-import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.domain.document.GameServer;
 
 public class MetricNames {
 

@@ -1,6 +1,6 @@
 package com.ugcleague.ops.event;
 
-import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.domain.document.GameServer;
 import org.springframework.context.ApplicationEvent;
 
 public class ConsoleAttachedEvent extends ApplicationEvent {

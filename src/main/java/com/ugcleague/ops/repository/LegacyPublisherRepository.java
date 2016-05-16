@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
+@Deprecated
 public interface LegacyPublisherRepository extends JpaRepository<Publisher, Long> {
 
     @EntityGraph(value = "Publisher.full", type = EntityGraphType.LOAD)

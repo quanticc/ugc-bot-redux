@@ -1,6 +1,6 @@
 package com.ugcleague.ops.service.util;
 
-import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.domain.document.GameServer;
 import com.ugcleague.ops.domain.SyncGroup;
 import it.sauronsoftware.ftp4j.*;
 import org.slf4j.Logger;

@@ -6,15 +6,15 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
-import com.ugcleague.ops.domain.Flag;
-import com.ugcleague.ops.domain.GameServer;
-import com.ugcleague.ops.event.GameServerDeathEvent;
+import com.ugcleague.ops.domain.document.GameServer;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
 import com.ugcleague.ops.event.GameUpdateDelayedEvent;
 import com.ugcleague.ops.event.GameUpdateStartedEvent;
-import com.ugcleague.ops.repository.FlagRepository;
-import com.ugcleague.ops.repository.GameServerRepository;
-import com.ugcleague.ops.service.util.*;
+import com.ugcleague.ops.repository.mongo.GameServerRepository;
+import com.ugcleague.ops.service.util.MetricNames;
+import com.ugcleague.ops.service.util.SourceServer;
+import com.ugcleague.ops.service.util.UpdateResult;
+import com.ugcleague.ops.service.util.UpdateResultMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,24 +45,21 @@ public class GameServerService {
     private final AdminPanelService adminPanelService;
     private final SteamCondenserService steamCondenserService;
     private final GameServerRepository gameServerRepository;
-    private final FlagRepository flagRepository;
     private final ApplicationEventPublisher publisher;
     private final MetricRegistry metricRegistry;
     private final HealthCheckRegistry healthCheckRegistry;
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
-    private final DeadServerMap deadServerMap = new DeadServerMap();
+    //private final DeadServerMap deadServerMap = new DeadServerMap();
     private final Map<String, String> availableMods = new LinkedHashMap<>();
 
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
-                             AdminPanelService adminPanelService, FlagRepository flagRepository,
-                             ApplicationEventPublisher publisher, MetricRegistry metricRegistry,
-                             HealthCheckRegistry healthCheckRegistry) {
+                             AdminPanelService adminPanelService, ApplicationEventPublisher publisher,
+                             MetricRegistry metricRegistry, HealthCheckRegistry healthCheckRegistry) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
-        this.flagRepository = flagRepository;
         this.publisher = publisher;
         this.metricRegistry = metricRegistry;
         this.healthCheckRegistry = healthCheckRegistry;
@@ -70,9 +67,9 @@ public class GameServerService {
 
     @PostConstruct
     private void configure() {
-        if (gameServerRepository.count() == 0) {
-            refreshServerDetails();
-        }
+//        if (gameServerRepository.count() == 0) {
+//            refreshServerDetails();
+//        }
 
         healthCheckRegistry.register("GameServers.PingCheck", new HealthCheck() {
             @Override
@@ -212,9 +209,9 @@ public class GameServerService {
 
     private void refreshServerDetails(String address, Map<String, String> data) {
         GameServer server = gameServerRepository.findByAddress(address).orElseGet(this::newGameServer);
+        server.setId(data.get("SUBID"));
         server.setAddress(address);
         server.setName(data.get("name"));
-        server.setSubId(data.get("SUBID"));
         try {
             gameServerRepository.save(server);
         } catch (DataIntegrityViolationException e) {
@@ -231,14 +228,14 @@ public class GameServerService {
         server.setLastGameUpdate(epoch);
         server.setLastRconDate(epoch);
         server.setStatusCheckDate(epoch);
+        server.setLastValidPing(epoch);
         return server;
     }
 
     public void refreshRconPasswords() {
         log.debug("==== Refreshing RCON server passwords ====");
-        ZonedDateTime now = ZonedDateTime.now();
         // refreshing passwords of expired servers since they auto restart and change password
-        long count = gameServerRepository.findByRconRefreshNeeded(now).stream()
+        long count = gameServerRepository.findByRconRefreshNeeded().parallelStream()
             .map(this::refreshRconPassword).filter(u -> u != null).count();
         log.info("{} servers updated their RCON passwords", count);
     }
@@ -256,14 +253,14 @@ public class GameServerService {
         log.debug("Refreshing RCON password data: {}", server.getName());
         try {
             // TODO: signal abnormal conditions through incidents instead of just logging
-            Map<String, String> result = adminPanelService.getServerConfig(server.getSubId());
+            Map<String, String> result = adminPanelService.getServerConfig(server.getId());
             if (!result.getOrDefault("result", "").equals("")) {
-                log.warn("RCON refresh failed for {}: {}", server.toShortString(), result.get("result"));
+                log.warn("RCON refresh failed for {}: {}", server.getShortNameAndAddress(), result.get("result"));
             }
             server.setRconPassword(result.get("rcon_password")); // can be null if the server is bugged
             server.setSvPassword(result.get("sv_password")); // can be null if the server is bugged
             if (server.getRconPassword() == null || server.getSvPassword() == null) {
-                log.warn("RCON refresh with invalid data for {}", server.toShortString());
+                log.warn("RCON refresh with invalid data for {}", server.getShortNameAndAddress());
             }
             server.setLastRconDate(ZonedDateTime.now());
             return gameServerRepository.save(server);
@@ -302,14 +299,14 @@ public class GameServerService {
             }
         }
         log.debug("{} servers had their status refreshed", refreshed);
-        long failingCount = deadServerMap.values().stream()
-            .map(info -> info.getAttempts().get()).filter(i -> i >= 5).count();
-        int maxFailedAttempts = deadServerMap.values().stream()
-            .map(info -> info.getAttempts().get()).reduce(0, Integer::max);
-        if (failingCount > 5) {
-            log.warn("{} are unresponsive after the last 5 checks (max failures {})", failingCount, maxFailedAttempts);
-            publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
-        }
+//        long failingCount = deadServerMap.values().stream()
+//            .map(info -> info.getAttempts().get()).filter(i -> i >= 5).count();
+//        int maxFailedAttempts = deadServerMap.values().stream()
+//            .map(info -> info.getAttempts().get()).reduce(0, Integer::max);
+//        if (failingCount > 5) {
+//            log.warn("{} are unresponsive after the last 5 checks (max failures {})", failingCount, maxFailedAttempts);
+//            publisher.publishEvent(new GameServerDeathEvent(deadServerMap.duplicate()));
+//        }
     }
 
     public GameServer refreshServerStatus(GameServer server) {
@@ -332,10 +329,10 @@ public class GameServerService {
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
                 Optional.ofNullable(info.get("mapName")).map(Object::toString).ifPresent(server::setMapName);
                 server.setTvPort(Optional.ofNullable(info.get("tvPort")).map(this::safeParse).orElse(0));
-                deadServerMap.put(server, new DeadServerInfo(server));
-            } else {
+                //deadServerMap.put(server, new DeadServerInfo(server));
+            } /*else {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
-            }
+            }*/
         }
         return server;
     }
@@ -368,9 +365,9 @@ public class GameServerService {
         return null;
     }
 
-    public DeadServerMap getDeadServerMap() {
-        return deadServerMap;
-    }
+//    public DeadServerMap getDeadServerMap() {
+//        return deadServerMap;
+//    }
 
     public Map<String, Object> refreshServerStatus(SourceServer source) {
         Map<String, Object> map = new LinkedHashMap<>();
@@ -421,11 +418,11 @@ public class GameServerService {
             result.getAttempts().incrementAndGet();
         } else {
             try {
-                AdminPanelService.Result response = adminPanelService.upgrade(server.getSubId());
+                AdminPanelService.Result response = adminPanelService.upgrade(server.getId());
                 // save status so it's signalled as "dead server" during restart
                 // TODO: use incidents instead
-                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts()
-                    .addAndGet(response == AdminPanelService.Result.SUCCESSFUL ? 1 : 5);
+//                deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts()
+//                    .addAndGet(response == AdminPanelService.Result.SUCCESSFUL ? 1 : 5);
                 server.setLastGameUpdate(ZonedDateTime.now());
             } catch (IOException e) {
                 log.warn("Could not perform game update: {}", e.toString());
@@ -500,36 +497,10 @@ public class GameServerService {
     }
 
     public Map<String, String> getFTPConnectInfo(GameServer server) {
-        Map<String, String> connectInfo = adminPanelService.getFTPConnectInfo(server.getSubId());
+        Map<String, String> connectInfo = adminPanelService.getFTPConnectInfo(server.getId());
         SourceServer source = steamCondenserService.getSourceServer(server.getAddress());
         connectInfo.put("ftp-hostname", source.getIpAddresses().get(0).getHostAddress());
         return connectInfo;
-    }
-
-    public boolean isSecure(GameServer server) {
-        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
-        return flagRepository.findByName(INSECURE_FLAG).map(f -> s.getFlags().contains(f)).orElse(false);
-    }
-
-    public GameServer addInsecureFlag(GameServer server) {
-        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
-        s.getFlags().add(flagRepository.findByName(INSECURE_FLAG).orElseGet(this::createInsecureFlag));
-        return gameServerRepository.save(server);
-    }
-
-    public GameServer removeInsecureFlag(GameServer server) {
-        GameServer s = gameServerRepository.findOneWithEagerRelationships(server.getId()).get();
-        Flag insecure = flagRepository.findByName(INSECURE_FLAG).orElseGet(this::createInsecureFlag);
-        s.getFlags().remove(insecure);
-        return gameServerRepository.save(server);
-    }
-
-    private Flag createInsecureFlag() {
-        Flag insecure = new Flag();
-        insecure.setName("insecure");
-        insecure.setDescription("Do not use TLS on FTP connections");
-        flagRepository.save(insecure);
-        return insecure;
     }
 
     public List<GameServer> findServers(String k) {
@@ -602,10 +573,6 @@ public class GameServerService {
         return gameServerRepository.findAll();
     }
 
-    public List<GameServer> findAllEagerly() {
-        return gameServerRepository.findAllWithEagerRelationships();
-    }
-
     private boolean isEmpty(GameServer server) {
         server = refreshServerStatus(server);
         return server.getPlayers() == 0;
@@ -619,11 +586,11 @@ public class GameServerService {
         } else {
             try {
                 // TODO: improve return
-                AdminPanelService.Result response = adminPanelService.restart(server.getSubId());
+                AdminPanelService.Result response = adminPanelService.restart(server.getId());
                 boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
-                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+//                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
                     return 0;
                 } else {
                     return -1;
@@ -643,11 +610,11 @@ public class GameServerService {
         } else {
             try {
                 // TODO: improve return
-                AdminPanelService.Result response = adminPanelService.upgrade(server.getSubId());
+                AdminPanelService.Result response = adminPanelService.upgrade(server.getId());
                 boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
-                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+//                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
                     return 0;
                 } else {
                     return -1;
@@ -671,11 +638,11 @@ public class GameServerService {
         } else {
             try {
                 // TODO: improve return
-                AdminPanelService.Result response = adminPanelService.installMod(server.getSubId(), availableMods.get(modName));
+                AdminPanelService.Result response = adminPanelService.installMod(server.getId(), availableMods.get(modName));
                 boolean success = (response == AdminPanelService.Result.SUCCESSFUL);
                 if (success) {
                     // save status so it's signalled as "dead server" during restart
-                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
+//                    deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().addAndGet(10);
                     return 0;
                 } else {
                     return -1;
@@ -693,5 +660,15 @@ public class GameServerService {
 
     public GameServer save(GameServer gameServer) {
         return gameServerRepository.save(gameServer);
+    }
+
+    public GameServer addInsecureFlag(GameServer server) {
+        server.setSecure(false);
+        return gameServerRepository.save(server);
+    }
+
+    public GameServer removeInsecureFlag(GameServer server) {
+        server.setSecure(true);
+        return gameServerRepository.save(server);
     }
 }

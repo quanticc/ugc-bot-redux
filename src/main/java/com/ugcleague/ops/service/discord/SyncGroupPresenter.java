@@ -1,8 +1,8 @@
 package com.ugcleague.ops.service.discord;
 
-import com.ugcleague.ops.domain.GameServer;
 import com.ugcleague.ops.domain.ServerFile;
 import com.ugcleague.ops.domain.SyncGroup;
+import com.ugcleague.ops.domain.document.GameServer;
 import com.ugcleague.ops.domain.enumeration.FileGroupType;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.GameServerService;

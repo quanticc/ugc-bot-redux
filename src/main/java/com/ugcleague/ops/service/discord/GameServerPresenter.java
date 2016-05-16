@@ -2,10 +2,9 @@ package com.ugcleague.ops.service.discord;
 
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.github.koraktor.steamcondenser.steam.SteamPlayer;
-import com.ugcleague.ops.domain.GameServer;
+import com.ugcleague.ops.domain.document.GameServer;
 import com.ugcleague.ops.service.GameServerService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
-import com.ugcleague.ops.service.util.DeadServerMap;
 import com.ugcleague.ops.service.util.SourceServer;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -453,25 +452,25 @@ public class GameServerPresenter {
     }
 
     private String executeDeadCommand(IMessage message, OptionSet optionSet) {
-        DeadServerMap map = gameServerService.getDeadServerMap();
-        int failedAttempts = 2;
-        String nonResponsive = map.entrySet().stream()
-            .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
-            .map(e -> String.format("• **%s** (%s) appears to be down since %s",
-                e.getKey().getShortName(), e.getKey().getAddress(),
-                formatRelative(e.getValue().getCreated())))
-            .collect(Collectors.joining("\n"));
-        if (!nonResponsive.isEmpty()) {
-            nonResponsive += "\nRestart with `.server restart " + map.entrySet().stream()
-                .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
-                .map(e -> e.getKey().getShortName()).collect(Collectors.joining(" ")) + "`\n";
-        }
+//        DeadServerMap map = gameServerService.getDeadServerMap();
+//        int failedAttempts = 2;
+//        String nonResponsive = map.entrySet().stream()
+//            .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
+//            .map(e -> String.format("• **%s** (%s) appears to be down since %s",
+//                e.getKey().getShortName(), e.getKey().getAddress(),
+//                formatRelative(e.getValue().getCreated())))
+//            .collect(Collectors.joining("\n"));
+//        if (!nonResponsive.isEmpty()) {
+//            nonResponsive += "\nRestart with `.server restart " + map.entrySet().stream()
+//                .filter(e -> e.getValue().getAttempts().get() > failedAttempts)
+//                .map(e -> e.getKey().getShortName()).collect(Collectors.joining(" ")) + "`\n";
+//        }
         String outdated = gameServerService.findOutdatedServers().stream()
             .map(s -> String.format("• **%s** (%s) has an older game version (v%d)",
                 s.getShortName(), s.getAddress(), s.getVersion()))
             .collect(Collectors.joining("\n"));
-        return nonResponsive.isEmpty() && outdated.isEmpty() ? ":ok_hand: All game servers are OK" :
-            "*Game servers with issues*\n" + nonResponsive + "\n" + outdated;
+        return /*nonResponsive.isEmpty() &&*/ outdated.isEmpty() ? ":ok_hand: All game servers are OK" :
+            "*Game servers with issues*\n" /*+ nonResponsive*/ + "\n" + outdated;
     }
 
     private void initInsecureCommand() {
@@ -493,9 +492,9 @@ public class GameServerPresenter {
             response.append("*Insecure flags updated*\n");
             List<GameServer> found = gameServerService.findServersMultiple(nonOptions);
             for (GameServer server : found) {
-                boolean previouslySecure = gameServerService.isSecure(server);
-                boolean secure = value ? gameServerService.isSecure(gameServerService.addInsecureFlag(server)) :
-                    gameServerService.isSecure(gameServerService.removeInsecureFlag(server));
+                boolean previouslySecure = server.isSecure();
+                boolean secure = value ? gameServerService.addInsecureFlag(server).isSecure() :
+                    gameServerService.removeInsecureFlag(server).isSecure();
                 if (previouslySecure != secure) {
                     response.append("**").append(server.getShortName()).append("** ")
                         .append(previouslySecure).append(" -> ").append(secure).append("\n");

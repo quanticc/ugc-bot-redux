@@ -5,7 +5,7 @@ import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.DbxFiles;
 import com.dropbox.core.v2.DbxSharing;
 import com.ugcleague.ops.config.LeagueProperties;
-import com.ugcleague.ops.domain.RemoteFile;
+import com.ugcleague.ops.domain.document.RemoteFile;
 import com.ugcleague.ops.service.util.FileShareTask;
 import jodd.io.ZipUtil;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ public class DropboxService {
         List<RemoteFile> files = task.getRequested();
         if (task.isZip()) {
             // try to make a batch upload with all the tasked files
-            String id = files.get(0).getOwner().getShortName();
+            String id = files.get(0).getServer();
             String zipFilename = String.format("batch-%s-%s.zip", id, now("yyyyMMddHHmmss"));
             Path zipPath = Paths.get("tmp", "zip", zipFilename);
             try {
@@ -57,7 +57,7 @@ public class DropboxService {
                 ZipUtil.AddToZip command = ZipUtil.addToZip(ZipUtil.createZip(zipPath.toFile()));
                 for (RemoteFile file : files) {
                     // TODO check for clean input
-                    Path srcPath = downloadsPath.resolve(file.getOwner().getShortName() + file.getFolder())
+                    Path srcPath = downloadsPath.resolve(file.getServer() + file.getFolder())
                         .resolve(file.getFilename())
                         .toAbsolutePath();
                     log.debug("Adding to batch zip: {}", srcPath);
@@ -83,7 +83,7 @@ public class DropboxService {
         }
         for (RemoteFile file : files) {
             // TODO check for clean input
-            Path srcPath = downloadsPath.resolve(file.getOwner().getShortName() + file.getFolder())
+            Path srcPath = downloadsPath.resolve(file.getServer() + file.getFolder())
                 .resolve(file.getFilename())
                 .toAbsolutePath();
             File srcFile = srcPath.toFile();
@@ -93,7 +93,7 @@ public class DropboxService {
                     srcPath = ZipUtil.gzip(srcFile).toPath();
                 }
                 String destPath = String.format("%s/%s/%s", leagueProperties.getDropbox().getUploadsDir(),
-                    file.getOwner().getShortName() + file.getFolder(), srcPath.getFileName().toString());
+                    file.getServer() + file.getFolder(), srcPath.getFileName().toString());
                 destPath = destPath.replace("\\", "/").replace("//", "/");
                 DbxFiles.Metadata metadata = uploadFile(srcPath, destPath);
                 if (metadata != null) {
