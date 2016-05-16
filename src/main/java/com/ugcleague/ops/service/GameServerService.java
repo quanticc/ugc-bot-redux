@@ -279,7 +279,7 @@ public class GameServerService {
     public void updateGameServers() {
         log.debug("==== Refreshing server status ====");
         int latestVersion = steamCondenserService.getLatestVersion();
-        long refreshed = gameServerRepository.findAll().parallelStream().map(this::refreshServerStatus)
+        long refreshed = gameServerRepository.findAll().stream().map(this::refreshServerStatus)
             .map(gameServerRepository::save).count();
         long updating = findOutdatedServers().stream().map(this::performGameUpdate)
             .map(gameServerRepository::save).count();
