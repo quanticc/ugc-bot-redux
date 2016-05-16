@@ -32,13 +32,11 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
-import static java.util.Arrays.asList;
 
 @Service
 public class AudioPresenter implements DiscordSubscriber {
@@ -52,8 +50,7 @@ public class AudioPresenter implements DiscordSubscriber {
     private OptionSpec<String> audioEnqueueSpec;
     private Command audioCommand;
     private OptionSpec<Void> audioLeaveSpec;
-    private OptionSpec<Integer> audioUnqueueSpec;
-    private OptionSpec<Void> audioListSpec;
+    private OptionSpec<Integer> audioDequeueSpec;
     private OptionSpec<Integer> audioVolumeSpec;
     private OptionSpec<Void> audioSkipSpec;
     private OptionSpec<Void> audioPauseSpec;
@@ -73,36 +70,24 @@ public class AudioPresenter implements DiscordSubscriber {
     }
 
     private void initAudioCommand() {
-        Map<String, String> aliases = newAliasesMap();
-        aliases.put("join", "-j");
-        aliases.put("enqueue", "-e");
-        aliases.put("unqueue", "-u");
-        aliases.put("leave", "-l");
-//        aliases.put("list", "-L");
-        aliases.put("volume", "-v");
-        aliases.put("skip", "-s");
-        aliases.put("pause", "-p");
-        aliases.put("resume", "-r");
-        aliases.put("youtube", "--youtube");
         OptionParser parser = newParser();
-        audioJoinSpec = parser.acceptsAll(asList("j", "join"), "Joins a voice channel by order #")
+        audioJoinSpec = parser.accepts("join", "Joins a voice channel by order #")
             .withRequiredArg().ofType(Integer.class);
-        audioLeaveSpec = parser.acceptsAll(asList("l", "leave"), "Leave the current voice channel");
-        audioEnqueueSpec = parser.acceptsAll(asList("e", "enqueue"), "Puts an audio file to the end of the queue")
+        audioLeaveSpec = parser.accepts("leave", "Leave the current voice channel");
+        audioEnqueueSpec = parser.accepts("enqueue", "Puts an audio file to the end of the queue")
             .withRequiredArg().describedAs("filename");
         audioYoutubeSpec = parser.accepts("youtube", "Puts a youtube video to the end of the queue")
             .withRequiredArg().describedAs("watch-url");
-        audioUnqueueSpec = parser.acceptsAll(asList("u", "unqueue"), "Removes file from the queue by index")
+        audioDequeueSpec = parser.accepts("dequeue", "Removes file from the queue by index")
             .withRequiredArg().ofType(Integer.class);
-//        audioListSpec = parser.acceptsAll(asList("L", "list"), "Display list of queued files");
-        audioVolumeSpec = parser.acceptsAll(asList("v", "volume"), "Set volume % (0-100)")
+        audioVolumeSpec = parser.accepts("volume", "Set volume % (0-100)")
             .withRequiredArg().ofType(Integer.class);
-        audioSkipSpec = parser.acceptsAll(asList("s", "skip"), "Skip currently queued file");
-        audioPauseSpec = parser.acceptsAll(asList("p", "pause"), "Pause playing");
-        audioResumeSpec = parser.acceptsAll(asList("r", "resume"), "Resume playing");
+        audioSkipSpec = parser.accepts("skip", "Skip currently queued file");
+        audioPauseSpec = parser.accepts("pause", "Pause playing");
+        audioResumeSpec = parser.accepts("resume", "Resume playing");
         audioCommand = commandService.register(CommandBuilder.startsWith(".audio").support().originReplies()
             .description("Performs audio-related operations")
-            .parser(parser).optionAliases(aliases).command(this::audio).build());
+            .parser(parser).optionAliases(newAliasesMap(parser)).command(this::audio).build());
     }
 
     public static List<IUser> connectedUsers(IVoiceChannel voiceChannel) {
@@ -180,16 +165,12 @@ public class AudioPresenter implements DiscordSubscriber {
             }
         }
 
-        if (optionSet.has(audioUnqueueSpec)) {
-            Integer unqueue = optionSet.valueOf(audioUnqueueSpec);
-            unqueue = Math.max(0, Math.min(audioChannel.getQueueSize() - 1, unqueue));
-            log.debug("Unqueueing by index: {}", unqueue);
-            audioChannel.unqueue(unqueue);
+        if (optionSet.has(audioDequeueSpec)) {
+            Integer dequeue = optionSet.valueOf(audioDequeueSpec);
+            dequeue = Math.max(0, Math.min(audioChannel.getQueueSize() - 1, dequeue));
+            log.debug("Dequeue by index: {}", dequeue);
+            audioChannel.unqueue(dequeue);
         }
-
-//        if (optionSet.has(audioListSpec)) {
-//
-//        }
 
         if (optionSet.has(audioVolumeSpec)) {
             Integer volume = optionSet.valueOf(audioVolumeSpec);
@@ -235,34 +216,39 @@ public class AudioPresenter implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onAudioPlayed(AudioPlayEvent event) {
+    public void onAudioPlay(AudioPlayEvent event) {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Playing] {} with metadata: {}}", source, event.getFormat().toString());
+        log.debug("[Play] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
     }
 
     @EventSubscriber
-    public void onAudioStopped(AudioStopEvent event) {
+    public void onAudioStop(AudioStopEvent event) {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Stopping] {} with metadata: {}}", source, event.getFormat().toString());
+        log.debug("[Stop] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
     }
 
     @EventSubscriber
-    public void onAudioEnqueued(AudioQueuedEvent event) {
+    public void onAudioEnqueue(AudioQueuedEvent event) {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Enqueued] {} with metadata: {}}", source, event.getFormat().toString());
+        log.debug("[Enqueue] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
     }
 
     @EventSubscriber
-    public void onAudioUnqueued(AudioUnqueuedEvent event) {
+    public void onAudioDequeue(AudioUnqueuedEvent event) {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Unqueued] {} with metadata: {}}", source, event.getFormat().toString());
+        try {
+            stream.close();
+        } catch (IOException e) {
+            log.warn("Could not close audio stream", e);
+        }
+        log.debug("[Dequeue] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
     }
 }
