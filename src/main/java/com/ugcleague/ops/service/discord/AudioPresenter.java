@@ -105,7 +105,7 @@ public class AudioPresenter implements DiscordSubscriber {
             return "Must not be called from a private message channel";
         }
 
-        AudioChannel audioChannel = null;
+        AudioChannel audioChannel;
         try {
             audioChannel = message.getGuild().getAudioChannel();
         } catch (DiscordException e) {

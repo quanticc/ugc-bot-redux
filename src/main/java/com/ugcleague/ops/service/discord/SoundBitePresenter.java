@@ -123,6 +123,18 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     return "";
                 }
             }).build());
+        commandService.register(CommandBuilder.equalsTo(".skip").unrestricted().originReplies()
+            .description("Skip current audio").noParser().command((message, optionSet) -> {
+                if (!message.getChannel().isPrivate()
+                    && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
+                    try {
+                        message.getGuild().getAudioChannel().skip();
+                    } catch (DiscordException e) {
+                        log.warn("Could not get audio channel", e);
+                    }
+                }
+                return "";
+            }).build());
         configureVolumeCommand();
     }
 
@@ -131,6 +143,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
         volumeNonOptionSpec = parser.nonOptions("0-100 volume percentage").ofType(Integer.class);
         commandService.register(CommandBuilder.startsWith(".volume").unrestricted().originReplies()
             .description("Set volume % (0-100)").parser(parser).command((message, optionSet) -> {
+                if (message.getChannel().isPrivate()) {
+                    return "";
+                }
                 List<Integer> values = optionSet.valuesOf(volumeNonOptionSpec);
                 AudioChannel audioChannel = null;
                 try {
