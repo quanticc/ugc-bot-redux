@@ -8,7 +8,7 @@ import java.time.ZonedDateTime;
 import java.util.Objects;
 
 @Document(collection = "game_server")
-public class GameServer {
+public class GameServer extends AbstractAuditingEntity {
 
     @Id
     private String id;

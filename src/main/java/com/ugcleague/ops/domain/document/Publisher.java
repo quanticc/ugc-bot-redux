@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Document(collection = "publisher")
-public class Publisher {
+public class Publisher extends AbstractAuditingEntity {
 
     @Id
     private String id;

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Document(collection = "sound_bite")
-public class SoundBite {
+public class SoundBite extends AbstractAuditingEntity {
 
     @Id
     private String id;

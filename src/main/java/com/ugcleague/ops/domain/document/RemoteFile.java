@@ -9,7 +9,7 @@ import java.util.Comparator;
 import java.util.Objects;
 
 @Document(collection = "remote_file")
-public class RemoteFile implements Comparable<RemoteFile> {
+public class RemoteFile extends AbstractAuditingEntity implements Comparable<RemoteFile> {
 
     @Id
     private String id;
