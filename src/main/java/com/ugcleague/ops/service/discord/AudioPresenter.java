@@ -25,7 +25,10 @@ import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
@@ -55,6 +58,7 @@ public class AudioPresenter implements DiscordSubscriber {
     private OptionSpec<Void> audioSkipSpec;
     private OptionSpec<Void> audioPauseSpec;
     private OptionSpec<Void> audioResumeSpec;
+    private OptionSpec<String> audioYoutubeSpec;
 
     @Autowired
     public AudioPresenter(CommandService commandService, DiscordService discordService) {
@@ -79,12 +83,15 @@ public class AudioPresenter implements DiscordSubscriber {
         aliases.put("skip", "-s");
         aliases.put("pause", "-p");
         aliases.put("resume", "-r");
+        aliases.put("youtube", "--youtube");
         OptionParser parser = newParser();
         audioJoinSpec = parser.acceptsAll(asList("j", "join"), "Joins a voice channel by order #")
             .withRequiredArg().ofType(Integer.class);
         audioLeaveSpec = parser.acceptsAll(asList("l", "leave"), "Leave the current voice channel");
         audioEnqueueSpec = parser.acceptsAll(asList("e", "enqueue"), "Puts an audio file to the end of the queue")
             .withRequiredArg().describedAs("filename");
+        audioYoutubeSpec = parser.accepts("youtube", "Puts a youtube video to the end of the queue")
+            .withRequiredArg().describedAs("watch-url");
         audioUnqueueSpec = parser.acceptsAll(asList("u", "unqueue"), "Removes file from the queue by index")
             .withRequiredArg().ofType(Integer.class);
 //        audioListSpec = parser.acceptsAll(asList("L", "list"), "Display list of queued files");
@@ -204,6 +211,19 @@ public class AudioPresenter implements DiscordSubscriber {
         if (optionSet.has(audioResumeSpec)) {
             log.debug("Resuming current track");
             audioChannel.resume();
+        }
+
+        if (optionSet.has(audioYoutubeSpec)) {
+            String name = System.getProperty("os.name").contains("Windows") ? "youtube-dl.exe" : "youtube-dl";
+            ProcessBuilder builder = new ProcessBuilder(name, "-q", "-f", "worstaudio",
+                "--exec", "ffmpeg -hide_banner -nostats -loglevel panic -y -i {} -vn -q:a 5 -f mp3 pipe:1", "-o",
+                "%(id)s", optionSet.valueOf(audioYoutubeSpec));
+            try {
+                Process process = builder.start();
+                audioChannel.queue(AudioSystem.getAudioInputStream(process.getInputStream()));
+            } catch (IOException | UnsupportedAudioFileException e) {
+                log.warn("Could not start process", e);
+            }
         }
 
         return "";
