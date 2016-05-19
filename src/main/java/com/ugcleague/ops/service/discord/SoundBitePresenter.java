@@ -47,6 +47,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(SoundBitePresenter.class);
     private static final Pattern ID_PATTERN = Pattern.compile("v=([a-zA-Z0-9_\\-]+)");
+    private static final Pattern ALT_PATTERN = Pattern.compile("youtu.be/([a-zA-Z0-9_\\-]+)");
 
     private final DiscordService discordService;
     private final SoundBiteRepository soundBiteRepository;
@@ -519,6 +520,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
         Optional<File> source = event.getFileSource();
         if (source.isPresent()) {
             event.getAudioChannel().setVolume(volumeMap.getOrDefault(source.get(), 20) / 100f);
+        } else {
+            event.getAudioChannel().setVolume(0.3f);
         }
     }
 
