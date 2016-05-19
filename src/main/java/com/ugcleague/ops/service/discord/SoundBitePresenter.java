@@ -19,6 +19,7 @@ import sx.blah.discord.handle.AudioChannel;
 import sx.blah.discord.handle.impl.events.AudioPlayEvent;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
@@ -170,7 +171,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
                         .collect(Collectors.joining(", "));
                     deleteMessage(message, 3, TimeUnit.SECONDS);
                     if (queued != null && !queued.isEmpty()) {
-                        return "Added to queue: " + queued;
+                        IUser user = message.getAuthor();
+                        return user.getName() + "#" + user.getDiscriminator() + " added to queue: " + queued;
                     } else {
                         return "Nothing to queue";
                     }
