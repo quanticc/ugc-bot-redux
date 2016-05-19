@@ -25,10 +25,7 @@ import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
@@ -45,6 +42,7 @@ public class AudioPresenter implements DiscordSubscriber {
 
     private final CommandService commandService;
     private final DiscordService discordService;
+    private final AudioStreamService audioStreamService;
 
     private OptionSpec<Integer> audioJoinSpec;
     private OptionSpec<String> audioEnqueueSpec;
@@ -58,9 +56,11 @@ public class AudioPresenter implements DiscordSubscriber {
     private OptionSpec<String> audioYoutubeSpec;
 
     @Autowired
-    public AudioPresenter(CommandService commandService, DiscordService discordService) {
+    public AudioPresenter(CommandService commandService, DiscordService discordService,
+                          AudioStreamService audioStreamService) {
         this.commandService = commandService;
         this.discordService = discordService;
+        this.audioStreamService = audioStreamService;
     }
 
     @PostConstruct
@@ -195,21 +195,7 @@ public class AudioPresenter implements DiscordSubscriber {
         }
 
         if (optionSet.has(audioYoutubeSpec)) {
-            String name = System.getProperty("os.name").contains("Windows") ? "youtube-dl.exe" : "youtube-dl";
-            ProcessBuilder builder = new ProcessBuilder(name, "-q", "-f", "worstaudio",
-                "--exec", "ffmpeg -hide_banner -nostats -loglevel panic -y -i {} -vn -q:a 5 -f mp3 pipe:1", "-o",
-                "%(id)s", optionSet.valueOf(audioYoutubeSpec));
-            try {
-                Process process = builder.start();
-                try {
-                    audioChannel.queue(AudioSystem.getAudioInputStream(process.getInputStream()));
-                } catch (UnsupportedAudioFileException e) {
-                    log.warn("Could not queue audio", e);
-                    process.destroyForcibly();
-                }
-            } catch (IOException e) {
-                log.warn("Could not start process", e);
-            }
+            audioStreamService.queueFromYouTube(audioChannel, optionSet.valueOf(audioYoutubeSpec));
         }
 
         return "";
@@ -220,7 +206,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Play] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
+        log.debug("[Play] {} ({})", source, stream.hashCode());
     }
 
     @EventSubscriber
@@ -228,7 +214,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Stop] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
+        log.debug("[Stop] {} ({})", source, stream.hashCode());
     }
 
     @EventSubscriber
@@ -236,7 +222,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Enqueue] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
+        log.debug("[Enqueue] {} ({})", source, stream.hashCode());
     }
 
     @EventSubscriber
@@ -244,11 +230,6 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        try {
-            stream.close();
-        } catch (IOException e) {
-            log.warn("Could not close audio stream", e);
-        }
-        log.debug("[Dequeue] ({}) {} with metadata: {}", stream.toString(), source, event.getFormat().toString());
+        log.debug("[Dequeue] {} ({})", source, stream.hashCode());
     }
 }

@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
@@ -43,12 +45,14 @@ import static com.ugcleague.ops.service.discord.CommandService.newParser;
 public class SoundBitePresenter implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(SoundBitePresenter.class);
+    private static final Pattern ID_PATTERN = Pattern.compile("v=([a-zA-Z0-9_\\-]+)");
 
     private final DiscordService discordService;
     private final SoundBiteRepository soundBiteRepository;
     private final SettingsService settingsService;
     private final CommandService commandService;
     private final Executor taskExecutor;
+    private final AudioStreamService audioStreamService;
 
     //private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
     //private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
@@ -70,15 +74,18 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<String> soundbitesEditSpec;
     private OptionSpec<Void> soundbitesBlacklistAddSpec;
     private OptionSpec<Void> soundbitesBlacklistRemoveSpec;
+    private OptionSpec<String> queueNonOptionSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
-                              SettingsService settingsService, CommandService commandService, Executor taskExecutor) {
+                              SettingsService settingsService, CommandService commandService, Executor taskExecutor,
+                              AudioStreamService audioStreamService) {
         this.discordService = discordService;
         this.soundBiteRepository = soundBiteRepository;
         this.settingsService = settingsService;
         this.commandService = commandService;
         this.taskExecutor = taskExecutor;
+        this.audioStreamService = audioStreamService;
     }
 
     @PostConstruct
@@ -135,7 +142,59 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 }
                 return "";
             }).build());
+        configureQueueCommand();
         configureVolumeCommand();
+    }
+
+    private void configureQueueCommand() {
+        OptionParser parser = newParser();
+        queueNonOptionSpec = parser.nonOptions("YouTube Video URL to enqueue").ofType(String.class);
+        // TODO: add volume control, currently can't tie d4j audio events to a YT track
+//        queueVolumeSpec = parser.accepts("volume", "Play with a given volume")
+//            .withRequiredArg().ofType(Integer.class).defaultsTo(20);
+        commandService.register(CommandBuilder.startsWith(".queue").unrestricted().originReplies()
+        .description("Queue a YouTube video to the bot").parser(parser).command((message, optionSet) -> {
+                if (message.getChannel().isPrivate()) {
+                    return "Join a voice channel and don't use private messages";
+                }
+                List<String> urls = optionSet.valuesOf(queueNonOptionSpec);
+                if (urls.size() == 0) {
+                    return "You have to enter a YouTube URL";
+                }
+                try {
+                    AudioChannel audioChannel = message.getGuild().getAudioChannel();
+                    String queued = urls.stream().map(this::extractId)
+                        .filter(Optional::isPresent)
+                        .map(id -> queueYouTube(audioChannel, id.get()))
+                        .filter(s -> s != null)
+                        .collect(Collectors.joining(", "));
+                    deleteMessage(message, 3, TimeUnit.SECONDS);
+                    if (queued != null && !queued.isEmpty()) {
+                        return "Added to queue: " + queued;
+                    } else {
+                        return "Nothing to queue";
+                    }
+                } catch (DiscordException e) {
+                    log.warn("Could not get audio channel", e);
+                    return "Could not get audio channel for this server";
+                }
+            }).build());
+    }
+
+    private String queueYouTube(AudioChannel channel, String id) {
+        if (audioStreamService.queueFromYouTube(channel, id)) {
+            return id;
+        } else {
+            return null;
+        }
+    }
+
+    private Optional<String> extractId(String url) {
+        Matcher matcher = ID_PATTERN.matcher(url);
+        if (matcher.find()) {
+            return Optional.of(matcher.group(1));
+        }
+        return Optional.empty();
     }
 
     private void configureVolumeCommand() {
@@ -390,19 +449,23 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     .collect(Collectors.toList());
                 play(list.get(RandomUtils.nextInt(0, list.size())).toFile(), message, volume);
                 if (delete) {
-                    CompletableFuture.runAsync(() -> {
-                        try {
-                            Thread.sleep(3000);
-                            discordService.deleteMessage(message);
-                        } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
-                            log.warn("Could not perform cleanup: {}", ex.toString());
-                        }
-                    }, taskExecutor);
+                    deleteMessage(message, 3, TimeUnit.SECONDS);
                 }
             } catch (IOException e1) {
                 log.warn("Could not create list of random sounds", e1);
             }
         }
+    }
+
+    private void deleteMessage(IMessage message, long timeout, TimeUnit unit) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                unit.sleep(timeout);
+                discordService.deleteMessage(message);
+            } catch (DiscordException | MissingPermissionsException | InterruptedException ex) {
+                log.warn("Could not perform cleanup: {}", ex.toString());
+            }
+        }, taskExecutor);
     }
 
     private void play(File source, IMessage message, Integer volume) {
