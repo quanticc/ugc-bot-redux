@@ -206,7 +206,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Play] {} ({})", source, stream.hashCode());
+        log.debug("[Play] {}: {}", hex(stream.hashCode()), source);
     }
 
     @EventSubscriber
@@ -214,7 +214,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Stop] {} ({})", source, stream.hashCode());
+        log.debug("[Stop] {}: {}", hex(stream.hashCode()), source);
     }
 
     @EventSubscriber
@@ -222,7 +222,7 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Enqueue] {} ({})", source, stream.hashCode());
+        log.debug("[Enqueue] {}: {}", hex(stream.hashCode()), source);
     }
 
     @EventSubscriber
@@ -230,6 +230,10 @@ public class AudioPresenter implements DiscordSubscriber {
         String source = event.getFileSource().map(File::toString)
             .orElseGet(() -> event.getUrlSource().map(URL::toString).orElse(""));
         AudioInputStream stream = event.getStream();
-        log.debug("[Dequeue] {} ({})", source, stream.hashCode());
+        log.debug("[Dequeue] {}: {}", hex(stream.hashCode()), source);
+    }
+
+    private String hex(int number) {
+        return Integer.toHexString(number);
     }
 }
