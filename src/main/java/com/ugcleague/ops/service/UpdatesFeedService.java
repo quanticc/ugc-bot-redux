@@ -38,6 +38,7 @@ public class UpdatesFeedService {
 
     private FeedFetcher feedFetcher;
     private URL url;
+    private volatile int lastSavedVersion = 0;
 
     @Autowired
     public UpdatesFeedService(SteamCondenserService condenserService, LeagueProperties leagueProperties,
@@ -86,7 +87,11 @@ public class UpdatesFeedService {
                 Instant lastPublishedDate = event.getFeed().getPublishedDate().toInstant();
                 log.debug("[hlds_announce] Feed retrieved. Published at {}", lastPublishedDate);
                 // news post might not be related to TF2!! always check before dispatching event
-                if (condenserService.getLastCachedVersion() < condenserService.getLatestVersion()) {
+                if (lastSavedVersion == 0) {
+                    lastSavedVersion = condenserService.getLastCachedVersion();
+                }
+                if (lastSavedVersion < condenserService.getLatestVersion()) {
+                    lastSavedVersion = condenserService.getLastCachedVersion();
                     publisher.publishEvent(new FeedUpdatedEvent(event.getFeed()));
                 }
             } else if (FetcherEvent.EVENT_TYPE_FEED_UNCHANGED.equals(eventType)) {
