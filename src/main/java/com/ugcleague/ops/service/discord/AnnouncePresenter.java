@@ -227,7 +227,7 @@ public class AnnouncePresenter {
 
     @EventListener
     private void onUpdateCompleted(GameUpdateCompletedEvent event) {
-        announce("updates", ":ok_hand: TF2 game servers updated to v" + event.getVersion());
+        announce("updates", "TF2 game servers updated to v" + event.getVersion() + " :ok_hand: ");
     }
 
     @EventListener
