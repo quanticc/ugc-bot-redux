@@ -46,8 +46,7 @@ import static com.ugcleague.ops.service.discord.CommandService.newParser;
 public class SoundBitePresenter implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(SoundBitePresenter.class);
-    private static final Pattern ID_PATTERN = Pattern.compile("v=([a-zA-Z0-9_\\-]+)");
-    private static final Pattern ALT_PATTERN = Pattern.compile("youtu.be/([a-zA-Z0-9_\\-]+)");
+    private static final Pattern YOUTUBE_URL = Pattern.compile("(?:https?://)?(?:(?:(?:www\\.?)?youtube\\.com(?:/(?:(?:watch\\?.*?(v=[^&\\s]+).*)|(?:v(/.*))|(channel/.+)|(?:user/(.+))|(?:results\\?(search_query=.+))))?)|(?:youtu\\.be(/.*)?))");
 
     private final DiscordService discordService;
     private final SoundBiteRepository soundBiteRepository;
@@ -165,12 +164,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 }
                 try {
                     AudioChannel audioChannel = message.getGuild().getAudioChannel();
-                    String queued = urls.stream().map(this::extractId)
+                    String queued = urls.stream().map(this::extractVideoId)
                         .filter(Optional::isPresent)
                         .map(id -> queueYouTube(audioChannel, id.get()))
                         .filter(s -> s != null)
                         .collect(Collectors.joining(", "));
-                    deleteMessage(message, 3, TimeUnit.SECONDS);
+                    deleteMessage(message, 1, TimeUnit.SECONDS);
                     if (queued != null && !queued.isEmpty()) {
                         IUser user = message.getAuthor();
                         return user.getName() + "#" + user.getDiscriminator() + " added to queue: " + queued;
@@ -192,10 +191,19 @@ public class SoundBitePresenter implements DiscordSubscriber {
         }
     }
 
-    private Optional<String> extractId(String url) {
-        Matcher matcher = ID_PATTERN.matcher(url);
+    public Optional<String> extractVideoId(String url) {
+        Matcher matcher = YOUTUBE_URL.matcher(url);
         if (matcher.find()) {
-            return Optional.of(matcher.group(1));
+            String group1 = matcher.group(1);
+            String group2 = matcher.group(2);
+            String group6 = matcher.group(6);
+            if (group1 != null && !group1.isEmpty()) {
+                return Optional.of(group1.substring(2)); // strip "v="
+            } else if (group2 != null && !group2.isEmpty() && !group2.substring(1).isEmpty()) {
+                return Optional.of(group2.substring(1)); // strip "/"
+            } else if (group6 != null && !group6.isEmpty() && !group6.substring(1).isEmpty()) {
+                return Optional.of(group6.substring(1)); // strip "/"
+            }
         }
         return Optional.empty();
     }
@@ -521,7 +529,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         if (source.isPresent()) {
             event.getAudioChannel().setVolume(volumeMap.getOrDefault(source.get(), 20) / 100f);
         } else {
-            event.getAudioChannel().setVolume(0.3f);
+            event.getAudioChannel().setVolume(0.2f);
         }
     }
 
