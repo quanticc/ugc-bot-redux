@@ -188,7 +188,7 @@ public class NuclearService {
     }
 
     private void announce(NuclearStream stream, List<Response> responseList, Map<String, String> context) {
-        String response = responseList.get(RandomUtils.nextInt(0, responseList.size() - 1)).result;
+        String response = responseList.get(RandomUtils.nextInt(0, responseList.size())).result;
 //        double total = responseList.stream().map(r -> (double) 1 / r.rarity).reduce(0D, Double::sum);
 //        double random = Math.random();
 //        double sum = 0D;
