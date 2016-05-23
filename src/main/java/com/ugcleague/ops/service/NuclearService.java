@@ -237,11 +237,9 @@ public class NuclearService {
             new Response(0.5, ""),
             new Response(1, "Ouch"),
             new Response(1, "Ow"),
-            new Response(1, "Ugh"),
-            new Response(1, "Oof"),
             new Response(2, "Got hit by {{an_enemy}}"),
-            new Response(1, "Died to {{enemy}}"),
-            new Response(2, "Motherfucker bit me"),
+            new Response(1, "This motherfucking {{enemy}}"),
+            new Response(2, "Motherfucker {{enemy}} bit me"),
             new Response(3, "I've had it with these {{enemy}}s in this motherfucking level")
         );
         Map<String, String> context = new HashMap<>();
