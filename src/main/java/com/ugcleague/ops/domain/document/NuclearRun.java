@@ -3,6 +3,7 @@ package com.ugcleague.ops.domain.document;
 import com.ugcleague.ops.service.util.NuclearThrone;
 import com.ugcleague.ops.web.rest.NuclearResponse;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -209,7 +210,7 @@ public class NuclearRun {
         builder.append("Mutations: ").append(mutations).append("\n");
         builder.append("Kills: ").append(kills).append("\n");
         builder.append("Health: ").append(health).append("\n");
-        builder.append("Timestamp: ").append(timestamp).append("\n");
+        builder.append("Timestamp: ").append(Instant.ofEpochSecond(timestamp)).append("\n");
         return builder.toString();
     }
 }
