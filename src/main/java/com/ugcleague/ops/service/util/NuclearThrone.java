@@ -8,7 +8,9 @@ import static java.util.Arrays.asList;
 
 public class NuclearThrone {
 
-    /** Characters are 0-indexed **/
+    /**
+     * Characters are 0-indexed
+     **/
     public static List<String> CHARACTERS = asList(
         "Random",
         "Fish",
@@ -29,7 +31,9 @@ public class NuclearThrone {
         "Cuz"
     );
 
-    /** Ultras are 1x1-indexed (character, index) **/
+    /**
+     * Ultras are 1x1-indexed (character, index)
+     **/
     public static List<List<String>> ULTRAS = asList(
         asList("Confiscate", "Gun Warrant"),
         asList("Fortress", "Juggernaut"),
@@ -45,7 +49,9 @@ public class NuclearThrone {
         asList("Super Portal Strike", "Super Blast Armor")
     );
 
-    /** Mutations are 0-indexed **/
+    /**
+     * Mutations are 0-indexed
+     **/
     public static List<String> MUTATIONS = asList(
         "Heavy Heart",
         "Rhino Skin",
@@ -78,7 +84,9 @@ public class NuclearThrone {
         "Open Mind"
     );
 
-    /** Crowns are 1-indexed **/
+    /**
+     * Crowns are 1-indexed
+     **/
     public static List<String> CROWNS = asList(
         "Bare Head",
         "Crown of Death",
@@ -96,9 +104,8 @@ public class NuclearThrone {
     );
 
     /**
-     Weapons are 0-indexed
-     *
-      */
+     * Weapons are 0-indexed
+     */
     public static List<String> WEAPONS = asList("Nothing",
         "Revolver",
         "Triple Machinegun",
@@ -342,20 +349,21 @@ public class NuclearThrone {
 
     public static Map<Integer, String> WORLDS = new LinkedHashMap<Integer, String>() {
         {
-            put(1,  "Desert");
-            put(2,  "Sewers");
-            put(3,  "Scrap yard");
-            put(4,  "Caves");
-            put(5,  "Frozen city");
-            put(6,  "Labs");
-            put(7,  "Palace");
-            put(100,  "Crown Vault");
-            put(101,  "Oasis");
-            put(102,  "Pizza Sewers");
-            put(103,  "YV's Mansion");
-            put(104,  "Cursed Crystal Caves");
-            put(105,  "Jungle");
-            put(107,  "YV's Crib");
+            put(0, "Campfire");
+            put(1, "Desert");
+            put(2, "Sewers");
+            put(3, "Scrap yard");
+            put(4, "Caves");
+            put(5, "Frozen city");
+            put(6, "Labs");
+            put(7, "Palace");
+            put(100, "Crown Vault");
+            put(101, "Oasis");
+            put(102, "Pizza Sewers");
+            put(103, "YV's Mansion");
+            put(104, "Cursed Crystal Caves");
+            put(105, "Jungle");
+            put(107, "YV's Crib");
         }
     };
 }
