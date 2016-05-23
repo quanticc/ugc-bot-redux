@@ -268,7 +268,7 @@ public class NuclearThrone {
             put(35, "Explo Guardian");
             put(36, "Dog Guardian");
             put(37, "Throne");
-            put(38, "Throne II");
+            put(38, "Throne 2");
             put(39, "Bone Fish");
             put(40, "Crab");
             put(41, "Turtle");
@@ -334,7 +334,7 @@ public class NuclearThrone {
             put(101, "Golden Disc");
             put(102, "Big Dog Explosion");
             put(103, "IDPD Freak");
-            put(104, "Throne II Death");
+            put(104, "Throne 2 Death");
             put(105, "Oasis Boss");
             put(-1, "Nothing");
         }

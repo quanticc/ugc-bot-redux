@@ -13,6 +13,7 @@ import com.ugcleague.ops.repository.mongo.PublisherRepository;
 import com.ugcleague.ops.service.discord.AnnouncePresenter;
 import com.ugcleague.ops.service.util.NuclearThrone;
 import com.ugcleague.ops.web.rest.NuclearResponse;
+import org.apache.commons.lang3.RandomUtils;
 import org.languagetool.JLanguageTool;
 import org.languagetool.Languages;
 import org.languagetool.rules.en.AvsAnRule;
@@ -187,17 +188,18 @@ public class NuclearService {
     }
 
     private void announce(NuclearStream stream, List<Response> responseList, Map<String, String> context) {
-        double total = responseList.stream().map(r -> (double) 1 / r.rarity).reduce(0D, Double::sum);
-        double random = Math.random();
-        double sum = 0D;
-        String response = responseList.get(responseList.size() - 1).result;
-        for (Response item : responseList) {
-            double chance = ((double) 1 / item.rarity) / total;
-            sum += chance;
-            if (random < sum) {
-                response = item.result;
-            }
-        }
+        String response = responseList.get(RandomUtils.nextInt(0, responseList.size() - 1)).result;
+//        double total = responseList.stream().map(r -> (double) 1 / r.rarity).reduce(0D, Double::sum);
+//        double random = Math.random();
+//        double sum = 0D;
+//        String response = responseList.get(responseList.size() - 1).result;
+//        for (Response item : responseList) {
+//            double chance = ((double) 1 / item.rarity) / total;
+//            sum += chance;
+//            if (random < sum) {
+//                response = item.result;
+//            }
+//        }
         if (context == null) {
             announcePresenter.announce(stream.getPublisher().getId(), response, true, false);
         } else {
@@ -252,7 +254,7 @@ public class NuclearService {
     private void onNewUltra(NuclearStream stream, int character, int ultra) {
         String u = NuclearThrone.ULTRAS.get(character - 1).get(ultra - 1);
         String c = NuclearThrone.CHARACTERS.get(character);
-        announce(stream, "motherfucking " + u);
+        announce(stream, "Motherfucking " + u);
         log.info("Player {} got {} ultra", stream.getId(), c, u);
     }
 
@@ -264,13 +266,13 @@ public class NuclearService {
 
     private void onNewMutation(NuclearStream stream, int mutation) {
         String m = NuclearThrone.MUTATIONS.get(mutation);
-        announce(stream, "motherfucking " + m);
+        announce(stream, "Motherfucking " + m);
         log.info("Player {} took {}", stream.getId(), m);
     }
 
     private void onWeaponPickup(NuclearStream stream, int weapon) {
         String w = NuclearThrone.WEAPONS.get(weapon);
-        announce(stream, "motherfucking " + w);
+        announce(stream, "Motherfucking " + w);
         log.info("Player {} picked up {}", stream.getId(), w);
     }
 
