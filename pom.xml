@@ -501,6 +501,16 @@
             <artifactId>janino</artifactId>
             <version>${janino.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.languagetool</groupId>
+            <artifactId>language-en</artifactId>
+            <version>3.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spullara.mustache.java</groupId>
+            <artifactId>compiler</artifactId>
+            <version>0.9.1</version>
+        </dependency>
     </dependencies>
 
     <build>

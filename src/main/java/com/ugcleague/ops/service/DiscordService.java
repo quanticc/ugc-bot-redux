@@ -245,31 +245,39 @@ public class DiscordService implements DiscordSubscriber {
         IChannel channel = client.getChannelByID(channelId);
         IMessage response = null;
         while (response == null) {
-            response = blockingSendMessage(channel, content);
+            response = blockingSendMessage(channel, content, false);
         }
         return CompletableFuture.completedFuture(response);
     }
 
-    @Async
     public CompletableFuture<IMessage> sendMessage(IChannel channel, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+        return sendMessage(channel, content, false);
+    }
+
+    @Async
+    public CompletableFuture<IMessage> sendMessage(IChannel channel, String content, boolean tts) throws DiscordException, MissingPermissionsException, InterruptedException {
         IMessage response = null;
         while (response == null) {
-            response = blockingSendMessage(channel, content);
+            response = blockingSendMessage(channel, content, tts);
         }
         return CompletableFuture.completedFuture(response);
     }
 
     public CompletableFuture<IMessage> sendPrivateMessage(String userId, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
         IUser user = client.getUserByID(userId);
-        return sendPrivateMessage(user, content);
+        return sendPrivateMessage(user, content, false);
+    }
+
+    public CompletableFuture<IMessage> sendPrivateMessage(IUser user, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+        return sendPrivateMessage(user, content, false);
     }
 
     @Async
-    public CompletableFuture<IMessage> sendPrivateMessage(IUser user, String content) throws DiscordException, MissingPermissionsException, InterruptedException {
+    public CompletableFuture<IMessage> sendPrivateMessage(IUser user, String content, boolean tts) throws DiscordException, MissingPermissionsException, InterruptedException {
         IMessage response = null;
         while (response == null) {
             try {
-                response = blockingSendMessage(client.getOrCreatePMChannel(user), content);
+                response = blockingSendMessage(client.getOrCreatePMChannel(user), content, tts);
             } catch (Exception e) {
                 log.warn("Could not create PM channel", e);
                 throw new DiscordException("Could not create PM channel");
@@ -278,7 +286,7 @@ public class DiscordService implements DiscordSubscriber {
         return CompletableFuture.completedFuture(response);
     }
 
-    public IMessage blockingSendMessage(IChannel channel, String message) throws MissingPermissionsException, DiscordException, InterruptedException {
+    public IMessage blockingSendMessage(IChannel channel, String message, boolean tts) throws MissingPermissionsException, DiscordException, InterruptedException {
         IMessage response = null;
         try {
             if (message.length() > LENGTH_LIMIT) {
@@ -288,7 +296,7 @@ public class DiscordService implements DiscordSubscriber {
                     response = channel.sendMessage(split);
                 }
             } else {
-                response = channel.sendMessage(message);
+                response = channel.sendMessage(message, tts);
             }
         } catch (HTTP429Exception e) {
             sleep(e.getRetryDelay());

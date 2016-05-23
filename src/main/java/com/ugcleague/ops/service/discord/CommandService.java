@@ -414,7 +414,11 @@ public class CommandService implements DiscordSubscriber {
     ////////////////////////////////////////
 
     public CompletableFuture<IMessage> answerToChannel(IChannel channel, String answer) throws InterruptedException, DiscordException, MissingPermissionsException {
-        return discordService.sendMessage(channel, answer);
+        return discordService.sendMessage(channel, answer, false);
+    }
+
+    public CompletableFuture<IMessage> answerToChannel(IChannel channel, String answer, boolean tts) throws InterruptedException, DiscordException, MissingPermissionsException {
+        return discordService.sendMessage(channel, answer, tts);
     }
 
     private CompletableFuture<IMessage> answer(IMessage message, String answer, boolean mention, File file) throws InterruptedException, DiscordException, MissingPermissionsException {

@@ -250,6 +250,10 @@ public class AnnouncePresenter {
     }
 
     public void announce(String publisherName, String message) {
+        announce(publisherName, message, false, true);
+    }
+
+    public void announce(String publisherName, String message, boolean tts, boolean prefixPublisherName) {
         publisherRepository.findById(publisherName).ifPresent(pub -> {
             Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
             if (latest.containsKey(publisherName) && message.equals(latest.get(publisherName).getMessage())) {
@@ -263,7 +267,11 @@ public class AnnouncePresenter {
                         IChannel channel = client.getChannelByID(sub.getChannel().getId());
                         if (channel != null) {
                             log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
-                            commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message);
+                            if (prefixPublisherName) {
+                                commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message, tts);
+                            } else {
+                                commandService.answerToChannel(channel, message, tts);
+                            }
                         } else {
                             log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
                         }
