@@ -191,7 +191,7 @@ public class NuclearRun {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Character: ").append(NuclearThrone.CHARACTERS.get(character)).append("\n");
-        builder.append("LastDamagedBy: ").append(NuclearThrone.ENEMIES.get(lastDamagedBy)).append("\n");
+        builder.append("Last damaged by: ").append(NuclearThrone.ENEMIES.get(lastDamagedBy)).append("\n");
         builder.append("Level: ").append(level).append("\n");
         if (crown > 0) {
             builder.append("Crown: ").append(NuclearThrone.CROWNS.get(crown - 1)).append("\n");
@@ -200,7 +200,7 @@ public class NuclearRun {
             .map(i -> NuclearThrone.WEAPONS.get(i))
             .collect(Collectors.joining(", "));
         builder.append("Weapons: ").append(weapons).append("\n");
-        builder.append("BSkin: ").append(skin).append("\n");
+        builder.append("BSkin: ").append(skin ? "Yes" : "No").append("\n");
         if (ultra > 0) {
             builder.append("Ultra: ").append(NuclearThrone.ULTRAS.get(character - 1).get(ultra - 1)).append("\n");
         }

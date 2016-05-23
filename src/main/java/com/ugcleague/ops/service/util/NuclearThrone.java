@@ -45,6 +45,14 @@ public class NuclearThrone {
         }
     };
 
+    public static List<String> LOW_HEALTH_TIPS = asList(
+        "Help",
+        "No no no",
+        "Good luck",
+        "This isn't going to end well",
+        "Oh dear"
+    );
+
     public static List<String> LOOP_TIPS = asList(
         "No mountain too high",
         "No valley too deep",

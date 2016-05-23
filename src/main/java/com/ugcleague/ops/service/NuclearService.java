@@ -289,6 +289,12 @@ public class NuclearService {
         int loop = run.getLoop();
 
         log.info("Player {} entered level {}", stream.getId(), run.getLevel());
+        announcePresenter.announce(stream.getPublisher().getId(), run.toString());
+
+        if (run.getHealth() <= 2) {
+            announce(stream, NuclearThrone.LOW_HEALTH_TIPS.get(RandomUtils.nextInt(0,
+                NuclearThrone.LOW_HEALTH_TIPS.size())));
+        }
 
         if (world == 100) {
             List<Response> responses = Arrays.asList(
@@ -318,8 +324,6 @@ public class NuclearService {
             List<String> messages = NuclearThrone.WORLD_TIPS.get(world);
             announce(stream, messages.get(RandomUtils.nextInt(0, messages.size())));
         }
-
-        announcePresenter.announce(stream.getPublisher().getId(), run.toString());
     }
 
     private String getWorldName(int world) {
