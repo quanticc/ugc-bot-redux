@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service.util;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,30 @@ public class NuclearThrone {
         "Skeleton",
         "Frog",
         "Cuz"
+    );
+
+    public static Map<Integer, List<String>> CHARACTER_TIPS = new LinkedHashMap<Integer, List<String>>() {
+        {
+            put(12, asList(
+                "Keep moving",
+                "Never look back",
+                "Never slow down",
+                "They're getting closer",
+                "Never stop",
+                "Another world lost"
+            ));
+        }
+    };
+
+    public static List<String> LOOP_TIPS = asList(
+        "No mountain too high",
+        "No valley too deep",
+        "We'll reach for the sky",
+        "There's no limit",
+        "What's happening",
+        "Monsters everywhere",
+        "It's a whole new world",
+        "This will never end"
     );
 
     /**
@@ -364,6 +389,105 @@ public class NuclearThrone {
             put(104, "Cursed Crystal Caves");
             put(105, "Jungle");
             put(107, "YV's Crib");
+        }
+    };
+
+    public static  Map<Integer, List<String>> WORLD_TIPS = new LinkedHashMap<Integer, List<String>>() {
+        {
+            put(0, asList(
+                "This can't be true",
+                "Your friends were here",
+                "It's so dark"
+            ));
+            put(1, asList(
+                "The wind hurts",
+                "Dust surrounds you",
+                "Let's do this",
+                "Watch out for maggots",
+                "Scorching sun",
+                "The wasteland calls you",
+                "Welcome to the future"
+            ));
+            put(2, asList(
+                "So many rats",
+                "Sludge everywhere",
+                "Water dripping",
+                "Danger",
+                "Don't eat the rat meat",
+                "Don't touch the frogs",
+                "The sewers stink",
+                "Don't drink the water"
+            ));
+            put(3, asList(
+                "Portals can blow up cars",
+                "Climb over cars",
+                "Sludge pools",
+                "The sound of birds",
+                "Rust everywhere",
+                "Look up",
+                "There used to be trees here",
+                "Shoot robots on sight"));
+            put(4, asList(
+                "Almost halfway there",
+                "Skin is crawling",
+                "Reflections on the walls",
+                "Don't lose your heart",
+                "Spiderwebs everywhere",
+                "Oh no"
+            ));
+            put(5, asList(
+                "There is no yeti",
+                "Walk softly",
+                "Civilization",
+                "Miss the sun",
+                "They used to have electricity",
+                "Wear a scarf"
+            ));
+            put(6, asList(
+                "Don't push any buttons",
+                "Nerds",
+                "Beep boop"
+            ));
+            put(7, asList(
+                "The Palace",
+                "This place is old"
+            ));
+            put(100, Collections.singletonList("Awww yes"));
+            put(101, asList(
+                "Don't move",
+                "It's beautiful down here",
+                "Hold your breath",
+                "Fish"
+            ));
+            put(102, asList(
+                "It smells nice here",
+                "Hunger..."
+            ));
+            put(103, asList(
+                "4 years later...",
+                "So much money",
+                "Always wanted to go here",
+                "Space..."
+            ));
+            put(104, asList(
+                "There halfway almost",
+                "Crawling is skin",
+                "Everywhere spiderwebs",
+                "No oh"
+            ));
+            put(105, asList(
+                "Heart of darkness",
+                "Welcome to the jungle",
+                "Bugs everywhere",
+                "There's something in the trees"
+            ));
+            put(107, asList(
+                "Wakkala wayo",
+                "Now this is real special",
+                "Get the hell out of here",
+                "Lets take a look in the fridge",
+                "This is where the magic happens"
+            ));
         }
     };
 }

@@ -276,6 +276,10 @@ public class NuclearService {
 
     private void onNewRun(NuclearStream stream, NuclearRun run) {
         String c = NuclearThrone.CHARACTERS.get(run.getCharacter());
+        List<String> messages = NuclearThrone.CHARACTER_TIPS.get(run.getCharacter());
+        if (messages != null) {
+            announce(stream, messages.get(RandomUtils.nextInt(0, messages.size())));
+        }
         log.info("Player {} started a new run with {}", stream.getId(), c);
     }
 
@@ -306,8 +310,13 @@ public class NuclearService {
             Map<String, String> context = new HashMap<>();
             context.put("boss", boss);
             announce(stream, responses, context);
+        } else if (world == 0) {
+            announce(stream, NuclearThrone.LOOP_TIPS.get(RandomUtils.nextInt(0, NuclearThrone.LOOP_TIPS.size())));
         } else if (area == 1) {
             announce(stream, "Entered the " + worldName);
+        } else {
+            List<String> messages = NuclearThrone.WORLD_TIPS.get(world);
+            announce(stream, messages.get(RandomUtils.nextInt(0, messages.size())));
         }
 
         announcePresenter.announce(stream.getPublisher().getId(), run.toString());
