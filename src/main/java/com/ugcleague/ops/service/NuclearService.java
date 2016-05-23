@@ -309,6 +309,8 @@ public class NuclearService {
         } else if (area == 1) {
             announce(stream, "Entered the " + worldName);
         }
+
+        announcePresenter.announce(stream.getPublisher().getId(), run.toString());
     }
 
     private String getWorldName(int world) {
