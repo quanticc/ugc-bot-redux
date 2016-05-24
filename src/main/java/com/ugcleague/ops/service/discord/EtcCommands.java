@@ -169,7 +169,7 @@ public class EtcCommands implements DiscordSubscriber {
     }
 
     private void initRollCommand() {
-        commandService.register(CommandBuilder.startsWith(".roll")
+        commandService.register(CommandBuilder.anyMatch(".roll")
             .description("Roll dice").unrestricted().originReplies().noParser()
             .command((message, optionSet) -> {
                 discordService.deleteMessage(message, 2, TimeUnit.SECONDS);
@@ -178,22 +178,28 @@ public class EtcCommands implements DiscordSubscriber {
                     Matcher matcher = DICE_ROLL.matcher(arg);
                     if (matcher.find()) {
                         try {
-                            int rolls = Math.min(100, Integer.parseInt(matcher.group(2)));
+                            int rolls = 1;
+                            if (matcher.group(2) != null && !matcher.group(2).isEmpty()) {
+                                rolls = Math.min(100, Integer.parseInt(matcher.group(2)));
+                            }
                             int sides = Math.min(1000, Integer.parseInt(matcher.group(3)));
                             Function<Integer, Integer> operation = Function.identity();
-                            String modifier = matcher.group(4);
-                            int m = Integer.parseInt(modifier.substring(1));
-                            switch (modifier.charAt(0)) {
-                                case '+':
-                                case '-':
-                                    operation = a -> a + m;
-                                    break;
-                                case '/':
-                                    operation = a -> a / m;
-                                    break;
-                                case '*':
-                                    operation = a -> a * m;
-                                    break;
+                            String modifier = "";
+                            if (matcher.group(4) != null && !matcher.group(4).isEmpty()) {
+                                modifier = matcher.group(4);
+                                int m = Integer.parseInt(modifier.substring(1));
+                                switch (modifier.charAt(0)) {
+                                    case '+':
+                                    case '-':
+                                        operation = a -> a + m;
+                                        break;
+                                    case '/':
+                                        operation = a -> a / m;
+                                        break;
+                                    case '*':
+                                        operation = a -> a * m;
+                                        break;
+                                }
                             }
                             List<Integer> results = new ArrayList<>();
                             for (int i = 0; i < rolls; i++) {
