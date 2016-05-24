@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,6 +63,7 @@ public class SettingsService {
         private volatile String randomSoundDir = "audio";
         private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
         private final Map<String, AnnounceData> lastAnnounce = new ConcurrentHashMap<>();
+        private final Map<String, List<RollData>> rolls = new ConcurrentHashMap<>();
 
         public Set<String> getSoundBitesWhitelist() {
             return soundBitesWhitelist;
@@ -86,6 +88,10 @@ public class SettingsService {
         public Set<String> getSoundBitesBlacklist() {
             return soundBitesBlacklist;
         }
+
+        public Map<String, List<RollData>> getRolls() {
+            return rolls;
+        }
     }
 
     public static class AnnounceData {
@@ -107,6 +113,34 @@ public class SettingsService {
 
         public String getMessage() {
             return message;
+        }
+    }
+
+    public static class RollData {
+        private final long timestamp;
+        private final String rollType;
+        private final int result;
+
+        public RollData() {
+            this("", 0);
+        }
+
+        public RollData(String rollType, int result) {
+            this.timestamp = System.currentTimeMillis();
+            this.rollType = rollType;
+            this.result = result;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public String getRollType() {
+            return rollType;
+        }
+
+        public int getResult() {
+            return result;
         }
     }
 }

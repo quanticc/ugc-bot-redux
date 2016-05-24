@@ -11,6 +11,7 @@ import com.vdurmont.emoji.EmojiParser;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,11 +30,13 @@ import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import javax.xml.transform.Source;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -52,6 +55,7 @@ public class EtcCommands implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(EtcCommands.class);
     private static final Pattern UNICODE = Pattern.compile("\\|([\\da-fA-F]+)");
+    private static final Pattern DICE_ROLL = Pattern.compile("((\\d*)?d(\\d+)([+-/*]\\d+)?)");
 
     private final CommandService commandService;
     private final DiscordService discordService;
@@ -81,6 +85,7 @@ public class EtcCommands implements DiscordSubscriber {
         initCatApiCommand();
         initChatterBotSessions();
         initChatterCommand();
+        initRollCommand();
         discordService.subscribe(this);
     }
 
@@ -159,6 +164,63 @@ public class EtcCommands implements DiscordSubscriber {
                     }
                 });
                 return "";
+            }).build());
+    }
+
+    private void initRollCommand() {
+        commandService.register(CommandBuilder.startsWith(".roll")
+            .description("Roll dice").unrestricted().originReplies().noParser()
+            .command((message, optionSet) -> {
+                if (message.getContent().length() > ".roll".length()) {
+                    String arg = message.getContent().split(" ", 2)[1];
+                    Matcher matcher = DICE_ROLL.matcher(arg);
+                    if (matcher.find()) {
+                        try {
+                            int rolls = Math.min(100, Integer.parseInt(matcher.group(2)));
+                            int sides = Math.min(1000, Integer.parseInt(matcher.group(3)));
+                            Function<Integer, Integer> operation = Function.identity();
+                            String modifier = matcher.group(4);
+                            int m = Integer.parseInt(modifier.substring(1));
+                            switch (modifier.charAt(0)) {
+                                case '+':
+                                case '-':
+                                    operation = a -> a + m;
+                                    break;
+                                case '/':
+                                    operation = a -> a / m;
+                                    break;
+                                case '*':
+                                    operation = a -> a * m;
+                                    break;
+                            }
+                            List<Integer> results = new ArrayList<>();
+                            for (int i = 0; i < rolls; i++) {
+                                results.add(operation.apply(RandomUtils.nextInt(1, sides + 1)));
+                            }
+                            int total = results.stream().reduce(0, Integer::sum);
+                            settingsService.getSettings().getRolls()
+                                .computeIfAbsent(message.getAuthor().getID(), k -> new ArrayList<>())
+                                .add(new SettingsService.RollData(arg, total));
+                            return message.getAuthor().getName() + "#" +
+                                message.getAuthor().getDiscriminator() + " rolled " +
+                                rolls + 'd' + sides + modifier +
+                                " = **" + total + "** " +
+                                (results.size() > 1 ? results.toString() : "");
+                        } catch (NumberFormatException e) {
+                            log.info("Invalid value", e);
+                            return "why you do dis " + message.getAuthor().getName() + "?";
+                        }
+                    } else {
+                        return "Invalid format: must be `AdX` with `A` number of dice and `X` sides";
+                    }
+                } else {
+                    int roll = RandomUtils.nextInt(1, 101);
+                    settingsService.getSettings().getRolls()
+                        .computeIfAbsent(message.getAuthor().getID(), k -> new ArrayList<>())
+                        .add(new SettingsService.RollData("d100", roll));
+                    return message.getAuthor().getName() + "#" +
+                        message.getAuthor().getDiscriminator() + " rolled a **" + roll + "**";
+                }
             }).build());
     }
 
