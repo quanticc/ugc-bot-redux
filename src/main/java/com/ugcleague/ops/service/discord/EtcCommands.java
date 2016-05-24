@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -171,6 +172,7 @@ public class EtcCommands implements DiscordSubscriber {
         commandService.register(CommandBuilder.startsWith(".roll")
             .description("Roll dice").unrestricted().originReplies().noParser()
             .command((message, optionSet) -> {
+                discordService.deleteMessage(message, 2, TimeUnit.SECONDS);
                 if (message.getContent().length() > ".roll".length()) {
                     String arg = message.getContent().split(" ", 2)[1];
                     Matcher matcher = DICE_ROLL.matcher(arg);

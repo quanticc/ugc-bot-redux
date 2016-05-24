@@ -22,10 +22,8 @@ import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
 import sx.blah.discord.handle.impl.events.GuildCreateEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.obj.*;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.HTTP429Exception;
+import sx.blah.discord.util.*;
 import sx.blah.discord.util.Image;
-import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import java.awt.*;
@@ -38,6 +36,7 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -357,6 +356,24 @@ public class DiscordService implements DiscordSubscriber {
             }
         }
     }
+
+    public void deleteMessage(IMessage message, int timeout, TimeUnit unit) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                unit.sleep(timeout);
+            } catch (InterruptedException ex) {
+                log.warn("Could not perform cleanup: {}", ex.toString());
+            }
+        }).thenRun(() -> RequestBuffer.request(() -> {
+            try {
+                message.delete();
+            } catch (MissingPermissionsException | DiscordException e) {
+                log.warn("Failed to delete message", e);
+            }
+            return null;
+        }));
+    }
+
 
     @Async
     public void changeUsername(String name) throws DiscordException, InterruptedException {
