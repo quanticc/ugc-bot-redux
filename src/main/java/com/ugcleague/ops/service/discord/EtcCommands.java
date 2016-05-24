@@ -64,6 +64,7 @@ public class EtcCommands implements DiscordSubscriber {
     private final XPathOperations xPathTemplate;
     private final Executor taskExecutor;
     private final SettingsService settingsService;
+
     private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
     private volatile String currentSession;
 
@@ -227,7 +228,7 @@ public class EtcCommands implements DiscordSubscriber {
                         .computeIfAbsent(message.getAuthor().getID(), k -> new ArrayList<>())
                         .add(new SettingsService.RollData("d100", roll));
                     return message.getAuthor().getName() + "#" +
-                        message.getAuthor().getDiscriminator() + " rolled a **" + roll + "**";
+                        message.getAuthor().getDiscriminator() + " rolled **" + roll + "**";
                 }
             }).build());
     }
