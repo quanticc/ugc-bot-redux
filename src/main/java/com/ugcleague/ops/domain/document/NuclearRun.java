@@ -1,8 +1,10 @@
 package com.ugcleague.ops.domain.document;
 
 import com.ugcleague.ops.service.util.NuclearThrone;
+import com.ugcleague.ops.util.DateUtil;
 import com.ugcleague.ops.web.rest.NuclearResponse;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +28,7 @@ public class NuclearRun {
     private int world;
     private int loop;
     private String level = "";
+    private String type = "";
 
     public int getHealth() {
         return health;
@@ -139,6 +142,14 @@ public class NuclearRun {
         this.level = level;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     public static NuclearRun fromResponse(NuclearResponse.Run nrr) {
         NuclearRun run = new NuclearRun();
         if (nrr != null) {
@@ -156,6 +167,7 @@ public class NuclearRun {
             run.world = nrr.getWorld();
             run.loop = nrr.getLoop();
             run.level = String.format("L%d %d-%d", run.loop, run.world, run.area);
+            run.type = nrr.getType();
         }
         return run;
     }
@@ -191,8 +203,9 @@ public class NuclearRun {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Character: ").append(NuclearThrone.CHARACTERS.get(character)).append("\n");
-        builder.append("Last damaged by: ").append(NuclearThrone.ENEMIES.get(lastDamagedBy)).append("\n");
+        builder.append("Type: ").append(type).append("\n");
         builder.append("Level: ").append(level).append("\n");
+        builder.append("Last damaged by: ").append(NuclearThrone.ENEMIES.get(lastDamagedBy)).append("\n");
         if (crown > 0) {
             builder.append("Crown: ").append(NuclearThrone.CROWNS.get(crown - 1)).append("\n");
         }
@@ -211,6 +224,9 @@ public class NuclearRun {
         builder.append("Kills: ").append(kills).append("\n");
         builder.append("Health: ").append(health).append("\n");
         builder.append("Timestamp: ").append(Instant.ofEpochSecond(timestamp)).append("\n");
+        builder.append("Elapsed: ")
+            .append(DateUtil.formatDuration(Duration.between(Instant.ofEpochSecond(timestamp), Instant.now())))
+            .append("\n");
         return builder.toString();
     }
 }
