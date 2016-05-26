@@ -168,6 +168,7 @@ public class NuclearRun {
             run.loop = nrr.getLoop();
             run.level = String.format("L%d %d-%d", run.loop, run.world, run.area);
             run.type = nrr.getType();
+            run.timestamp = nrr.getTimestamp();
         }
         return run;
     }

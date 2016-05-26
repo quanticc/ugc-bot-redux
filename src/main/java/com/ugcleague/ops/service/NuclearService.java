@@ -142,7 +142,6 @@ public class NuclearService {
 
         // If we have a current run
         if (current.getTimestamp() > 0) {
-            //if (data.running)
             if (!running.contains(key)) {
                 running.add(key);
                 runStats = new NuclearStats();
