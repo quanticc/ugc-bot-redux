@@ -144,10 +144,12 @@ public class NuclearService {
         if (current.getTimestamp() > 0) {
             //if (data.running)
             if (!running.contains(key)) {
+                running.add(key);
+                runStats = new NuclearStats();
+                runStatsMap.put(key, runStats);
                 runStats.healed(8);
                 onNewRun(stream, current);
                 onNewLevel(stream, current);
-                running.add(key);
             } else {
                 current.getWeapons().stream()
                     .filter(runStats::weaponPickup)
@@ -237,7 +239,6 @@ public class NuclearService {
         List<Response> responses = Arrays.asList(
             new Response(0.5, ""),
             new Response(1, "Ouch"),
-            new Response(1, "Ow"),
             new Response(2, "Got hit by {{an_enemy}}"),
             new Response(1, "This motherfucking {{enemy}}"),
             new Response(2, "Motherfucker {{enemy}} bit me"),
