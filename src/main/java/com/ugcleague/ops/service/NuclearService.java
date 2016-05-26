@@ -129,8 +129,8 @@ public class NuclearService {
     private void processUpdate(NuclearStream stream, NuclearResponse response) {
         String key = stream.getId();
 
-        NuclearRun runData = runDataMap.computeIfAbsent(stream.getId(), k -> new NuclearRun());
-        NuclearStats runStats = runStatsMap.computeIfAbsent(stream.getId(), k -> new NuclearStats());
+        NuclearRun runData = runDataMap.computeIfAbsent(key, k -> new NuclearRun());
+        NuclearStats runStats = runStatsMap.computeIfAbsent(key, k -> new NuclearStats());
         NuclearRun current = NuclearRun.fromResponse(response.getCurrent());
         NuclearRun previous = NuclearRun.fromResponse(response.getPrevious());
 
@@ -178,6 +178,7 @@ public class NuclearService {
             runDataMap.put(key, current);
         } else {
             running.remove(key);
+            runStatsMap.remove(key);
         }
     }
 
