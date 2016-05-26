@@ -159,6 +159,18 @@ public class DateUtil {
             (seconds == 0 ? "00" : seconds < 10 ? String.valueOf("0" + seconds) : String.valueOf(seconds));
     }
 
+    public static String formatDuration(final Duration duration) {
+        long absSeconds = Math.abs(duration.getSeconds());
+        long seconds = absSeconds % 60;
+        long minutes = (absSeconds % 3600) / 60;
+        long hours = absSeconds / 3600;
+
+        return (hours == 0 ? "" : hours + ":") +
+            (minutes == 0 ? "00" : minutes < 10 ? String.valueOf("0" + minutes) : String.valueOf(minutes)) +
+            ":" +
+            (seconds == 0 ? "00" : seconds < 10 ? String.valueOf("0" + seconds) : String.valueOf(seconds));
+    }
+
     public static String humanizeCronPatterns(String patterns) {
         String[] array = patterns.split("\\|");
         if (array.length == 1) {
