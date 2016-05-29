@@ -424,32 +424,35 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (message.getContent().toLowerCase().equals("!w")) {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true, null);
             } else {
-                Optional<SoundBite> soundBite = soundBiteRepository.findById(message.getContent().toLowerCase());
-                if (soundBite.isPresent()) {
-                    SoundBite bite = soundBite.get();
-                    SoundBite.PlaybackMode mode = bite.getMode();
-                    // TODO refactor
-                    if (mode == SoundBite.PlaybackMode.POOL) {
-                        File source = new File(bite.getPaths().get(RandomUtils.nextInt(0, bite.getPaths().size())));
-                        if (!source.exists()) {
-                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                String[] parts = message.getContent().toLowerCase().split("\\-", 10);
+                for (int i = 0; i < parts.length; i++) {
+                    Optional<SoundBite> soundBite = soundBiteRepository.findById(parts[i].trim());
+                    if (soundBite.isPresent()) {
+                        SoundBite bite = soundBite.get();
+                        SoundBite.PlaybackMode mode = bite.getMode();
+                        // TODO refactor
+                        if (mode == SoundBite.PlaybackMode.POOL) {
+                            File source = new File(bite.getPaths().get(RandomUtils.nextInt(0, bite.getPaths().size())));
+                            if (!source.exists()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            play(source, message, bite.getVolume());
+                        } else if (mode == SoundBite.PlaybackMode.SERIES) {
+                            bite.getPaths().stream().map(File::new).filter(File::exists)
+                                .forEach(f -> play(f, message, bite.getVolume()));
+                        } else if (mode == SoundBite.PlaybackMode.FOLDER) {
+                            File source = new File(bite.getPath());
+                            if (!source.exists() || !source.isDirectory()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            playFromDir(source.toString(), message, false, bite.getVolume());
+                        } else {
+                            File source = new File(bite.getPath());
+                            if (!source.exists()) {
+                                log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
+                            }
+                            play(source, message, bite.getVolume());
                         }
-                        play(source, message, bite.getVolume());
-                    } else if (mode == SoundBite.PlaybackMode.SERIES) {
-                        bite.getPaths().stream().map(File::new).filter(File::exists)
-                            .forEach(f -> play(f, message, bite.getVolume()));
-                    } else if (mode == SoundBite.PlaybackMode.FOLDER) {
-                        File source = new File(bite.getPath());
-                        if (!source.exists() || !source.isDirectory()) {
-                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                        }
-                        playFromDir(source.toString(), message, false, bite.getVolume());
-                    } else {
-                        File source = new File(bite.getPath());
-                        if (!source.exists()) {
-                            log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
-                        }
-                        play(source, message, bite.getVolume());
                     }
                 }
             }
