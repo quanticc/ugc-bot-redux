@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
+import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -65,6 +66,7 @@ public class GameServerPresenter {
     private OptionSpec<Boolean> rconQuietSpec;
     private OptionSpec<String> installModNonOptionsSpec;
     private OptionSpec<String> upgradeNonOptionsSpec;
+    private OptionSpec<String> consoleNonOptionSpec;
 
     @Autowired
     public GameServerPresenter(GameServerService gameServerService, CommandService commandService) {
@@ -82,6 +84,7 @@ public class GameServerPresenter {
         initRconCommand();
         initDeadCommand();
         initInsecureCommand();
+        initConsoleCommand();
         commandService.register(CommandBuilder.equalsTo(".servers")
             .description("Show UGC game servers").support().permissionReplies()
             .queued().command((message, optionSet) -> gameServerService.findAll().stream()
@@ -278,6 +281,40 @@ public class GameServerPresenter {
                         message.append("**").append(server.getName()).append("** restart aborted. Players connected: ").append(code).append("\n");
                     } else {
                         message.append("**").append(server.getName()).append("** restart failed due to error\n");
+                    }
+                }
+            } else {
+                message.append("No servers meet the criteria");
+            }
+            return message.toString();
+        }
+        return null;
+    }
+
+    private void initConsoleCommand() {
+        // .server console (non-option: search key)
+        OptionParser parser = newParser();
+        consoleNonOptionSpec = parser.nonOptions(nonOptDesc).ofType(String.class);
+        commandService.register(CommandBuilder.startsWith(".server console").support().permissionReplies()
+            .description("Retrieve the GS panel server console").queued().parser(parser)
+            .command(this::executeConsoleCommand).build());
+    }
+
+    private String executeConsoleCommand(IMessage m, OptionSet o) {
+        List<String> nonOptions = o.valuesOf(consoleNonOptionSpec);
+        if (!o.has("?") && !nonOptions.isEmpty()) {
+            StringBuilder message = new StringBuilder();
+            List<GameServer> servers = gameServerService.findServersMultiple(nonOptions);
+            if (servers.size() > 0) {
+                message.append("Retrieving the console of servers matching **")
+                    .append(nonOptions.stream().collect(Collectors.joining(", "))).append("**\n");
+                for (GameServer server : servers) {
+                    try {
+                        String result = gameServerService.getServerConsole(server);
+                        message.append("• Server console for ").append(server.toString()).append("\n")
+                            .append(result).append("\n");
+                    } catch (IOException e) {
+                        message.append("• Could not retrieve server console for ").append(server.toString()).append("\n");
                     }
                 }
             } else {

@@ -578,6 +578,10 @@ public class GameServerService {
         return server.getPlayers() == 0;
     }
 
+    public String getServerConsole(GameServer server) throws IOException {
+        return adminPanelService.getServerConsole(server.getId());
+    }
+
     public int attemptRestart(GameServer server) {
         if (!isEmpty(server)) {
             int count = server.getPlayers();

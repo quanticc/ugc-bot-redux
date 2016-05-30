@@ -3,6 +3,7 @@ package com.ugcleague.ops.service;
 import com.ugcleague.ops.config.LeagueProperties;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
+import org.jsoup.examples.HtmlToPlainText;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestOperations;
 
 import java.io.IOException;
 import java.net.URL;
@@ -32,13 +34,16 @@ public class AdminPanelService {
     private static final Logger log = LoggerFactory.getLogger(AdminPanelService.class);
     private static final String HOME_URL = "https://my.gameservers.com/home";
     private static final String SUB_URL = "https://my.gameservers.com/home/subscription_info.php";
+    private static final int TIMEOUT = 10000;
 
     private final Map<String, String> session = new ConcurrentHashMap<>();
     private final LeagueProperties leagueProperties;
+    private final RestOperations restTemplate;
 
     @Autowired
-    public AdminPanelService(LeagueProperties leagueProperties) {
+    public AdminPanelService(LeagueProperties leagueProperties, RestOperations restTemplate) {
         this.leagueProperties = leagueProperties;
+        this.restTemplate = restTemplate;
     }
 
     /**
@@ -92,7 +97,7 @@ public class AdminPanelService {
     public Map<String, String> getServerInfo(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "server_information").data("SUBID", subId).timeout(10000));
+            Jsoup.connect(SUB_URL).data("view", "server_information").data("SUBID", subId).timeout(TIMEOUT));
         Result result = extractResult(document.select("td.content_main").text());
         if (result != Result.SUCCESSFUL) {
             map.put("result", result.name());
@@ -112,10 +117,16 @@ public class AdminPanelService {
     }
 
     @Retryable(backoff = @Backoff(2000L))
+    public String getServerConsole(String subId) throws IOException {
+        return new HtmlToPlainText().getPlainText(validateSessionAndGet(
+            Jsoup.connect(SUB_URL).data("view", "console_log").data("SUBID", subId).timeout(TIMEOUT)));
+    }
+
+    @Retryable(backoff = @Backoff(2000L))
     public synchronized Map<String, String> getServerConfig(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "server_configuration").data("SUBID", subId).timeout(10000));
+            Jsoup.connect(SUB_URL).data("view", "server_configuration").data("SUBID", subId).timeout(TIMEOUT));
         Result result = extractResult(document.select("td.content_main").text());
         if (result != Result.SUCCESSFUL) {
             map.put("result", result.name());
@@ -174,7 +185,7 @@ public class AdminPanelService {
      */
     public Result restart(String subId) throws IOException {
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "restart").timeout(60000));
+            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "restart").timeout(TIMEOUT * 6));
         Result result = extractResult(document.text());
         if (result == Result.SUCCESSFUL) {
             log.info("*** Server RESTART in progress: {} --", subId);
@@ -195,7 +206,7 @@ public class AdminPanelService {
      */
     public Result stop(String subId) throws IOException {
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "stop").timeout(60000));
+            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "stop").timeout(TIMEOUT * 6));
         Result result = extractResult(document.text());
         if (result == Result.SUCCESSFUL) {
             log.info("*** Server STOP in progress: {} ***", subId);
@@ -216,7 +227,7 @@ public class AdminPanelService {
      */
     public Result upgrade(String subId) throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
-            .data("function", "addmod").data("modid", "730").timeout(60000));
+            .data("function", "addmod").data("modid", "730").timeout(TIMEOUT * 6));
         String response = document.select("td.content_main").text();
         Result result = extractResult(response);
         if (result == Result.SUCCESSFUL) {
@@ -230,7 +241,7 @@ public class AdminPanelService {
 
     public Result installMod(String subId, String modId) throws IOException {
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
-            .data("function", "addmod2").data("MODID", modId).timeout(60000));
+            .data("function", "addmod2").data("MODID", modId).timeout(TIMEOUT * 6));
         String response = document.select("td.content_main").text();
         Result result = extractResult(response);
         if (result == Result.SUCCESSFUL) {
