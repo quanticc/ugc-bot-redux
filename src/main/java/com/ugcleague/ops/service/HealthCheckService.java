@@ -13,6 +13,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.UnknownHttpStatusCodeException;
 
@@ -59,12 +61,21 @@ public class HealthCheckService {
                         announcePresenter.announce("website", payload);
                         return Result.unhealthy(response.getStatusCode().value() + " " + response.getStatusCode().getReasonPhrase());
                     }
+                } catch (HttpStatusCodeException e) {
+                    log.warn("Failed ping check to {} with code {} ({})", url, e.getStatusCode().value(), e.getStatusText());
+                    String payload = String.format("%s returned status %d (%s)", url,
+                        e.getStatusCode().value(), e.getStatusText());
+                    announcePresenter.announce("website", payload);
+                    return Result.unhealthy(e.getStatusText() + " " + e.getStatusText());
                 } catch (UnknownHttpStatusCodeException e) {
-                    log.warn("Failed ping check with code {} ({})", e.getRawStatusCode(), e.getStatusText());
+                    log.warn("Failed ping check to {} with code {} ({})", url, e.getRawStatusCode(), e.getStatusText());
                     String payload = String.format("%s returned status %d (%s)", url,
                         e.getRawStatusCode(), e.getStatusText());
                     announcePresenter.announce("website", payload);
                     return Result.unhealthy(e.getRawStatusCode() + " " + e.getStatusText());
+                } catch (RestClientException e) {
+                    log.warn("Failed ping check to {}: {}", url, e.toString());
+                    return Result.unhealthy("Failed with exception");
                 } catch (Exception e) {
                     log.warn("Failed to perform ping check", e);
                     return Result.unhealthy("Failed with exception");
