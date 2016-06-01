@@ -143,7 +143,7 @@ public class EtcCommands implements DiscordSubscriber {
 
     private void initCatApiCommand() {
         commandService.register(CommandBuilder.equalsTo(".cat")
-            .description("(=ↀωↀ=)✧").support().originReplies().command((message, optionSet) -> {
+            .description("(=ↀωↀ=)✧").unrestricted().originReplies().command((message, optionSet) -> {
                 String url = "http://thecatapi.com/api/images/get?format=xml";
                 CompletableFuture.supplyAsync(() -> {
                     Source source = restTemplate.getForObject(url, Source.class);
