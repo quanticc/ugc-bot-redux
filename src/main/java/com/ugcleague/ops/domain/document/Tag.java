@@ -1,7 +1,6 @@
 package com.ugcleague.ops.domain.document;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.PersistenceConstructor;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -15,17 +14,13 @@ public class Tag extends AbstractAuditingEntity {
     private String id;
     @DBRef
     private DiscordUser author;
+    @DBRef
+    private DiscordGuild guild = null;
     private String content;
     @Indexed(sparse = true)
     private String parent = null; // for aliases
     private boolean direct = false; // use without .tag
-
-    @PersistenceConstructor
-    public Tag(String id, DiscordUser author, String content) {
-        this.id = id;
-        this.author = author;
-        this.content = content;
-    }
+    private boolean global = true;
 
     public String getId() {
         return id;
@@ -67,6 +62,22 @@ public class Tag extends AbstractAuditingEntity {
         this.direct = direct;
     }
 
+    public DiscordGuild getGuild() {
+        return guild;
+    }
+
+    public void setGuild(DiscordGuild guild) {
+        this.guild = guild;
+    }
+
+    public boolean isGlobal() {
+        return global;
+    }
+
+    public void setGlobal(boolean global) {
+        this.global = global;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -85,9 +96,11 @@ public class Tag extends AbstractAuditingEntity {
         return "Tag{" +
             "id='" + id + '\'' +
             ", author=" + author +
+            ", guild=" + guild +
             ", content='" + content + '\'' +
             ", parent='" + parent + '\'' +
             ", direct=" + direct +
+            ", global=" + global +
             '}';
     }
 }

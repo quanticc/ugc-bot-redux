@@ -262,6 +262,11 @@ public class DiscordCacheService implements DiscordSubscriber, DisposableBean {
         return channelRepository.save(c);
     }
 
+    public DiscordGuild getOrCreateGuild(IGuild guild) {
+        DiscordGuild g = guildRepository.findById(guild.getID()).orElseGet(() -> newDiscordGuild(guild));
+        return guildRepository.save(g);
+    }
+
     public DiscordUser saveUser(DiscordUser u) {
         return userRepository.save(u);
     }

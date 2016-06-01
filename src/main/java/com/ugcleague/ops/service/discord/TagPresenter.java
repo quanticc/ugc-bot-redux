@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import sx.blah.discord.handle.obj.IGuild;
 import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.PostConstruct;
@@ -55,6 +56,8 @@ public class TagPresenter {
     private OptionSpec<String> directEnableSpec;
     private OptionSpec<String> directDisableSpec;
     private OptionSpec<String> tagEditSpec;
+    private OptionSpec<Boolean> tagGlobalSpec;
+    private OptionSpec<Boolean> aliasGlobalSpec;
 
     @Autowired
     public TagPresenter(CommandService commandService, DiscordCacheService cacheService, TagRepository tagRepository) {
@@ -87,24 +90,18 @@ public class TagPresenter {
     private void initTagCommand() {
         OptionParser parser = newParser();
         tagNonOptionSpec = parser.nonOptions("Tagged message contents, only used in add mode").ofType(String.class);
-        tagAddSpec = parser.acceptsAll(asList("a", "add", "create"), "Adds a new tagged message")
+        tagAddSpec = parser.accepts("create", "Adds a new tagged message")
             .withRequiredArg().describedAs("key");
-        tagEditSpec = parser.acceptsAll(asList("e", "edit", "update"), "Edit an existing tagged message")
+        tagEditSpec = parser.accepts("update", "Edit an existing tagged message")
             .withRequiredArg().describedAs("key");
-        tagRemoveSpec = parser.acceptsAll(asList("r", "remove", "delete"), "Remove an existing tag")
+        tagRemoveSpec = parser.accepts("delete", "Remove an existing tag")
             .withRequiredArg().describedAs("key");
-        tagInfoSpec = parser.acceptsAll(asList("i", "info"), "Retrieves info about an existing tag")
+        tagInfoSpec = parser.accepts("info", "Retrieves info about an existing tag")
             .withRequiredArg().describedAs("key");
-        Map<String, String> aliases = newAliasesMap();
-        aliases.put("add", "-a");
-        aliases.put("create", "-a");
-        aliases.put("edit", "-e");
-        aliases.put("update", "-e");
-        aliases.put("remove", "-r");
-        aliases.put("delete", "-r");
-        aliases.put("info", "-i");
+        tagGlobalSpec = parser.accepts("global", "Make a tag global to all servers")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.anyMatch(".tag").description("Perform operations to tag and display messages")
-            .unrestricted().originReplies().parser(parser).optionAliases(aliases).command(this::executeTag)
+            .unrestricted().originReplies().parser(parser).optionAliases(newAliasesMap(parser)).command(this::executeTag)
             .limit(3).build());
     }
 
@@ -113,15 +110,14 @@ public class TagPresenter {
         // .tag-alias reset <key>
         OptionParser parser = newParser();
         aliasNonOptionSpec = parser.nonOptions("The target tag assigned, only used in add mode").ofType(String.class);
-        aliasSetSpec = parser.acceptsAll(asList("s", "set"), "Sets a tag as alias of another one")
+        aliasSetSpec = parser.accepts("set", "Sets a tag as alias of another one")
             .withRequiredArg().describedAs("key");
-        aliasResetSpec = parser.acceptsAll(asList("r", "reset"), "Resets the alias status of a tag")
+        aliasResetSpec = parser.accepts("reset", "Resets the alias status of a tag")
             .withRequiredArg().describedAs("key");
-        Map<String, String> aliases = newAliasesMap();
-        aliases.put("set", "-s");
-        aliases.put("reset", "-r");
+        aliasGlobalSpec = parser.accepts("global", "Make alias global to all servers")
+            .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         commandService.register(CommandBuilder.anyMatch(".tag-alias").description("Sets/Resets aliases to a tag")
-            .support().originReplies().parser(parser).optionAliases(aliases).command(this::executeAlias)
+            .support().originReplies().parser(parser).optionAliases(newAliasesMap(parser)).command(this::executeAlias)
             .limit(3).build());
     }
 
@@ -152,6 +148,7 @@ public class TagPresenter {
         }
 
         List<String> nonOptions = optionSet.valuesOf(tagNonOptionSpec);
+        boolean global = optionSet.has(tagGlobalSpec) && optionSet.valueOf(tagGlobalSpec);
 
         if (optionSet.has(tagAddSpec)) {
             String key = optionSet.valueOf(tagAddSpec).replaceAll("\"|'", "");
@@ -163,7 +160,14 @@ public class TagPresenter {
                 return "Must add some content to this tag: `.tag add <name> <content>`";
             }
             String content = mergeNonOptions(nonOptions);
-            Tag newTag = new Tag(key, cacheService.getOrCreateUser(message.getAuthor()), content);
+            Tag newTag = new Tag();
+            newTag.setId(key);
+            newTag.setAuthor(cacheService.getOrCreateUser(message.getAuthor()));
+            if (!message.getChannel().isPrivate()) {
+                newTag.setGuild(cacheService.getOrCreateGuild(message.getGuild()));
+            }
+            newTag.setContent(content);
+            newTag.setGlobal(global);
             log.debug("Saving new tag: {}", newTag);
             tagRepository.save(newTag);
             return "Tag '" + key + "' added";
@@ -181,6 +185,12 @@ public class TagPresenter {
             String content = mergeNonOptions(nonOptions);
             tag.get().setAuthor(cacheService.getOrCreateUser(message.getAuthor()));
             tag.get().setContent(content);
+            if (!message.getChannel().isPrivate()) {
+                tag.get().setGuild(cacheService.getOrCreateGuild(message.getGuild()));
+            }
+            if (optionSet.has(tagGlobalSpec)) {
+                tag.get().setGlobal(global);
+            }
             log.debug("Updating tag: {}", tag.get());
             tagRepository.save(tag.get());
             // recreate reply command if existed
@@ -223,24 +233,33 @@ public class TagPresenter {
             return formatTagContents(tag.get());
         }
 
+        IGuild guild = (message.getChannel().isPrivate() ? null : message.getGuild());
+
         if (!nonOptions.isEmpty()) {
             String key = mergeNonOptions(nonOptions);
             Optional<Tag> tag = tagRepository.findById(key);
             if (!tag.isPresent()) {
-                return "No tag exists with this name. Perhaps you meant: " + fuzzyTagsById(key);
+                String fuzzy = fuzzyTagsById(key, guild);
+                return "No tag exists with this name." + (fuzzy.isEmpty() ? "" : " Perhaps you meant: " + fuzzy);
             }
             return tag.get().getContent();
         }
 
         return "Available definitions: " + tagRepository.findAll().stream()
+            .filter(t -> isGlobalOrMatchesGuild(t, guild))
             .map(Tag::getId).collect(Collectors.joining(", "));
     }
 
-    private String fuzzyTagsById(String src) {
+    private String fuzzyTagsById(String src, IGuild guild) {
         return tagRepository.findAll().stream()
+            .filter(t -> isGlobalOrMatchesGuild(t, guild))
             .map(Tag::getId)
             .filter(t -> StringUtils.getLevenshteinDistance(src, t, 5) > 0)
             .collect(Collectors.joining(", "));
+    }
+
+    private boolean isGlobalOrMatchesGuild(Tag tag, IGuild guild) {
+        return guild == null || tag.getGuild() == null || tag.isGlobal() || guild.getID().equals(tag.getGuild().getId());
     }
 
     private String executeAlias(IMessage message, OptionSet optionSet) {
@@ -253,6 +272,7 @@ public class TagPresenter {
         }
 
         List<String> nonOptions = optionSet.valuesOf(aliasNonOptionSpec);
+        boolean global = optionSet.has(aliasGlobalSpec) && optionSet.valueOf(aliasGlobalSpec);
 
         if (optionSet.has(aliasSetSpec)) {
             String key = optionSet.valueOf(aliasSetSpec).replaceAll("\"|'", "");
@@ -274,7 +294,14 @@ public class TagPresenter {
             if (targetTag.get().getParent() != null) {
                 return "Target tag '" + target + "' must not be an alias";
             }
-            Tag newTag = new Tag(key, cacheService.getOrCreateUser(message.getAuthor()), "");
+            Tag newTag = new Tag();
+            newTag.setId(key);
+            newTag.setAuthor(cacheService.getOrCreateUser(message.getAuthor()));
+            if (!message.getChannel().isPrivate()) {
+                newTag.setGuild(cacheService.getOrCreateGuild(message.getGuild()));
+            }
+            newTag.setContent("");
+            newTag.setGlobal(global);
             newTag.setParent(targetTag.get().getId());
             log.debug("Saving new tag: {}", newTag);
             tagRepository.save(newTag);
