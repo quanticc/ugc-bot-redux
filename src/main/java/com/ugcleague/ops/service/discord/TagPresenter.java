@@ -149,6 +149,7 @@ public class TagPresenter {
 
         List<String> nonOptions = optionSet.valuesOf(tagNonOptionSpec);
         boolean global = optionSet.has(tagGlobalSpec) && optionSet.valueOf(tagGlobalSpec);
+        IGuild guild = (message.getChannel().isPrivate() ? null : message.getGuild());
 
         if (optionSet.has(tagAddSpec)) {
             String key = optionSet.valueOf(tagAddSpec).replaceAll("\"|'", "");
@@ -233,11 +234,9 @@ public class TagPresenter {
             return formatTagContents(tag.get());
         }
 
-        IGuild guild = (message.getChannel().isPrivate() ? null : message.getGuild());
-
         if (!nonOptions.isEmpty()) {
             String key = mergeNonOptions(nonOptions);
-            Optional<Tag> tag = tagRepository.findById(key);
+            Optional<Tag> tag = tagRepository.findById(key).filter(t -> isGlobalOrMatchesGuild(t, guild));
             if (!tag.isPresent()) {
                 String fuzzy = fuzzyTagsById(key, guild);
                 return "No tag exists with this name." + (fuzzy.isEmpty() ? "" : " Perhaps you meant: " + fuzzy);
