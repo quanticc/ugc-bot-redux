@@ -179,6 +179,7 @@ public class NuclearService {
             runDataMap.put(key, current);
         } else {
             running.remove(key);
+            runDataMap.remove(key);
             runStatsMap.remove(key);
         }
     }
@@ -189,19 +190,8 @@ public class NuclearService {
         }
     }
 
-    private void announce(NuclearStream stream, List<Response> responseList, Map<String, String> context) {
-        String response = responseList.get(RandomUtils.nextInt(0, responseList.size())).result;
-//        double total = responseList.stream().map(r -> (double) 1 / r.rarity).reduce(0D, Double::sum);
-//        double random = Math.random();
-//        double sum = 0D;
-//        String response = responseList.get(responseList.size() - 1).result;
-//        for (Response item : responseList) {
-//            double chance = ((double) 1 / item.rarity) / total;
-//            sum += chance;
-//            if (random < sum) {
-//                response = item.result;
-//            }
-//        }
+    private void announce(NuclearStream stream, List<String> responseList, Map<String, String> context) {
+        String response = responseList.get(RandomUtils.nextInt(0, responseList.size()));
         if (context == null) {
             announcePresenter.announce(stream.getPublisher().getId(), response, true, false);
         } else {
@@ -218,16 +208,16 @@ public class NuclearService {
     }
 
     private void onHealed(NuclearStream stream, int amount) {
-        List<Response> responses = Arrays.asList(
-            new Response(1, ""),
-            new Response(1.5, "Oh yeah"),
-            new Response(1.5, "Nice"),
-            new Response(1.5, "Great"),
-            new Response(1.5, "Fantastic"),
-            new Response(1.5, "Awesome"),
-            new Response(3, "Thanks for the health"),
-            new Response(3, "Finally some health"),
-            new Response(3, "That hit the spot")
+        List<String> responses = Arrays.asList(
+            "",
+            "Oh yeah",
+            "Nice",
+            "Great",
+            "Fantastic",
+            "Awesome",
+            "Thanks for the health",
+            "Finally some health",
+            "That hit the spot"
         );
         announce(stream, responses, null);
         log.info("Player {} was healed by {} points", stream.getId(), amount);
@@ -235,13 +225,13 @@ public class NuclearService {
 
     private void onHurt(NuclearStream stream, int enemyId) {
         String enemy = NuclearThrone.ENEMIES.get(enemyId);
-        List<Response> responses = Arrays.asList(
-            new Response(0.5, ""),
-            new Response(1, "Ouch"),
-            new Response(2, "Got hit by {{an_enemy}}"),
-            new Response(1, "This motherfucking {{enemy}}"),
-            new Response(2, "Motherfucker {{enemy}} bit me"),
-            new Response(3, "I've had it with these {{enemy}}s in this motherfucking level")
+        List<String> responses = Arrays.asList(
+            "",
+            "Ouch",
+            "Got hit by {{an_enemy}}",
+            "This motherfucking {{enemy}}",
+            "Motherfucker {{enemy}} bit me",
+            "I've had it with these {{enemy}}s in this motherfucking level"
         );
         Map<String, String> context = new HashMap<>();
         context.put("an_enemy", avsAnRule.suggestAorAn(enemy));
@@ -298,9 +288,9 @@ public class NuclearService {
         }
 
         if (world == 100) {
-            List<Response> responses = Arrays.asList(
-                new Response(1, "Crown Vault ain't no country I've ever heard of. They speak English in Vaults?"),
-                new Response(2, "I've had it with these motherfucking vaults in this motherfucking game.")
+            List<String> responses = Arrays.asList(
+                "Crown Vault ain't no country I've ever heard of. They speak English in Vaults?",
+                "I've had it with these motherfucking vaults in this motherfucking game."
             );
             announce(stream, responses, null);
             return;
@@ -310,9 +300,9 @@ public class NuclearService {
         String worldName = getWorldName(world);
 
         if (boss != null) {
-            List<Response> responses = Arrays.asList(
-                new Response(1, "Entered {{boss}} level"),
-                new Response(2, "Watch out for the {{boss}}")
+            List<String> responses = Arrays.asList(
+                "Entered {{boss}} level",
+                "Watch out for the {{boss}}"
             );
             Map<String, String> context = new HashMap<>();
             context.put("boss", boss);
@@ -362,61 +352,22 @@ public class NuclearService {
         return null;
     }
 
-    private static class Response {
-        private double rarity = 1D;
-        private String result = "";
-
-        public Response(double rarity, String result) {
-            this.rarity = rarity;
-            this.result = result;
-        }
-    }
-
     private void onDeath(NuclearStream stream, NuclearRun run) {
         String enemy = NuclearThrone.ENEMIES.get(run.getLastDamagedBy());
         String level = run.getLevel();
-        List<Response> responses = Arrays.asList(
-            new Response(1, "Died to {{enemy}}"),
-            new Response(4, "Fuck you"),
-            new Response(4, "Come on"),
-            new Response(4, "Wake the fuck up"),
-            new Response(4, "Oh I'm sorry did I break your concentration"),
-            new Response(4, "See I told you you should've killed that bitch"),
-            new Response(4, "I don't remember asking you a god damn thing")
+        List<String> responses = Arrays.asList(
+            "Died to {{enemy}}",
+            "Fuck you",
+            "Come on",
+            "Wake the fuck up",
+            "Oh I'm sorry did I break your concentration",
+            "See I told you you should've killed that bitch",
+            "I don't remember asking you a god damn thing"
         );
         Map<String, String> context = new HashMap<>();
         context.put("enemy", avsAnRule.suggestAorAn(enemy));
         announce(stream, responses, context);
         log.info("Player {} died to a {} on {}", stream.getId(), enemy, level);
-    }
-
-    private String humanizeRun(NuclearResponse.Run run) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Character: ").append(NuclearThrone.CHARACTERS.get(run.getCharacter())).append(", ");
-        builder.append("Last Hit: ").append(NuclearThrone.ENEMIES.get(run.getLastDamagedBy())).append(", ");
-        builder.append("Level: ").append(run.getWorld()).append(run.getArea()).append(", ");
-        builder.append("Crown: ").append(NuclearThrone.CROWNS.get(run.getCrown())).append(", ");
-        builder.append("Weapon 1: ").append(NuclearThrone.WEAPONS.get(run.getWeapon1())).append(", ");
-        builder.append("Weapon 2: ").append(NuclearThrone.WEAPONS.get(run.getWeapon2())).append(", ");
-        builder.append("B-Skin: ").append(run.getSkin() == 1 ? "Yes" : "No").append(", ");
-        if (run.getUltra() > 0) {
-            builder.append("Ultra: ").append(NuclearThrone.ULTRAS.get(run.getCharacter() - 1).get(run.getUltra() - 1)).append(", ");
-        }
-        builder.append("Character Level: ").append(run.getCharacterLevel()).append(", ");
-        builder.append("Loop: ").append(run.getLoop()).append(", ");
-        builder.append("Win: ").append(run.isWin()).append(", ");
-        List<String> mutations = new ArrayList<>();
-        for (int i = 0; i < run.getMutations().length(); i++) {
-            if (run.getMutations().charAt(i) == '1') {
-                mutations.add(NuclearThrone.MUTATIONS.get(i));
-            }
-        }
-        builder.append("Mutations: ").append(mutations.toString()).append(", ");
-        builder.append("Kills: ").append(run.getKills()).append(", ");
-        builder.append("Health: ").append(run.getHealth()).append(", ");
-        builder.append("Type: ").append(run.getType()).append(", ");
-        builder.append("Timestamp: ").append(run.getTimestamp()).append(", ");
-        return builder.toString();
     }
 
     public String getRunInfo(NuclearStream stream) {
