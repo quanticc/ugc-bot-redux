@@ -489,7 +489,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private void play(File source, IMessage message, Integer volume) {
         try {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
-            if (voiceChannel.isPresent()) {
+            if (voiceChannel.isPresent() && voiceChannel.get().getGuild().equals(message.getGuild())) {
                 synchronized (lock) {
                     if (!voiceChannel.get().isConnected()) {
                         voiceChannel.get().join();
