@@ -67,6 +67,7 @@ public class EtcCommands implements DiscordSubscriber {
 
     private final Map<String, ChatterBotSession> chatterBotSessionMap = new ConcurrentHashMap<>();
     private volatile String currentSession;
+    private final Object lock = new Object();
 
     private OptionSpec<String> chatterNonOptionSpec;
 
@@ -241,32 +242,32 @@ public class EtcCommands implements DiscordSubscriber {
         boolean everyone = message.mentionsEveryone();
         boolean dm = channel.isPrivate();
         boolean self = event.getClient().getOurUser().equals(author);
-        boolean bl = settingsService.getSettings().getSoundBitesBlacklist().contains(message.getChannel().getID());
-        if (!everyone && !dm && !self && !bl) {
+        if (!everyone && !dm && !self) {
             CompletableFuture.runAsync(() -> {
-                // TODO handle the typing status on concurrent requests
-                channel.toggleTypingStatus();
-                long start = System.currentTimeMillis();
-                String content = EmojiParser.parseToAliases(message.getContent()
-                        .replace(discordService.getClient().getOurUser().mention(), ""),
-                    EmojiParser.FitzpatrickAction.REMOVE);
-                try {
-                    String response = chatterBotSessionMap.get(currentSession).think(content);
-                    response = StringEscapeUtils.unescapeHtml4(response);
-                    Matcher matcher = UNICODE.matcher(response);
-                    while (matcher.find()) {
-                        String hex = matcher.group(1);
-                        response = matcher.replaceFirst(new String(Character.toChars(Integer.parseInt(hex, 16))));
-                    }
-                    long delay = System.currentTimeMillis() - start;
-                    log.debug("Response took {} ms", delay);
-                    if (delay < 3000L) {
-                        Thread.sleep(3000L - delay);
-                    }
-                    discordService.sendMessage(channel, author.mention() + " " + response);
-                } catch (Exception e) {
-                    log.warn("Could not process chatter input", e);
+                synchronized (lock) {
                     channel.toggleTypingStatus();
+                    long start = System.currentTimeMillis();
+                    String content = EmojiParser.parseToAliases(message.getContent()
+                            .replace(discordService.getClient().getOurUser().mention(), ""),
+                        EmojiParser.FitzpatrickAction.REMOVE);
+                    try {
+                        String response = chatterBotSessionMap.get(currentSession).think(content);
+                        response = StringEscapeUtils.unescapeHtml4(response);
+                        Matcher matcher = UNICODE.matcher(response);
+                        while (matcher.find()) {
+                            String hex = matcher.group(1);
+                            response = matcher.replaceFirst(new String(Character.toChars(Integer.parseInt(hex, 16))));
+                        }
+                        long delay = System.currentTimeMillis() - start;
+                        log.debug("Response took {} ms", delay);
+                        if (delay < 3000L) {
+                            Thread.sleep(3000L - delay);
+                        }
+                        discordService.sendMessage(channel, author.mention() + " " + response);
+                    } catch (Exception e) {
+                        log.warn("Could not process chatter input", e);
+                        channel.toggleTypingStatus();
+                    }
                 }
             }, taskExecutor);
         }
