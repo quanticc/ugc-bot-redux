@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.events.EventSubscriber;
-import sx.blah.discord.handle.AudioChannel;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
@@ -132,11 +131,8 @@ public class SoundBitePresenter implements DiscordSubscriber {
             .description("Skip current audio").noParser().command((message, optionSet) -> {
                 if (!message.getChannel().isPrivate()
                     && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())) {
-                    try {
-                        message.getGuild().getAudioChannel().skip();
-                    } catch (DiscordException e) {
-                        log.warn("Could not get audio channel", e);
-                    }
+                    AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
+                    player.skip();
                 }
                 return "";
             }).build());
@@ -209,31 +205,25 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     return "";
                 }
                 List<Integer> values = optionSet.valuesOf(volumeNonOptionSpec);
-                AudioChannel audioChannel = null;
-                try {
-                    audioChannel = message.getGuild().getAudioChannel();
-                } catch (DiscordException e) {
-                    log.warn("Could not get audio channel", e);
-                    return "Could not get audio channel for this server";
-                }
+                AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
                 if (values.size() == 0) {
                     return "Enter a 0-100 value.";
                 } else if (values.size() == 1) {
                     int volume = values.get(0);
                     volume = Math.max(0, Math.min(100, volume));
                     log.debug("Setting volume to {}% ({})", volume, volume / 100f);
-                    audioChannel.setVolume(volume / 100f);
+                    player.setVolume(volume / 100f);
                 } else if (values.size() == 2) {
                     // sliding volume in 5 seconds
-                    slideVolume(audioChannel, values.get(0), values.get(1), 5);
+                    slideVolume(player, values.get(0), values.get(1), 5);
                 } else {
-                    slideVolume(audioChannel, values.get(0), values.get(1), Math.max(1, values.get(2)));
+                    slideVolume(player, values.get(0), values.get(1), Math.max(1, values.get(2)));
                 }
                 return ":ok_hand:";
             }).build());
     }
 
-    private void slideVolume(AudioChannel channel, int start, int end, int seconds) {
+    private void slideVolume(AudioPlayer player, int start, int end, int seconds) {
         // use 100ms resolution
         CompletableFuture.runAsync(() -> {
             int volume = Math.max(0, Math.min(100, start));
@@ -241,12 +231,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
             try {
                 log.debug("Sliding volume from {} to {} in {} seconds", start, end, seconds);
                 for (int i = 0; i <= seconds * 10; i++) {
-                    channel.setVolume((volume + step * i) / 100f);
+                    player.setVolume((volume + step * i) / 100f);
                     Thread.sleep(100);
                 }
             } catch (InterruptedException e) {
                 log.warn("Interrupted volume sliding");
-                channel.setVolume(Math.max(0, Math.min(100, end)) / 100f);
+                player.setVolume(Math.max(0, Math.min(100, end)) / 100f);
             }
         }, taskExecutor);
     }
@@ -481,7 +471,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private void play(File source, IMessage message, Integer volume) {
         try {
             Optional<IVoiceChannel> voiceChannel = message.getAuthor().getConnectedVoiceChannels()
-                .stream().filter(v -> !v.isConnected() && message.getGuild().equals(v.getGuild()))
+                .stream().filter(v -> message.getGuild().equals(v.getGuild()))
                 .findAny();
             if (voiceChannel.isPresent()) {
                 synchronized (lock) {
