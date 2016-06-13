@@ -14,24 +14,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.api.EventSubscriber;
+import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.AudioChannel;
-import sx.blah.discord.handle.impl.events.AudioPlayEvent;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
+import sx.blah.discord.util.audio.AudioPlayer;
 
 import javax.annotation.PostConstruct;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
@@ -55,10 +55,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private final Executor taskExecutor;
     private final AudioStreamService audioStreamService;
 
-    //private final Map<File, IVoiceChannel> playing = new ConcurrentHashMap<>();
-    //private final Map<IVoiceChannel, AtomicInteger> queueCounter = new ConcurrentHashMap<>();
     private final Object lock = new Object();
-    private final Map<File, Integer> volumeMap = new ConcurrentHashMap<>();
 
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
@@ -154,7 +151,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
 //        queueVolumeSpec = parser.accepts("volume", "Play with a given volume")
 //            .withRequiredArg().ofType(Integer.class).defaultsTo(20);
         commandService.register(CommandBuilder.startsWith(".queue").unrestricted().originReplies()
-        .description("Queue a YouTube video to the bot").parser(parser).command((message, optionSet) -> {
+            .description("Queue a YouTube video to the bot").parser(parser).command((message, optionSet) -> {
                 if (message.getChannel().isPrivate()) {
                     return "Join a voice channel and don't use private messages";
                 }
@@ -162,29 +159,24 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 if (urls.size() == 0) {
                     return "You have to enter a YouTube URL";
                 }
-                try {
-                    AudioChannel audioChannel = message.getGuild().getAudioChannel();
-                    String queued = urls.stream().map(this::extractVideoId)
-                        .filter(Optional::isPresent)
-                        .map(id -> queueYouTube(audioChannel, id.get()))
-                        .filter(s -> s != null)
-                        .collect(Collectors.joining(", "));
-                    deleteMessage(message, 1, TimeUnit.SECONDS);
-                    if (queued != null && !queued.isEmpty()) {
-                        IUser user = message.getAuthor();
-                        return user.getName() + "#" + user.getDiscriminator() + " added to queue: " + queued;
-                    } else {
-                        return "Nothing to queue";
-                    }
-                } catch (DiscordException e) {
-                    log.warn("Could not get audio channel", e);
-                    return "Could not get audio channel for this server";
+                AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
+                String queued = urls.stream().map(this::extractVideoId)
+                    .filter(Optional::isPresent)
+                    .map(id -> queueYouTube(player, id.get()))
+                    .filter(s -> s != null)
+                    .collect(Collectors.joining(", "));
+                deleteMessage(message, 1, TimeUnit.SECONDS);
+                if (queued != null && !queued.isEmpty()) {
+                    IUser user = message.getAuthor();
+                    return user.getName() + "#" + user.getDiscriminator() + " added to queue: " + queued;
+                } else {
+                    return "Nothing to queue";
                 }
             }).build());
     }
 
-    private String queueYouTube(AudioChannel channel, String id) {
-        if (audioStreamService.queueFromYouTube(channel, id)) {
+    private String queueYouTube(AudioPlayer player, String id) {
+        if (audioStreamService.queueFromYouTube(player, id)) {
             return id;
         } else {
             return null;
@@ -488,8 +480,10 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     private void play(File source, IMessage message, Integer volume) {
         try {
-            Optional<IVoiceChannel> voiceChannel = message.getAuthor().getVoiceChannel();
-            if (voiceChannel.isPresent() && voiceChannel.get().getGuild().equals(message.getGuild())) {
+            Optional<IVoiceChannel> voiceChannel = message.getAuthor().getConnectedVoiceChannels()
+                .stream().filter(v -> !v.isConnected() && message.getGuild().equals(v.getGuild()))
+                .findAny();
+            if (voiceChannel.isPresent()) {
                 synchronized (lock) {
                     if (!voiceChannel.get().isConnected()) {
                         voiceChannel.get().join();
@@ -512,53 +506,16 @@ public class SoundBitePresenter implements DiscordSubscriber {
                             task.cancel(true);
                         }
                     }
-                    AudioChannel audioChannel = voiceChannel.get().getAudioChannel();
-                    //playing.put(source, voiceChannel.get());
-                    //queueCounter.computeIfAbsent(voiceChannel.get(), k -> new AtomicInteger(0)).incrementAndGet();
+                    AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
                     Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                     settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
-                    if (volume != null) {
-                        volumeMap.put(source, volume);
-                    } else {
-                        volumeMap.put(source, 80);
-                    }
-                    audioChannel.queueFile(source);
+                    AudioPlayer.Track track = player.queue(source);
+                    track.getMetadata().put("volume", volume != null ? volume : 80);
                 }
             }
-        } catch (DiscordException | InterruptedException e) {
+        } catch (UnsupportedAudioFileException | IOException | InterruptedException e) {
             log.warn("Unable to play sound bite", e);
         }
     }
-
-    @EventSubscriber
-    public void onAudioPlay(AudioPlayEvent event) {
-        Optional<File> source = event.getFileSource();
-        if (source.isPresent()) {
-            event.getAudioChannel().setVolume(volumeMap.getOrDefault(source.get(), 20) / 100f);
-        } else {
-            event.getAudioChannel().setVolume(0.2f);
-        }
-    }
-
-//    @EventSubscriber
-//    public void onAudioStopped(AudioStopEvent event) {
-//        Optional<File> source = event.getFileSource();
-//        if (source.isPresent()) {
-//            CompletableFuture.runAsync(() -> {
-//                synchronized (lock) {
-//                    IVoiceChannel channel = playing.get(source.get());
-//                    if (channel != null && queueCounter.get(channel).decrementAndGet() == 0) {
-//                        try {
-//                            Thread.sleep(750);
-//                        } catch (InterruptedException ignore) {
-//                        }
-//                        log.debug("Leaving {}", DiscordUtil.toString(channel));
-//                        channel.leave();
-//                        playing.remove(source.get());
-//                    }
-//                }
-//            }, taskExecutor);
-//        }
-//    }
 
 }
