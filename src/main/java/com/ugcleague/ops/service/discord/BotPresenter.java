@@ -143,7 +143,7 @@ public class BotPresenter {
         while (!result) {
             try {
                 result = channel.getMessages().load(count);
-            } catch (HTTP429Exception e) {
+            } catch (RateLimitException e) {
                 try {
                     sleep(e.getRetryDelay());
                 } catch (InterruptedException ex) {
@@ -294,26 +294,23 @@ public class BotPresenter {
                     break;
                 }
             }
-            log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(c));
-            for (IMessage msg : toDelete) {
-                try {
-                    if (Thread.interrupted()) {
-                        log.warn("Deletion interrupted");
-                        break;
-                    }
-                    Thread.sleep(1000);
-                    log.debug("Deleting message #{} by {} @ {}", m.getID(), DiscordUtil.toString(m.getAuthor()),
-                        DiscordUtil.toString(m.getChannel()));
-                    discordService.deleteMessage(msg);
-                } catch (MissingPermissionsException e) {
-                    log.warn("No permission to perform action: {}", e.toString());
-                } catch (InterruptedException e) {
-                    log.warn("Operation was interrupted");
-                } catch (DiscordException e) {
-                    log.warn("Discord exception", e);
+            log.info("Searched through {} messages", i);
+            if (toDelete.isEmpty()) {
+                log.info("No messages to delete");
+            } else {
+                log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(c));
+                for (int x = 0; x < toDelete.size() / 100; x++) {
+                    List<IMessage> subList = toDelete.subList(x * 100, Math.min(toDelete.size(), (x + 1) * 100));
+                    RequestBuffer.request(() -> {
+                        try {
+                            c.getMessages().bulkDelete(subList);
+                        } catch (MissingPermissionsException | DiscordException e) {
+                            log.warn("Failed to delete message", e);
+                        }
+                        return null;
+                    });
                 }
             }
-            log.info("Deleted {} of the bot's last messages after searching through {}", deleted, i);
             c.getMessages().setCacheCapacity(cap);
         }
     }
