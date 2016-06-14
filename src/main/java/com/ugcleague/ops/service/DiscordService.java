@@ -98,7 +98,8 @@ public class DiscordService implements DiscordSubscriber {
         LeagueProperties.Discord discord = properties.getDiscord();
         ClientBuilder builder = new ClientBuilder()
             .withTimeout(discord.getTimeoutDelay())
-            .withPingTimeout(discord.getMaxMissedPings());
+            .withPingTimeout(discord.getMaxMissedPings())
+            .withReconnects();
         if (discord.getToken() != null) {
             return builder.withToken(discord.getToken());
         } else {
@@ -169,7 +170,7 @@ public class DiscordService implements DiscordSubscriber {
         reconnect.set(thenReconnect);
         try {
             client.logout();
-        } catch (HTTP429Exception | DiscordException e) {
+        } catch (RateLimitException | DiscordException e) {
             log.warn("Logout failed", e);
         }
     }
@@ -222,8 +223,8 @@ public class DiscordService implements DiscordSubscriber {
         queuedSubscribers.remove(subscriber);
     }
 
-    private void sleep(long millis) throws InterruptedException {
-        log.info("Backing off for {} ms due to rate limits", millis);
+    private void sleep(long millis, String bucket) throws InterruptedException {
+        log.info("Backing off for {} ms due to rate limits on {}", millis, bucket);
         Thread.sleep(Math.max(1, millis));
     }
 
@@ -233,8 +234,8 @@ public class DiscordService implements DiscordSubscriber {
             try {
                 guild.leaveGuild();
                 return;
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
     }
@@ -297,8 +298,8 @@ public class DiscordService implements DiscordSubscriber {
             } else {
                 response = channel.sendMessage(message, tts);
             }
-        } catch (HTTP429Exception e) {
-            sleep(e.getRetryDelay());
+        } catch (RateLimitException e) {
+            sleep(e.getRetryDelay(), e.getBucket());
         }
         return response;
     }
@@ -309,8 +310,8 @@ public class DiscordService implements DiscordSubscriber {
         while (response == null) {
             try {
                 response = channel.sendFile(file);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
         return CompletableFuture.completedFuture(response);
@@ -322,8 +323,8 @@ public class DiscordService implements DiscordSubscriber {
         while (response == null) {
             try {
                 response = client.getOrCreatePMChannel(user).sendFile(file);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             } catch (Exception e) {
                 log.warn("Could not create PM channel", e);
                 throw new DiscordException("Could not create PM channel");
@@ -338,8 +339,8 @@ public class DiscordService implements DiscordSubscriber {
         while (response == null) {
             try {
                 response = message.edit(content);
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
         return CompletableFuture.completedFuture(response);
@@ -351,8 +352,8 @@ public class DiscordService implements DiscordSubscriber {
             try {
                 message.delete();
                 return;
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
     }
@@ -381,8 +382,8 @@ public class DiscordService implements DiscordSubscriber {
             try {
                 client.changeUsername(name);
                 return;
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
     }
@@ -393,8 +394,8 @@ public class DiscordService implements DiscordSubscriber {
             try {
                 client.changeAvatar(avatar);
                 return;
-            } catch (HTTP429Exception e) {
-                sleep(e.getRetryDelay());
+            } catch (RateLimitException e) {
+                sleep(e.getRetryDelay(), e.getBucket());
             }
         }
     }
