@@ -477,33 +477,15 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 synchronized (lock) {
                     if (!voiceChannel.get().isConnected()) {
                         voiceChannel.get().join();
-                        CountDownLatch latch = new CountDownLatch(1);
-                        // block until we connect
-                        FutureTask<Void> task = new FutureTask<>(() -> {
-                            while (!voiceChannel.get().isConnected()) {
-                                try {
-                                    Thread.sleep(100);
-                                } catch (InterruptedException e) {
-                                    log.warn("Interrupted while waiting for connection", e);
-                                }
-                            }
-                            latch.countDown();
-                            return null;
-                        });
-                        taskExecutor.execute(task);
-                        // or timeout
-                        if (!latch.await(10, TimeUnit.SECONDS)) {
-                            task.cancel(true);
-                        }
                     }
                     AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
                     Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                     settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
                     AudioPlayer.Track track = player.queue(source);
-                    track.getMetadata().put("volume", volume != null ? volume : 80);
+                    track.getMetadata().put("volume", volume != null ? volume : 100);
                 }
             }
-        } catch (UnsupportedAudioFileException | IOException | InterruptedException e) {
+        } catch (UnsupportedAudioFileException | IOException e) {
             log.warn("Unable to play sound bite", e);
         }
     }
