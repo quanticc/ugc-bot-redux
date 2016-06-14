@@ -13,10 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IGuild;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.Presences;
+import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.*;
 
 import javax.annotation.PostConstruct;
@@ -145,14 +142,14 @@ public class BotPresenter {
                 result = channel.getMessages().load(count);
             } catch (RateLimitException e) {
                 try {
-                    sleep(e.getRetryDelay());
+                    sleep(e.getRetryDelay(), e.getBucket());
                 } catch (InterruptedException ex) {
                     log.warn("Interrupted while waiting for retry delay");
                     return "";
                 }
             }
         }
-        log.debug("Could load {} messages from channel {} ({}) into cache",
+        log.debug("Cached {} messages from channel {} ({})",
             count, channel.getName(), channel.getID());
         return ""; // silent
     }
@@ -165,8 +162,8 @@ public class BotPresenter {
         }
     }
 
-    private void sleep(long millis) throws InterruptedException {
-        log.info("Backing off for {} ms due to rate limits", millis);
+    private void sleep(long millis, String bucket) throws InterruptedException {
+        log.info("Backing off for {} ms due to rate limits on {}", millis, bucket);
         Thread.sleep(Math.max(1, millis));
     }
 
@@ -231,7 +228,9 @@ public class BotPresenter {
         Optional<Image> avatar = Optional.ofNullable(o.valueOf(profileAvatarSpec)).map(s -> Image.forUrl("jpeg", s));
         Optional<String> game = Optional.ofNullable(o.valueOf(profileGameSpec));
         IDiscordClient client = discordService.getClient();
-        client.updatePresence(client.getOurUser().getPresence().equals(Presences.IDLE), game);
+        if (game.isPresent()) {
+            client.changeStatus(Status.game(game.get()));
+        }
         try {
             if (name.isPresent()) {
                 discordService.changeUsername(name.get());
