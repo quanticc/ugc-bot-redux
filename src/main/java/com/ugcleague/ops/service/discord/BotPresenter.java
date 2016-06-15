@@ -298,7 +298,7 @@ public class BotPresenter {
                 log.info("No messages to delete");
             } else {
                 log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(c));
-                for (int x = 0; x < toDelete.size() / 100; x++) {
+                for (int x = 0; x < (toDelete.size() / 100) + 1; x++) {
                     List<IMessage> subList = toDelete.subList(x * 100, Math.min(toDelete.size(), (x + 1) * 100));
                     RequestBuffer.request(() -> {
                         try {
