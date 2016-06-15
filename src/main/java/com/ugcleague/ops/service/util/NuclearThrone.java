@@ -643,7 +643,7 @@ public class NuclearThrone {
             put("Shovel", "Dig");
             put("Sledgehammer", "Steel on steel");
             put("Blood Hammer", "Drip");
-            put("Lightning Hammer", "Shock value");
+            put("Lightning Hammer", "Shock value :zap:");
             put("Jackhammer", "Break some legs");
             put("Energy Screwdriver", "Future fixing");
             put("Energy Sword", "Zzzwwoonggg");

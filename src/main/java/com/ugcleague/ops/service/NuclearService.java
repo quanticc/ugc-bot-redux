@@ -298,24 +298,33 @@ public class NuclearService {
         }
 
         String boss = getBossName(world, area, loop);
-        String worldName = getWorldName(world);
+        Map<String, String> context = new HashMap<>();
 
         if (boss != null) {
-            List<String> responses = Arrays.asList(
-                "Entered {{boss}} level",
-                "Watch out for the {{boss}}"
-            );
-            Map<String, String> context = new HashMap<>();
             context.put("boss", boss);
-            announce(stream, responses, context);
-        } else if (world == 0) {
-            announce(stream, NuclearThrone.LOOP_TIPS.get(RandomUtils.nextInt(0, NuclearThrone.LOOP_TIPS.size())));
-        } else if (area == 1) {
-            announce(stream, "Entered the " + worldName);
-        } else {
-            List<String> messages = NuclearThrone.WORLD_TIPS.get(world);
-            announce(stream, messages.get(RandomUtils.nextInt(0, messages.size())));
         }
+
+        String worldName = getWorldName(world);
+
+        if (world == 0) {
+            announce(stream, NuclearThrone.LOOP_TIPS.get(RandomUtils.nextInt(0, NuclearThrone.LOOP_TIPS.size())));
+            return;
+        }
+
+        List<String> pool = new ArrayList<>();
+
+        if (boss != null) {
+            pool.add("Entered {{boss}} level");
+            pool.add("Watch out for the {{boss}}");
+        }
+
+        if (area == 1) {
+            announce(stream, "Entered the " + worldName);
+        }
+
+        List<String> messages = NuclearThrone.WORLD_TIPS.get(world);
+        pool.add(messages.get(RandomUtils.nextInt(0, messages.size())));
+        announce(stream, pool, context);
     }
 
     private String getWorldName(int world) {
