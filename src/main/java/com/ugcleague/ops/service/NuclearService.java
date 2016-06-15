@@ -243,7 +243,8 @@ public class NuclearService {
     private void onNewUltra(NuclearStream stream, int character, int ultra) {
         String u = NuclearThrone.ULTRAS.get(character - 1).get(ultra - 1);
         String c = NuclearThrone.CHARACTERS.get(character);
-        announce(stream, "Motherfucking " + u);
+        List<String> tips = NuclearThrone.ULTRA_TIPS.get(c);
+        announce(stream, "Motherfucking " + u + (tips != null ? ". " + tips.get(RandomUtils.nextInt(0, tips.size())) : ""));
         log.info("Player {} got {} ultra", stream.getId(), c, u);
     }
 
@@ -255,13 +256,13 @@ public class NuclearService {
 
     private void onNewMutation(NuclearStream stream, int mutation) {
         String m = NuclearThrone.MUTATIONS.get(mutation);
-        announce(stream, "Motherfucking " + m);
+        announce(stream, NuclearThrone.MUTATION_TIPS.getOrDefault(m, "Motherfucking " + m));
         log.info("Player {} took {}", stream.getId(), m);
     }
 
     private void onWeaponPickup(NuclearStream stream, int weapon) {
         String w = NuclearThrone.WEAPONS.get(weapon);
-        announce(stream, "Motherfucking " + w);
+        announce(stream, NuclearThrone.WEAPON_TIPS.getOrDefault(w, "Motherfucking " + w));
         log.info("Player {} picked up {}", stream.getId(), w);
     }
 

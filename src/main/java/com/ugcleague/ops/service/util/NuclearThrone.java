@@ -82,6 +82,59 @@ public class NuclearThrone {
         asList("Super Portal Strike", "Super Blast Armor")
     );
 
+    public static Map<String, List<String>> ULTRA_TIPS = new LinkedHashMap<String, List<String>>() {
+        {
+            put("Fish", asList("Unstoppable",
+                "Just one more day",
+                "Getting used to this"));
+            put("Crystal", asList("Stay strong",
+                "Just a scratch"));
+            put("Eyes", asList("Keep it inside",
+                "Show nothing",
+                "Know everything"));
+            put("Melting", asList("Please stop...",
+                "The pain..."));
+            put("Plant", Collections.singletonList("End end end"));
+            put("Yung Venuz", asList("Vote 2 B cool",
+                "Go hard",
+                "4ever",
+                "YV fact: YV is the best",
+                "Real thugs hustle",
+                "One of these days",
+                "#blessed",
+                "Airsiren.wav",
+                "#verifycuz"));
+            put("Steroids", asList("So strong",
+                "Let's hope this is correct",
+                "Don't panic"));
+            put("Robot", asList("Singularity",
+                "Flesh is weak",
+                "Machines will never end"));
+            put("Chicken", asList("Again we are defeated",
+                "Just like in the movies",
+                "This is destiny"));
+            put("Rebel", asList("No stopping now",
+                "All together now",
+                "Things are different"));
+            put("Horror", asList("The light moves",
+                "The air is changing"));
+            put("Rogue", asList("They can't chase you forever",
+                "You deserve this",
+                "Use this",
+                "Fire at will",
+                "None will pass",
+                "Guard this land"));
+            put("Skeleton", asList("No need for peace",
+                "Avoid the living",
+                "This is better"));
+            put("Frog", asList("Smell great",
+                "Go forever",
+                "Sweet sounds",
+                "Singing",
+                "Bwahahaha"));
+        }
+    };
+
     /**
      * Mutations are 0-indexed
      **/
@@ -400,7 +453,7 @@ public class NuclearThrone {
         }
     };
 
-    public static  Map<Integer, List<String>> WORLD_TIPS = new LinkedHashMap<Integer, List<String>>() {
+    public static Map<Integer, List<String>> WORLD_TIPS = new LinkedHashMap<Integer, List<String>>() {
         {
             put(0, asList(
                 "This can't be true",
@@ -496,6 +549,166 @@ public class NuclearThrone {
                 "Lets take a look in the fridge",
                 "This is where the magic happens"
             ));
+        }
+    };
+
+    public static Map<String, String> WEAPON_TIPS = new LinkedHashMap<String, String>() {
+        {
+            put("Revolver", "Trusty old revolver");
+            put("Rusty Revolver", "This Revolver is ancient");
+            //put("Machinegun", "");
+            put("Triple Machinegun", "Triple Machinegun, so much fun");
+            put("Quadruple Machinegun", "The future is here");
+            put("Smart Gun", "It thinks");
+            //put("SMG", "");
+            put("Minigun", "Time to rain bullets");
+            put("Double Minigun", "Sea of bullets");
+            //put("Assault Rifle", "");
+            put("Rogue Rifle", "Loose cannon");
+            put("Hyper Rifle", "Hyper time");
+            put("Heavy Revolver", "Heavy bullets");
+            put("Heavy Machinegun", "Get some");
+            put("Heavy Assault Rifle", "Go for it");
+            put("Pop Gun", "How does this thing even work");
+            put("Pop Rifle", "Let's hope this works");
+            //put("Incinerator", ". . .");
+            put("Bouncer SMG", "Watch your back");
+            put("Bouncer Shotgun", "They're everywhere");
+            //put("Shotgun", "");
+            put("Double Shotgun", "Double Shotgun, double fun");
+            put("Sawed-off Shotgun", "A true melee weapon");
+            put("Wave Gun", "Shoot 'em up");
+            put("Eraser", "Goodbye head");
+            put("Auto Shotgun", "Just hold down the trigger");
+            put("Flak Cannon", "10/10");
+            put("Super Flak Cannon", "11/10");
+            put("Flame Shotgun", "A burning sensation");
+            put("Double Flame Shotgun", "Incinerate them");
+            put("Auto Flame Shotgun", "Raining fire");
+            //put("Slugger", "");
+            //put("Assault Slugger", "");
+            put("Gatling Slugger", "Time to gatle");
+            put("Super Slugger", "No need to aim");
+            put("Hyper Slugger", "Time to hyper");
+            put("Heavy Slugger", "Get out of here");
+            //put("Crossbow", "");
+            put("Auto Crossbow", "225 bolts per minute");
+            put("Super Crossbow", "5 bolts per shot");
+            put("Toxic Bow", "Hold breath while firing");
+            put("Heavy Crossbow", "A true burden");
+            put("Heavy Auto Crossbow", "Weighs you down");
+            put("Splinter Gun", "This will hurt");
+            put("Splinter Pistol", "Watch your fingers");
+            put("Super Splinter Gun", "Terror");
+            put("Seeker Pistol", "No hiding");
+            put("Seeker Shotgun", "No escape");
+            put("Disc Gun", "We hereby sincerely apologize");
+            put("Grenade Launcher", "Be careful with those grenades");
+            put("Sticky Launcher", "Don't touch sticky 'nades'");
+            put("Toxic Launcher", "Don't breathe'");
+            put("Hyper Launcher", "Point and click");
+            put("Heavy Grenade Launcher", "Watch out");
+            put("Grenade Rifle", "Distant explosions");
+            put("Grenade Shotgun", "Don't get too close");
+            put("Auto Grenade Shotgun", "Stay away");
+            put("Cluster Launcher", "Small explosions");
+            //put("Bazooka", "");
+            put("Gatling Bazooka", "Explosions");
+            put("Super Bazooka", "This is getting silly");
+            put("Nuke Launcher", "This is what started it all");
+            put("Blood Launcher", "Built with spare parts");
+            put("Blood Cannon", "Fully organic");
+            put("Flamethrower", "Burn burn burn");
+            put("Dragon", "Hot breath");
+            put("Flare Gun", "Signal for help");
+            put("Flame Cannon", "Inferno");
+            put("Laser Pistol", "Futuristic weaponry");
+            //put("Laser Rifle", "");
+            put("Laser Minigun", "Energy bill off the charts");
+            put("Laser Cannon", "Oh Laser Cannon");
+            put("Plasma Gun", "Fun fun");
+            put("Plasma Rifle", "Fun fun fun fun");
+            put("Plasma Minigun", "All the fun");
+            put("Plasma Cannon", "Fun fun fun");
+            put("Super Plasma Cannon", "Comedy");
+            //put("Devastator", ". . .");
+            put("Lightning Pistol", "Thunder");
+            put("Lighting Rifle", "A storm is coming");
+            put("Lightning SMG", "Heavy weather");
+            put("Lightning Shotgun", "Hurricane");
+            put("Lightning Cannon", "Typhoon");
+            put("Screwdriver", "Screwdriver will fix it");
+            put("Chicken Sword", "Chicken loves her sword");
+            put("Wrench", "Hell");
+            put("Shovel", "Dig");
+            put("Sledgehammer", "Steel on steel");
+            put("Blood Hammer", "Drip");
+            put("Lightning Hammer", "Shock value");
+            put("Jackhammer", "Break some legs");
+            put("Energy Screwdriver", "Future fixing");
+            put("Energy Sword", "Zzzwwoonggg");
+            put("Energy Hammer", "Break a leg");
+            put("Ultra Revolver", "Feeling ultra");
+            put("Ultra Shotgun", "No chance");
+            put("Ultra Crossbow", "Nowhere to hide");
+            put("Ultra Grenade Launcher", "They'll come");
+            put("Ultra Laser Pistol", "Unstoppable");
+            put("Ultra Shovel", "Perfection");
+            //put("Golden Revolver", "B-)");
+            put("Golden Machinegun", "Expensive Machinegun");
+            put("Golden Assault Rifle", "Burst of gold");
+            put("Golden Shotgun", "Beautiful Shotgun");
+            put("Golden Slugger", "Priceless hardwood");
+            put("Golden Crossbow", "Velvet handles");
+            put("Golden Splinter Gun", "Even the ammo is expensive");
+            put("Golden Grenade Launcher", "Even the grenades are gold");
+            put("Golden Bazooka", "Worth its weight in gold");
+            put("Golden Laser Pistol", "This thing gets hot");
+            put("Golden Plasma Gun", "Beautiful alloys");
+            put("Golden Wrench", "Shiny wrench");
+            put("Golden Screwdriver", "Ivory handle");
+            put("Frog Pistol", "Always");
+            put("Super Disc Gun", "Many apologies");
+            put("Gun Gun", "Make it");
+            put("Guitar", "There's no reason to fight");
+            put("Black Sword", "Chicken fears her sword");
+            put("Golden Frog Pistol", "Always believe in your soul");
+            put("Golden Disc Gun", "Go in style");
+            put("Golden Nuke Launcher", "Excessive");
+        }
+    };
+
+    public static Map<String, String> MUTATION_TIPS = new LinkedHashMap<String, String>() {
+        {
+            put("Back Muscle", "Great strength");
+            put("Bloodlust", "Drink blood");
+            put("Boiling Veins", "Temperature is rising");
+            put("Bolt Marrow", "Bolts everywhere");
+            put("Eagle Eyes", "Every shot connects");
+            put("Euphoria", "Time passes slowly");
+            put("Extra Feet", "Run forever");
+            put("Gamma Guts", "Skin glows");
+            put("Hammerhead", "Such a headache");
+            put("Heavy Heart", "These guns");
+            put("Impact Wrists", "See them fly");
+            put("Laser Brain", "Neurons everywhere");
+            put("Last Wish", "Listen");
+            put("Long Arms", "More reach");
+            put("Lucky Shot", "Ammo everywhere");
+            put("Open Mind", "The truth is out there");
+            put("Patience", "Wait a second");
+            put("Plutonium Hunger", "Need those Rads");
+            put("Rabbit Paw", "Feeling lucky");
+            put("Recycle Gland", "Return");
+            put("Rhino Skin", "Thick skin");
+            put("Scarier Face", "Mirrors will break");
+            put("Second Stomach", "Stomach rumbles");
+            put("Sharp Teeth", "Eye for an eye");
+            put("Shotgun Shoulders", "Shells are friends");
+            put("Stress", "Shaking");
+            put("Strong Spirit", "Believe in yourself");
+            put("Throne Butt", "Sit on the Throne");
+            put("Trigger Fingers", "Good idea");
         }
     };
 }
