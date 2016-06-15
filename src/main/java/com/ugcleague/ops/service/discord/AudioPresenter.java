@@ -262,27 +262,6 @@ public class AudioPresenter implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onTrackStart(TrackStartEvent event) {
-        log.debug("[Started] {}", getSource(event.getTrack()));
-        event.getPlayer().setVolume((int) (event.getTrack().getMetadata().getOrDefault("volume", 30)) / 100f);
-    }
-
-    @EventSubscriber
-    public void onTrackEnqueue(TrackQueueEvent event) {
-        log.debug("[Enqueued] {}", getSource(event.getTrack()));
-    }
-
-    @EventSubscriber
-    public void onTrackFinish(TrackFinishEvent event) {
-        log.debug("[Finished] {}", getSource(event.getOldTrack()));
-    }
-
-    @EventSubscriber
-    public void onSkip(SkipEvent event) {
-        log.debug("[Skipped] {}", getSource(event.getTrack()));
-    }
-
-    @EventSubscriber
     public void onVolumeChange(VolumeChangeEvent event) {
         log.debug("[Volume] {} -> {}", (int) (event.getOldValue() * 100), (int) (event.getNewValue() * 100));
     }

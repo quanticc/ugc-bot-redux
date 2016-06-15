@@ -22,6 +22,10 @@ import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 import sx.blah.discord.util.audio.AudioPlayer;
+import sx.blah.discord.util.audio.events.SkipEvent;
+import sx.blah.discord.util.audio.events.TrackFinishEvent;
+import sx.blah.discord.util.audio.events.TrackQueueEvent;
+import sx.blah.discord.util.audio.events.TrackStartEvent;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -31,8 +35,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,6 +63,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private final AudioStreamService audioStreamService;
 
     private final Object lock = new Object();
+    private final Map<String, Integer> volumeMap = new ConcurrentHashMap<>();
 
     private OptionSpec<Void> soundbitesEnableSpec;
     private OptionSpec<Void> soundbitesDisableSpec;
@@ -481,12 +490,62 @@ public class SoundBitePresenter implements DiscordSubscriber {
                     AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
                     Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
                     settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
-                    AudioPlayer.Track track = player.queue(source);
-                    track.getMetadata().put("volume", volume != null ? volume : 100);
+                    volumeMap.put(source.getName(), volume != null ? volume : 100);
+                    player.queue(source);
                 }
             }
         } catch (UnsupportedAudioFileException | IOException e) {
             log.warn("Unable to play sound bite", e);
+        }
+    }
+
+    private String getSource(AudioPlayer.Track track) {
+        if (track == null) {
+            return "";
+        }
+        Map<String, Object> metadata = track.getMetadata();
+        if (metadata.containsKey("file")) {
+            return ((File) metadata.get("file")).getName();
+        } else if (metadata.containsKey("url")) {
+            return metadata.get("url").toString();
+        } else {
+            return Integer.toHexString(track.hashCode());
+        }
+    }
+
+    @EventSubscriber
+    public void onTrackStart(TrackStartEvent event) {
+        log.debug("[Started] {}", getSource(event.getTrack()));
+        Map<String, Object> metadata = event.getTrack().getMetadata();
+        event.getPlayer().setVolume(volumeMap.getOrDefault(((File) metadata.get("file")).getName(), 30) / 100f);
+    }
+
+    @EventSubscriber
+    public void onTrackEnqueue(TrackQueueEvent event) {
+        log.debug("[Enqueued] {}", getSource(event.getTrack()));
+    }
+
+    @EventSubscriber
+    public void onTrackFinish(TrackFinishEvent event) {
+        AudioPlayer.Track track = event.getOldTrack();
+        log.debug("[Finished] {}", getSource(track));
+        if (track != null) {
+            Map<String, Object> metadata = event.getOldTrack().getMetadata();
+            if (metadata.containsKey("file")) {
+                volumeMap.remove(((File) metadata.get("file")).getName());
+            }
+        }
+    }
+
+    @EventSubscriber
+    public void onSkip(SkipEvent event) {
+        AudioPlayer.Track track = event.getTrack();
+        log.debug("[Skipped] {}", getSource(track));
+        if (track != null) {
+            Map<String, Object> metadata = event.getTrack().getMetadata();
+            if (metadata.containsKey("file")) {
+                volumeMap.remove(((File) metadata.get("file")).getName());
+            }
         }
     }
 
