@@ -322,8 +322,7 @@ public class NuclearService {
             announce(stream, "Entered the " + worldName);
         }
 
-        List<String> messages = NuclearThrone.WORLD_TIPS.get(world);
-        pool.add(messages.get(RandomUtils.nextInt(0, messages.size())));
+        pool.addAll(NuclearThrone.WORLD_TIPS.get(world));
         announce(stream, pool, context);
     }
 
