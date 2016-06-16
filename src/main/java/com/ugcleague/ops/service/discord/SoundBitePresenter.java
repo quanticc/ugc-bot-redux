@@ -415,7 +415,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (message.getContent().toLowerCase().equals("!w")) {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true, null);
             } else {
-                String[] parts = message.getContent().toLowerCase().split("\\-", 10);
+                String[] parts = message.getContent().toLowerCase().split("\\-", 16);
                 for (int i = 0; i < parts.length; i++) {
                     Optional<SoundBite> soundBite = soundBiteRepository.findById(parts[i].trim());
                     if (soundBite.isPresent()) {
