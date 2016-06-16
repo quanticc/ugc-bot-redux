@@ -319,7 +319,7 @@ public class NuclearService {
         }
 
         if (area == 1) {
-            announce(stream, "Entered the " + worldName);
+            pool.add("Entered the " + worldName);
         }
 
         pool.addAll(NuclearThrone.WORLD_TIPS.get(world));
