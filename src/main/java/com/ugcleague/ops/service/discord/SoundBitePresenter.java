@@ -527,26 +527,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
 
     @EventSubscriber
     public void onTrackFinish(TrackFinishEvent event) {
-        AudioPlayer.Track track = event.getOldTrack();
-        log.debug("[Finished] {}", getSource(track));
-        if (track != null) {
-            Map<String, Object> metadata = event.getOldTrack().getMetadata();
-            if (metadata.containsKey("file")) {
-                volumeMap.remove(((File) metadata.get("file")).getName());
-            }
-        }
+        log.debug("[Finished] {}", getSource(event.getOldTrack()));
     }
 
     @EventSubscriber
     public void onSkip(SkipEvent event) {
-        AudioPlayer.Track track = event.getTrack();
-        log.debug("[Skipped] {}", getSource(track));
-        if (track != null) {
-            Map<String, Object> metadata = event.getTrack().getMetadata();
-            if (metadata.containsKey("file")) {
-                volumeMap.remove(((File) metadata.get("file")).getName());
-            }
-        }
+        log.debug("[Skipped] {}", getSource(event.getTrack()));
     }
 
 }
