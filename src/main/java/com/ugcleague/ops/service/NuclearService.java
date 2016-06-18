@@ -233,8 +233,8 @@ public class NuclearService {
     private void onHurt(NuclearStream stream, int enemyId) {
         String enemy = NuclearThrone.ENEMIES.get(enemyId);
         List<String> responses = Arrays.asList(
-            "",
-            "Ouch",
+            //"",
+            //"Ouch",
             "Got hit by {{an_enemy}}",
             "This motherfucking {{enemy}}",
             "Motherfucker {{enemy}} bit me",
@@ -257,7 +257,8 @@ public class NuclearService {
 
     private void onNewCrown(NuclearStream stream, int crown) {
         String c = NuclearThrone.CROWNS.get(crown - 1);
-        announce(stream, "Chose " + c);
+        List<String> tips = NuclearThrone.CROWN_TIPS.get(c);
+        announce(stream, "Chose " + c + (tips != null ? ". " + tips.get(RandomUtils.nextInt(0, tips.size())) : ""));
         log.info("Player {} chose {}", stream.getId(), c);
     }
 
