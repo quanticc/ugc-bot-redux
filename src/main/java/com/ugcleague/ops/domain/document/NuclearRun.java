@@ -6,10 +6,7 @@ import com.ugcleague.ops.web.rest.NuclearResponse;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class NuclearRun {
@@ -29,6 +26,7 @@ public class NuclearRun {
     private int loop;
     private String level = "";
     private String type = "";
+    private final Map<String, Set<String>> announceHistory = new HashMap<>();
 
     public int getHealth() {
         return health;
@@ -148,6 +146,10 @@ public class NuclearRun {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Map<String, Set<String>> getAnnounceHistory() {
+        return announceHistory;
     }
 
     public static NuclearRun fromResponse(NuclearResponse.Run nrr) {

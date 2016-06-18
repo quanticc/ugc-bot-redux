@@ -184,17 +184,18 @@ public class NuclearService {
         }
     }
 
-    private void announce(NuclearStream stream, String message) {
+    private String announce(NuclearStream stream, String message) {
         if (message != null && !message.isEmpty()) {
             announcePresenter.announce(stream.getPublisher().getId(), message, true, false);
         }
+        return message;
     }
 
-    private void announce(NuclearStream stream, List<String> responseList) {
-        announce(stream, responseList, null);
+    private String announce(NuclearStream stream, List<String> responseList) {
+        return announce(stream, responseList, null);
     }
 
-    private void announce(NuclearStream stream, List<String> responseList, Map<String, String> context) {
+    private String announce(NuclearStream stream, List<String> responseList, Map<String, String> context) {
         String response = responseList.get(RandomUtils.nextInt(0, responseList.size()));
         if (context == null) {
             announcePresenter.announce(stream.getPublisher().getId(), response, true, false);
@@ -204,11 +205,13 @@ public class NuclearService {
             try {
                 StringWriter writer = new StringWriter();
                 mustache.execute(writer, context).flush();
-                announcePresenter.announce(stream.getPublisher().getId(), writer.toString(), true, false);
+                response = writer.toString();
+                announcePresenter.announce(stream.getPublisher().getId(), response, true, false);
             } catch (IOException e) {
                 log.warn("Could not create response", e);
             }
         }
+        return response;
     }
 
     private void onHealed(NuclearStream stream, int amount) {
@@ -272,6 +275,7 @@ public class NuclearService {
     }
 
     private void onNewRun(NuclearStream stream, NuclearRun run) {
+        resetAllHistory(run);
         String c = NuclearThrone.CHARACTERS.get(run.getCharacter());
         List<String> messages = NuclearThrone.CHARACTER_TIPS.get(run.getCharacter());
         if (messages != null) {
@@ -281,6 +285,7 @@ public class NuclearService {
     }
 
     private void onNewLevel(NuclearStream stream, NuclearRun run) {
+        String type = "onNewLevel";
         int world = run.getWorld();
         int area = run.getArea();
         int loop = run.getLoop();
@@ -312,6 +317,7 @@ public class NuclearService {
         String worldName = getWorldName(world);
 
         if (world == 0) {
+            resetHistory(run, type);
             announce(stream, NuclearThrone.LOOP_TIPS.get(RandomUtils.nextInt(0, NuclearThrone.LOOP_TIPS.size())));
             return;
         }
@@ -328,7 +334,23 @@ public class NuclearService {
         }
 
         pool.addAll(NuclearThrone.WORLD_TIPS.get(world));
-        announce(stream, pool, context);
+        if (pool.size() > 1) {
+            pool.removeIf(s -> getHistory(run, type).contains(s));
+        }
+        String msg = announce(stream, pool, context);
+        getHistory(run, type).add(msg);
+    }
+
+    private Set<String> getHistory(NuclearRun run, String key) {
+        return run.getAnnounceHistory().computeIfAbsent(key, k -> new HashSet<>());
+    }
+
+    private void resetHistory(NuclearRun run, String key) {
+        run.getAnnounceHistory().remove(key);
+    }
+
+    private void resetAllHistory(NuclearRun run) {
+        run.getAnnounceHistory().clear();
     }
 
     private String getWorldName(int world) {
