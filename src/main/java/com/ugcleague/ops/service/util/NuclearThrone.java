@@ -32,15 +32,150 @@ public class NuclearThrone {
         "Cuz"
     );
 
-    public static Map<Integer, List<String>> CHARACTER_TIPS = new LinkedHashMap<Integer, List<String>>() {
+    public static Map<String, List<String>> CHARACTER_TIPS = new LinkedHashMap<String, List<String>>() {
         {
-            put(12, asList(
+            put("Random", asList(
+                "Noone compares",
+                "Active: anything",
+                "Passive: anything",
+                "Shapeless",
+                "Never the same",
+                "Clearly the most powerful",
+                "Random shifts shapes"
+            ));
+            put("Fish", asList(
+                "The taste of mud",
+                "Like Kevin Costner",
+                "Gills on your neck",
+                "It's ok to eat",
+                "Duty calls",
+                "Last day before retirement"
+            ));
+            put("Crystal", asList(
+                "Crystal can handle this",
+                "Family"
+            ));
+            put("Eyes", asList(
+                "Telekineses pushes projectiles away",
+                "Eyes can't speak",
+                "All these thoughts",
+                "Don't blink",
+                "Eyes sees everything"
+            ));
+            put("Melting", asList(
+                "It's ok to be scared",
+                "Brr...",
+                "Cough",
+                "Everything hurts",
+                "Melting is tired",
+                "It's so cold out here"
+            ));
+            put("Plant", asList(
+                "Gotta go fast",
+                "Snare is a source of light",
+                "Plant can hold RMB to see further",
+                "Photosynthesizing...",
+                "No mercy",
+                "Blood blood blood",
+                "Death death death",
+                "Kill kill kill"
+            ));
+            put("Yung Venuz", asList(
+                "Pop pop",
+                "No popo",
+                "Guns that wear vests it",
+                "Guns that hate texas",
+                "Guns with 6 senses",
+                "Guns that straight festive",
+                "Guns that make breakfast",
+                "Guns that send textses",
+                "Guns for fake necklace",
+                "Mony",
+                "2 Yung 2 Die",
+                "#verifyvenuz",
+                "Thanks Gun God",
+                "So cool",
+                "Yung Venuz is the best",
+                "Yung Venuz is so cool"
+            ));
+            put("Steroids", asList(
+                "Read a book",
+                "Get strong",
+                "Get shots",
+                "Appreciate revolvers",
+                "Steroids used to be a scientist",
+                "Steroids could do pushups forever",
+                "Study hard",
+                "Time to flex"
+            ));
+            put("Robot", asList(
+                "Don't forget to eat weapons",
+                "I'm afraid I can't let you do that",
+                "Guns for breakfast",
+                "Tasty",
+                "<3",
+                "Robot",
+                "Kill all humans"
+            ));
+            put("Chicken", asList(
+                "Throw damage scales with your level",
+                "Getting decapitated reduces max HP",
+                "Again",
+                "Amateur hour is over",
+                "Never surrender",
+                "Go",
+                "Focus",
+                "Remember the training"
+            ));
+            put("Rebel", asList(
+                "The scarf is nice",
+                "Allies take damage over time",
+                "Your first ally costs less HP",
+                "Spawning new allies heals old ones",
+                "It will get better",
+                "A new generation",
+                "Allies are a source of light",
+                "Change is coming",
+                "Forget the old days"
+            ));
+            put("Horror", asList(
+                "Firing the beam pauses rad attraction",
+                "Enemies absorb the beam's rads",
+                "Horror's beam destroys projectiles",
+                "Horror's beam powers up over time",
+                "Power",
+                "The horror",
+                "In the zone",
+                "Radiation is everywhere"
+            ));
+            put("Rogue", asList(
                 "Keep moving",
                 "Never look back",
                 "Never slow down",
                 "They're getting closer",
                 "Never stop",
                 "Another world lost"
+            ));
+            put("Skeleton", asList(
+                "Hard",
+                "Dusty",
+                "Dry",
+                "Nothing..."
+            ));
+            put("Frog", asList(
+                "Wait for me",
+                "Don't hold it up",
+                "Keep going",
+                "Let it all out",
+                "Gass is good",
+                "Bloated",
+                "Restless",
+                "Let's go",
+                "Can't wait"
+            ));
+            put("Cuz", asList(
+                "Nice",
+                "Cool"
             ));
         }
     };
@@ -63,6 +198,35 @@ public class NuclearThrone {
         "It's a whole new world",
         "This will never end"
     );
+
+    public static Map<String, List<String>> MODE_TIPS = new LinkedHashMap<String, List<String>>() {
+        {
+            put("daily", asList(
+                "One day",
+                "There's always tomorrow",
+                "One shot",
+                "Don't mess it up",
+                "The weather isn't so bad",
+                "Such a nice day"
+            ));
+            put("weekly", asList(
+                "Keep Trying",
+                "Well prepared",
+                "Free time",
+                "What's next",
+                "This seems familiar"
+            ));
+            put("hard", asList(
+                "It can't be that bad",
+                "Take your time",
+                "Behind you",
+                "What does SFMT stand for?",
+                "Impossible",
+                "No way",
+                "Heh"
+            ));
+        }
+    };
 
     /**
      * Ultras are 1x1-indexed (character, index)
@@ -188,6 +352,23 @@ public class NuclearThrone {
         "Crown of Luck",
         "Crown of Protection"
     );
+
+    public static Map<String, List<String>> CROWN_TIPS = new LinkedHashMap<String, List<String>>() {
+        {
+            put("Crown of Death", asList("Health is important", "Boom"));
+            put("Crown of Guns", Collections.singletonList("Guns are your friend"));
+            put("Crown of Hatred", Collections.singletonList("Something is wrong"));
+            put("Crown of Destiny", Collections.singletonList("No such thing as free will"));
+            put("Crown of Curses", Collections.singletonList("Why"));
+            put("Crown of Protection", Collections.singletonList("Safety First"));
+            put("Crown of Life", Collections.singletonList("Heart matters"));
+            put("Crown of Love", Collections.singletonList("You really like these weapons"));
+            put("Crown of Blood", asList("Bring it", "Get ready"));
+            put("Crown of Luck", asList("It's all the same", "The future brings death"));
+            put("Crown of Haste", Collections.singletonList("No time for jokes"));
+            put("Crown of Risk", Collections.singletonList("Good"));
+        }
+    };
 
     /**
      * Weapons are 0-indexed

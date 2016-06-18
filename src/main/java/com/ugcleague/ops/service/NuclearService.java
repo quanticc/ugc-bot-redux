@@ -277,11 +277,15 @@ public class NuclearService {
     private void onNewRun(NuclearStream stream, NuclearRun run) {
         resetAllHistory(run);
         String c = NuclearThrone.CHARACTERS.get(run.getCharacter());
-        List<String> messages = NuclearThrone.CHARACTER_TIPS.get(run.getCharacter());
+        List<String> messages = NuclearThrone.CHARACTER_TIPS.get(c);
         if (messages != null) {
             announce(stream, messages.get(RandomUtils.nextInt(0, messages.size())));
         }
-        log.info("Player {} started a new run with {}", stream.getId(), c);
+        List<String> modeTips = NuclearThrone.MODE_TIPS.get(run.getType());
+        if (modeTips != null) {
+            announce(stream, modeTips.get(RandomUtils.nextInt(0, modeTips.size())));
+        }
+        log.info("Player {} started a new {} run with {}", stream.getId(), run.getType(), c);
     }
 
     private void onNewLevel(NuclearStream stream, NuclearRun run) {
