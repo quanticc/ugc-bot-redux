@@ -190,6 +190,10 @@ public class NuclearService {
         }
     }
 
+    private void announce(NuclearStream stream, List<String> responseList) {
+        announce(stream, responseList, null);
+    }
+
     private void announce(NuclearStream stream, List<String> responseList, Map<String, String> context) {
         String response = responseList.get(RandomUtils.nextInt(0, responseList.size()));
         if (context == null) {
@@ -262,7 +266,8 @@ public class NuclearService {
 
     private void onWeaponPickup(NuclearStream stream, int weapon) {
         String w = NuclearThrone.WEAPONS.get(weapon);
-        announce(stream, NuclearThrone.WEAPON_TIPS.getOrDefault(w, "Motherfucking " + w));
+        announce(stream, Arrays.asList("Motherfucking " + w,
+            NuclearThrone.WEAPON_TIPS.getOrDefault(w, "Motherfucking " + w)));
         log.info("Player {} picked up {}", stream.getId(), w);
     }
 
