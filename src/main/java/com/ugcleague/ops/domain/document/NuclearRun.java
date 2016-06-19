@@ -205,12 +205,15 @@ public class NuclearRun {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(NuclearThrone.CHARACTERS.get(character))
-            .append(" is playing ").append(type).append(" on **").append(level).append("**\n");
+            .append(" is running ").append(type).append(" on **").append(level).append("**\n");
         builder.append("Kills: **").append(kills).append("**\n");
         builder.append("Health: **").append(health).append("**\n");
         if (crown > 1) {
             builder.append("Crown: ").append(NuclearThrone.CROWNS.get(crown - 1)).append("\n");
         }
+        String weapons = this.weapons.stream()
+            .map(i -> NuclearThrone.WEAPONS.get(i))
+            .collect(Collectors.joining(", "));
         builder.append("Weapons: ").append(weapons).append("\n");
         String mutations = this.mutations.stream()
             .map(i -> NuclearThrone.MUTATIONS.get(i))
@@ -220,7 +223,7 @@ public class NuclearRun {
             builder.append("Ultra: ").append(NuclearThrone.ULTRAS.get(character - 1).get(ultra - 1)).append("\n");
         }
         builder.append("Last damaged by: ").append(NuclearThrone.ENEMIES.get(lastDamagedBy)).append("\n");
-        builder.append("Running for **")
+        builder.append("Playing for **")
             .append(DateUtil.formatDuration(Duration.between(Instant.ofEpochSecond(timestamp), Instant.now())))
             .append("**\n");
         return builder.toString();
