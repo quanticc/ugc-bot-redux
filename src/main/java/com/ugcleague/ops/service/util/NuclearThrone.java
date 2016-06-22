@@ -12,7 +12,7 @@ public class NuclearThrone {
     /**
      * Characters are 0-indexed
      **/
-    public static List<String> CHARACTERS = asList(
+    public static final List<String> CHARACTERS = asList(
         "Random",
         "Fish",
         "Crystal",
@@ -32,7 +32,7 @@ public class NuclearThrone {
         "Cuz"
     );
 
-    public static Map<String, List<String>> CHARACTER_TIPS = new LinkedHashMap<String, List<String>>() {
+    public static final Map<String, List<String>> CHARACTER_TIPS = new LinkedHashMap<String, List<String>>() {
         {
             put("Random", asList(
                 "Noone compares",
@@ -180,7 +180,7 @@ public class NuclearThrone {
         }
     };
 
-    public static List<String> LOW_HEALTH_TIPS = asList(
+    public static final List<String> LOW_HEALTH_TIPS = asList(
         "Help",
         "No no no",
         "Good luck",
@@ -188,7 +188,7 @@ public class NuclearThrone {
         "Oh dear"
     );
 
-    public static List<String> LOOP_TIPS = asList(
+    public static final List<String> LOOP_TIPS = asList(
         "No mountain too high",
         "No valley too deep",
         "We'll reach for the sky",
@@ -199,7 +199,7 @@ public class NuclearThrone {
         "This will never end"
     );
 
-    public static Map<String, List<String>> MODE_TIPS = new LinkedHashMap<String, List<String>>() {
+    public static final Map<String, List<String>> MODE_TIPS = new LinkedHashMap<String, List<String>>() {
         {
             put("daily", asList(
                 "One day",
@@ -231,7 +231,7 @@ public class NuclearThrone {
     /**
      * Ultras are 1x1-indexed (character, index)
      **/
-    public static List<List<String>> ULTRAS = asList(
+    public static final List<List<String>> ULTRAS = asList(
         asList("Confiscate", "Gun Warrant"),
         asList("Fortress", "Juggernaut"),
         asList("Projectile Style", "Monster Style"),
@@ -246,7 +246,7 @@ public class NuclearThrone {
         asList("Super Portal Strike", "Super Blast Armor")
     );
 
-    public static Map<String, List<String>> ULTRA_TIPS = new LinkedHashMap<String, List<String>>() {
+    public static final Map<String, List<String>> ULTRA_TIPS = new LinkedHashMap<String, List<String>>() {
         {
             put("Fish", asList("Unstoppable",
                 "Just one more day",
@@ -302,7 +302,7 @@ public class NuclearThrone {
     /**
      * Mutations are 0-indexed
      **/
-    public static List<String> MUTATIONS = asList(
+    public static final List<String> MUTATIONS = asList(
         "Heavy Heart",
         "Rhino Skin",
         "Extra Feet",
@@ -337,7 +337,7 @@ public class NuclearThrone {
     /**
      * Crowns are 1-indexed
      **/
-    public static List<String> CROWNS = asList(
+    public static final List<String> CROWNS = asList(
         "Bare Head",
         "Crown of Death",
         "Crown of Life",
@@ -353,7 +353,7 @@ public class NuclearThrone {
         "Crown of Protection"
     );
 
-    public static Map<String, List<String>> CROWN_TIPS = new LinkedHashMap<String, List<String>>() {
+    public static final Map<String, List<String>> CROWN_TIPS = new LinkedHashMap<String, List<String>>() {
         {
             put("Crown of Death", asList("Health is important", "Boom"));
             put("Crown of Guns", Collections.singletonList("Guns are your friend"));
@@ -373,7 +373,7 @@ public class NuclearThrone {
     /**
      * Weapons are 0-indexed
      */
-    public static List<String> WEAPONS = asList("Nothing",
+    public static final List<String> WEAPONS = asList("Nothing",
         "Revolver",
         "Triple Machinegun",
         "Wrench",
@@ -502,7 +502,7 @@ public class NuclearThrone {
         "Golden Frog Pistol"
     );
 
-    public static Map<Integer, String> ENEMIES = new LinkedHashMap<Integer, String>() {
+    public static final Map<Integer, String> ENEMIES = new LinkedHashMap<Integer, String>() {
         {
             put(0, "Bandit");
             put(1, "Maggot");
@@ -614,7 +614,7 @@ public class NuclearThrone {
         }
     };
 
-    public static Map<Integer, String> WORLDS = new LinkedHashMap<Integer, String>() {
+    public static final Map<Integer, String> WORLDS = new LinkedHashMap<Integer, String>() {
         {
             put(0, "Campfire");
             put(1, "Desert");
@@ -634,7 +634,7 @@ public class NuclearThrone {
         }
     };
 
-    public static Map<Integer, List<String>> WORLD_TIPS = new LinkedHashMap<Integer, List<String>>() {
+    public static final Map<Integer, List<String>> WORLD_TIPS = new LinkedHashMap<Integer, List<String>>() {
         {
             put(0, asList(
                 "This can't be true",
@@ -733,7 +733,7 @@ public class NuclearThrone {
         }
     };
 
-    public static Map<String, String> WEAPON_TIPS = new LinkedHashMap<String, String>() {
+    public static final Map<String, String> WEAPON_TIPS = new LinkedHashMap<String, String>() {
         {
             put("Revolver", "Trusty old revolver");
             put("Rusty Revolver", "This Revolver is ancient");
@@ -859,7 +859,7 @@ public class NuclearThrone {
         }
     };
 
-    public static Map<String, String> MUTATION_TIPS = new LinkedHashMap<String, String>() {
+    public static final Map<String, String> MUTATION_TIPS = new LinkedHashMap<String, String>() {
         {
             put("Back Muscle", "Great strength");
             put("Bloodlust", "Drink blood");
@@ -892,4 +892,39 @@ public class NuclearThrone {
             put("Trigger Fingers", "Good idea");
         }
     };
+
+    public static final List<String> HEALED_RESPONSES = asList(
+        "",
+        "Healed by {{amount}} points",
+        "Oh yeah",
+        "Nice",
+        "Great",
+        "Fantastic",
+        "Awesome",
+        "Thanks for the health",
+        "Finally some health",
+        "That hit the spot"
+    );
+
+    public static final List<String> HURT_RESPONSES = asList(
+        "Got hit by {{an_enemy}}",
+        "This motherfucking {{enemy}}",
+        "Motherfucker {{enemy}} bit me",
+        "I've had it with these {{enemy}}s in this motherfucking level"
+    );
+
+    public static final List<String> VAULT_RESPONSES = asList(
+        "Crown Vault ain't no country I've ever heard of. They speak English in Vaults?",
+        "I've had it with these motherfucking vaults in this motherfucking game."
+    );
+
+    public static final List<String> DEATH_RESPONSES = asList(
+        "Died to {{enemy}}",
+        "Fuck you",
+        "Come on",
+        "Wake the fuck up",
+        "Oh I'm sorry did I break your concentration",
+        "See I told you you should've killed that bitch",
+        "I don't remember asking you a god damn thing"
+    );
 }

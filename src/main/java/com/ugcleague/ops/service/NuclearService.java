@@ -215,35 +215,18 @@ public class NuclearService {
     }
 
     private void onHealed(NuclearStream stream, int amount) {
-        List<String> responses = Arrays.asList(
-            "",
-            "Oh yeah",
-            "Nice",
-            "Great",
-            "Fantastic",
-            "Awesome",
-            "Thanks for the health",
-            "Finally some health",
-            "That hit the spot"
-        );
-        announce(stream, responses, null);
+        Map<String, String> context = new HashMap<>();
+        context.put("amount", amount + "");
+        announce(stream, NuclearThrone.HEALED_RESPONSES, context);
         log.info("Player {} was healed by {} points", stream.getId(), amount);
     }
 
     private void onHurt(NuclearStream stream, int enemyId) {
         String enemy = NuclearThrone.ENEMIES.get(enemyId);
-        List<String> responses = Arrays.asList(
-            //"",
-            //"Ouch",
-            "Got hit by {{an_enemy}}",
-            "This motherfucking {{enemy}}",
-            "Motherfucker {{enemy}} bit me",
-            "I've had it with these {{enemy}}s in this motherfucking level"
-        );
         Map<String, String> context = new HashMap<>();
         context.put("an_enemy", avsAnRule.suggestAorAn(enemy));
         context.put("enemy", enemy);
-        announce(stream, responses, context);
+        announce(stream, NuclearThrone.HURT_RESPONSES, context);
         log.info("Player {} was hurt by a {}", stream.getId(), enemy);
     }
 
@@ -304,11 +287,7 @@ public class NuclearService {
         }
 
         if (world == 100) {
-            List<String> responses = Arrays.asList(
-                "Crown Vault ain't no country I've ever heard of. They speak English in Vaults?",
-                "I've had it with these motherfucking vaults in this motherfucking game."
-            );
-            announce(stream, responses, null);
+            announce(stream, NuclearThrone.VAULT_RESPONSES, null);
             return;
         }
 
@@ -396,18 +375,9 @@ public class NuclearService {
     private void onDeath(NuclearStream stream, NuclearRun run) {
         String enemy = NuclearThrone.ENEMIES.get(run.getLastDamagedBy());
         String level = run.getLevel();
-        List<String> responses = Arrays.asList(
-            "Died to {{enemy}}",
-            "Fuck you",
-            "Come on",
-            "Wake the fuck up",
-            "Oh I'm sorry did I break your concentration",
-            "See I told you you should've killed that bitch",
-            "I don't remember asking you a god damn thing"
-        );
         Map<String, String> context = new HashMap<>();
         context.put("enemy", avsAnRule.suggestAorAn(enemy));
-        announce(stream, responses, context);
+        announce(stream, NuclearThrone.DEATH_RESPONSES, context);
         log.info("Player {} died to a {} on {}", stream.getId(), enemy, level);
     }
 
