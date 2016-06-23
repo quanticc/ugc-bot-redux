@@ -895,7 +895,7 @@ public class NuclearThrone {
 
     public static final List<String> HEALED_RESPONSES = asList(
         "",
-        "Healed by {{amount}} points",
+        "",
         "Oh yeah",
         "Nice",
         "Great",
