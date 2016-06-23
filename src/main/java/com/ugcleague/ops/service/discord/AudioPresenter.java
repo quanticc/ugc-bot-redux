@@ -129,7 +129,11 @@ public class AudioPresenter implements DiscordSubscriber {
             int index = Math.min(Math.max(0, join), voiceChannelList.size() - 1);
             IVoiceChannel voiceChannel = voiceChannelList.get(index);
             log.debug("Joining voice channel: {} ({})", voiceChannel.getName(), voiceChannel.getID());
-            voiceChannel.join();
+            try {
+                voiceChannel.join();
+            } catch (MissingPermissionsException e) {
+                return "Could not join voice channel";
+            }
         } else if (optionSet.has(audioLeaveSpec)) {
             Optional<IVoiceChannel> voiceChannel = message.getGuild().getVoiceChannels().stream()
                 .filter(IVoiceChannel::isConnected).findAny();
