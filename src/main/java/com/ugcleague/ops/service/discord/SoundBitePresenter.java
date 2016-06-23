@@ -484,18 +484,31 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 .findAny();
             if (voiceChannel.isPresent()) {
                 synchronized (lock) {
-                    if (!voiceChannel.get().isConnected()) {
-                        voiceChannel.get().join();
+                    if (tryJoin(voiceChannel)) {
+                        AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
+                        Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
+                        settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
+                        volumeMap.put(source.getName(), volume != null ? volume : 100);
+                        player.queue(source);
                     }
-                    AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
-                    Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
-                    settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
-                    volumeMap.put(source.getName(), volume != null ? volume : 100);
-                    player.queue(source);
                 }
             }
         } catch (UnsupportedAudioFileException | IOException e) {
             log.warn("Unable to play sound bite", e);
+        }
+    }
+
+    private boolean tryJoin(Optional<IVoiceChannel> voiceChannel) {
+        if (!voiceChannel.get().isConnected()) {
+            try {
+                voiceChannel.get().join();
+                return true;
+            } catch (MissingPermissionsException e) {
+                log.warn("Could not join voice channel, missing permissions");
+                return false;
+            }
+        } else {
+            return true;
         }
     }
 
