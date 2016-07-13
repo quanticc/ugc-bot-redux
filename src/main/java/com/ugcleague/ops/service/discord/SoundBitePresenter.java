@@ -555,7 +555,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
     public void onTrackStart(TrackStartEvent event) {
         log.debug("[Started] {}", getSource(event.getTrack()));
         Map<String, Object> metadata = event.getTrack().getMetadata();
-        event.getPlayer().setVolume(volumeMap.getOrDefault(((File) metadata.get("file")).getName(), 30) / 100f);
+        if (metadata != null) {
+            event.getPlayer().setVolume(volumeMap.getOrDefault(((File) metadata.get("file")).getName(), 30) / 100f);
+        }
     }
 
     @EventSubscriber
