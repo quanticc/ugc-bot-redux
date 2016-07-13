@@ -339,6 +339,6 @@ public class AudioPresenter implements DiscordSubscriber {
     }
 
     private String playlistToString(AudioPlayer player) {
-        return player.getPlaylist().stream().map(this::getSource).collect(Collectors.joining(", "));
+        return player.getPlaylist().stream().map(this::getSource).collect(Collectors.joining("\n"));
     }
 }
