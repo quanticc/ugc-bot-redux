@@ -5,6 +5,7 @@ import com.ugcleague.ops.repository.mongo.SoundBiteRepository;
 import com.ugcleague.ops.service.DiscordService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
+import com.ugcleague.ops.service.discord.util.SilenceProvider;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -415,9 +416,10 @@ public class SoundBitePresenter implements DiscordSubscriber {
             if (message.getContent().toLowerCase().equals("!w")) {
                 playFromDir(settingsService.getSettings().getRandomSoundDir(), message, true, null);
             } else {
-                String[] parts = message.getContent().toLowerCase().split("\\-", 16);
+                String[] parts = message.getContent().toLowerCase().split("\\-", 32);
                 for (int i = 0; i < parts.length; i++) {
-                    Optional<SoundBite> soundBite = soundBiteRepository.findById(parts[i].trim());
+                    String key = parts[i].trim();
+                    Optional<SoundBite> soundBite = soundBiteRepository.findById(key);
                     if (soundBite.isPresent()) {
                         SoundBite bite = soundBite.get();
                         SoundBite.PlaybackMode mode = bite.getMode();
@@ -443,6 +445,14 @@ public class SoundBitePresenter implements DiscordSubscriber {
                                 log.warn("Invalid source: {} -> {}", soundBite.get().getId(), source);
                             }
                             play(source, message, bite.getVolume());
+                        }
+                    } else if (key.matches("^s[0-9]+$")) {
+                        String value = key.substring(1);
+                        try {
+                            long millis = Long.parseLong(value);
+                            queueSilence(message, Math.max(20, Math.min(5000L, millis)));
+                        } catch (NumberFormatException ex) {
+                            log.warn("Invalid numeric value", ex);
                         }
                     }
                 }
@@ -495,6 +505,21 @@ public class SoundBitePresenter implements DiscordSubscriber {
             }
         } catch (UnsupportedAudioFileException | IOException e) {
             log.warn("Unable to play sound bite", e);
+        }
+    }
+
+    private void queueSilence(IMessage message, long length) {
+        Optional<IVoiceChannel> voiceChannel = message.getAuthor().getConnectedVoiceChannels()
+            .stream().filter(v -> message.getGuild().equals(v.getGuild()))
+            .findAny();
+        if (voiceChannel.isPresent()) {
+            synchronized (lock) {
+                if (tryJoin(voiceChannel)) {
+                    AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
+                    log.debug("-- Queueing silence for {} ms --", length);
+                    player.queue(new SilenceProvider(length));
+                }
+            }
         }
     }
 

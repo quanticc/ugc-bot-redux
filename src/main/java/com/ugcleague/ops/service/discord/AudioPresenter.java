@@ -61,6 +61,7 @@ public class AudioPresenter implements DiscordSubscriber {
     private OptionSpec<Void> audioShuffleSpec;
     private OptionSpec<Void> audioLoopSpec;
     private OptionSpec<Void> audioStatusSpec;
+    private OptionSpec<Void> audioClearSpec;
 
     @Autowired
     public AudioPresenter(CommandService commandService, DiscordService discordService,
@@ -101,6 +102,7 @@ public class AudioPresenter implements DiscordSubscriber {
         audioShuffleSpec = parser.accepts("shuffle", "Shuffle the current playlist");
         audioLoopSpec = parser.accepts("loop", "Toggle looping the current track");
         audioStatusSpec = parser.accepts("status", "Display current player status");
+        audioClearSpec = parser.accepts("clear", "Clears the current playlist");
         audioCommand = commandService.register(CommandBuilder.startsWith(".audio").support().originReplies()
             .description("Performs audio-related operations")
             .parser(parser).optionAliases(newAliasesMap(parser)).command(this::audio).build());
@@ -134,7 +136,9 @@ public class AudioPresenter implements DiscordSubscriber {
             } catch (MissingPermissionsException e) {
                 return "Could not join voice channel";
             }
-        } else if (optionSet.has(audioLeaveSpec)) {
+        }
+
+        if (optionSet.has(audioLeaveSpec)) {
             Optional<IVoiceChannel> voiceChannel = message.getGuild().getVoiceChannels().stream()
                 .filter(IVoiceChannel::isConnected).findAny();
             if (voiceChannel.isPresent()) {
@@ -143,7 +147,9 @@ public class AudioPresenter implements DiscordSubscriber {
             } else {
                 return "Not in a voice channel, use `.audio join #` to enter an audio channel";
             }
-        } else if (optionSet.has(audioEnqueueSpec)) {
+        }
+
+        if (optionSet.has(audioEnqueueSpec)) {
             String enqueue = optionSet.valueOf(audioEnqueueSpec);
             File file = new File(enqueue);
             if (file.exists()) {
@@ -169,71 +175,105 @@ public class AudioPresenter implements DiscordSubscriber {
                     return "File does not exist or invalid URL";
                 }
             }
-        } else if (optionSet.has(audioForwardSpec)) {
-            Integer ms = Math.max(0, optionSet.valueOf(audioForwardSpec));
-            String duration = formatHuman(Duration.ofMillis(ms), true);
-            player.getCurrentTrack().fastForward(ms);
-            return ":fast_forward: by " + duration;
-        } else if (optionSet.has(audioRewindSpec)) {
-            Integer ms = Math.max(0, optionSet.valueOf(audioRewindSpec));
-            String duration = formatHuman(Duration.ofMillis(ms), true);
-            player.getCurrentTrack().rewind(ms);
-            return ":rewind: by " + duration;
-        } else if (optionSet.has(audioForwardToSpec)) {
-            Integer ms = Math.max(0, optionSet.valueOf(audioForwardToSpec));
-            String duration = formatHuman(Duration.ofMillis(ms), true);
-            player.getCurrentTrack().fastForwardTo(ms);
-            return ":fast_forward: to " + duration;
-        } else if (optionSet.has(audioRewindToSpec)) {
-            Integer ms = Math.max(0, optionSet.valueOf(audioRewindToSpec));
-            String duration = formatHuman(Duration.ofMillis(ms), true);
-            player.getCurrentTrack().rewindTo(ms);
-            return ":rewind: to " + duration;
-        } else if (optionSet.has(audioLoopSpec)) {
-            player.setLoop(!player.isLooping());
-            return "Loop mode: " + (player.isLooping() ? "ON" : "OFF");
-        } else if (optionSet.has(audioShuffleSpec)) {
-            player.shuffle();
-        } else if (optionSet.has(audioStatusSpec)) {
-            AudioPlayer.Track track = player.getCurrentTrack();
-            if (track != null) {
-                String source = getSource(track);
-                long total = track.getTotalTrackTime();
-                int volume = (int) (player.getVolume() * 100);
-                StringBuilder response = new StringBuilder();
-                response.append("Status: ").append(player.isPaused() ? "**Paused**" : "**Playing**").append("\n");
-                if (player.isLooping()) {
-                    response.append("Looping: ");
-                } else {
-                    response.append("Current: ");
-                }
-                response.append(source).append(" ")
-                    .append(prettyDuration(total)).append("\n")
-                    .append("Playlist: ").append(playlistToString(player)).append("\n")
-                    .append("Volume: ").append(volume);
-                return response.toString();
-            } else {
-                return "Player is " + (player.isReady() ? "" : "NOT") + " ready.";
-            }
-        } else if (optionSet.has(audioVolumeSpec)) {
+        }
+
+        if (optionSet.has(audioClearSpec)) {
+            player.clean();
+            player.inject();
+        }
+
+        if (optionSet.has(audioVolumeSpec)) {
             Integer volume = optionSet.valueOf(audioVolumeSpec);
             volume = Math.max(0, Math.min(100, volume));
             log.debug("Setting volume to {}% ({})", volume, volume / 100f);
             player.setVolume(volume / 100f);
-        } else if (optionSet.has(audioSkipSpec)) {
+        }
+
+        if (optionSet.has(audioSkipSpec)) {
             log.debug("Skipping current track");
             player.skip();
-        } else if (optionSet.has(audioPauseSpec)) {
+        }
+
+        if (optionSet.has(audioPauseSpec)) {
             log.debug("Pausing current track");
             player.setPaused(true);
-        } else if (optionSet.has(audioResumeSpec)) {
+        }
+
+        if (optionSet.has(audioResumeSpec)) {
             log.debug("Resuming current track");
             player.setPaused(false);
-        } else if (optionSet.has(audioYoutubeSpec)) {
+        }
+
+        if (optionSet.has(audioYoutubeSpec)) {
             audioStreamService.queueFromYouTube(player, optionSet.valueOf(audioYoutubeSpec));
         }
 
+        if (optionSet.has(audioForwardSpec)) {
+            Integer ms = Math.max(0, optionSet.valueOf(audioForwardSpec));
+            String duration = formatHuman(Duration.ofMillis(ms), true);
+            player.getCurrentTrack().fastForward(ms);
+            return ":fast_forward: by " + duration;
+        }
+
+        if (optionSet.has(audioRewindSpec)) {
+            Integer ms = Math.max(0, optionSet.valueOf(audioRewindSpec));
+            String duration = formatHuman(Duration.ofMillis(ms), true);
+            player.getCurrentTrack().rewind(ms);
+            return ":rewind: by " + duration;
+        }
+
+        if (optionSet.has(audioForwardToSpec)) {
+            Integer ms = Math.max(0, optionSet.valueOf(audioForwardToSpec));
+            String duration = formatHuman(Duration.ofMillis(ms), true);
+            player.getCurrentTrack().fastForwardTo(ms);
+            return ":fast_forward: to " + duration;
+        }
+
+        if (optionSet.has(audioRewindToSpec)) {
+            Integer ms = Math.max(0, optionSet.valueOf(audioRewindToSpec));
+            String duration = formatHuman(Duration.ofMillis(ms), true);
+            player.getCurrentTrack().rewindTo(ms);
+            return ":rewind: to " + duration;
+        }
+
+        if (optionSet.has(audioLoopSpec)) {
+            player.setLoop(!player.isLooping());
+            return "Loop mode: " + (player.isLooping() ? "ON" : "OFF");
+        }
+
+        if (optionSet.has(audioShuffleSpec)) {
+            player.shuffle();
+            return getStatus(player);
+        }
+
+        if (optionSet.has(audioStatusSpec)) {
+            return getStatus(player);
+        }
+
         return "";
+    }
+
+    private String getStatus(AudioPlayer player) {
+        AudioPlayer.Track track = player.getCurrentTrack();
+        if (track != null) {
+            String source = getSource(track);
+            long total = track.getTotalTrackTime();
+            int volume = (int) (player.getVolume() * 100);
+            StringBuilder response = new StringBuilder();
+            response.append("Status: ").append(player.isPaused() ? "**Paused**" : "**Playing**");
+            if (player.isLooping()) {
+                response.append(" [Loop ON]\n");
+            } else {
+                response.append("\n");
+            }
+            response.append(source).append(" ")
+                .append(prettyDuration(total)).append("\n")
+                .append("Volume: ").append(volume).append("\n")
+                .append("**=== Playlist ===**\n").append(playlistToString(player));
+            return response.toString();
+        } else {
+            return "Player is " + (player.isReady() ? "" : "NOT") + " ready.";
+        }
     }
 
     private String prettyDuration(long millis) {
