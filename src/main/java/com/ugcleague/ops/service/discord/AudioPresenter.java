@@ -178,8 +178,7 @@ public class AudioPresenter implements DiscordSubscriber {
         }
 
         if (optionSet.has(audioClearSpec)) {
-            player.clean();
-            player.inject();
+            player.skipTo(player.getPlaylist().size());
         }
 
         if (optionSet.has(audioVolumeSpec)) {
@@ -260,19 +259,17 @@ public class AudioPresenter implements DiscordSubscriber {
             long total = track.getTotalTrackTime();
             int volume = (int) (player.getVolume() * 100);
             StringBuilder response = new StringBuilder();
-            response.append("Status: ").append(player.isPaused() ? "**Paused**" : "**Playing**");
+            response.append(player.isPaused() ? "**Paused:** " : "**Playing:** ");
+            response.append(source).append(" ").append(prettyDuration(total));
             if (player.isLooping()) {
-                response.append(" [Loop ON]\n");
-            } else {
-                response.append("\n");
+                response.append(" [Loop ON]");
             }
-            response.append(source).append(" ")
-                .append(prettyDuration(total)).append("\n")
-                .append("Volume: ").append(volume).append("\n")
-                .append("**=== Playlist ===**\n").append(playlistToString(player));
+            response.append("\n")
+                .append("**Volume:** ").append(volume).append("\n")
+                .append("**Playlist:**\n").append(playlistToString(player));
             return response.toString();
         } else {
-            return "Player is " + (player.isReady() ? "" : "NOT") + " ready.";
+            return "Playlist is empty";
         }
     }
 
