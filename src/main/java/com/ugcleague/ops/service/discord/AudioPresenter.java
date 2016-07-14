@@ -178,6 +178,7 @@ public class AudioPresenter implements DiscordSubscriber {
         }
 
         if (optionSet.has(audioClearSpec)) {
+            player.setLoop(false);
             player.skipTo(player.getPlaylist().size());
         }
 
