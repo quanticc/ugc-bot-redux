@@ -98,29 +98,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         discordService.subscribe(this);
-        OptionParser parser = newParser();
-        soundbitesEnableSpec = parser.accepts("enable", "Enable soundbites in this guild");
-        soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
-        soundbitesBlacklistAddSpec = parser.accepts("blacklist-add", "Blacklist soundbites in this channel");
-        soundbitesBlacklistRemoveSpec = parser.accepts("blacklist-remove", "Remove soundbite blacklist in this channel");
-        soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
-            .withRequiredArg().describedAs("alias");
-        soundbitesEditSpec = parser.accepts("update", "Update a soundbite")
-            .withRequiredArg().describedAs("alias");
-        soundbitesInfoSpec = parser.accepts("info", "Get info of a soundbite")
-            .withRequiredArg().describedAs("alias");
-        soundbitesListSpec = parser.accepts("list", "List all soundbites");
-        soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
-            .withRequiredArg().describedAs("folder");
-        soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds and pick a random one to play");
-        soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
-        soundbitesFolderSpec = parser.accepts("folder", "Define a folder of sounds and pick a random one to play");
-        soundbitesVolumeSpec = parser.accepts("volume", "Set the volume to use when playing this sound")
-            .withRequiredArg().ofType(Integer.class).defaultsTo(100);
-        soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
-        commandService.register(CommandBuilder.startsWith(".sounds").master()
-            .description("Manage soundbite settings")
-            .command(this::soundbites).parser(parser).optionAliases(newAliasesMap(parser)).originReplies().build());
         commandService.register(CommandBuilder.equalsTo(".soundstats").unrestricted().originReplies()
             .description("Sound playback statistics").noParser().command((message, optionSet) -> {
                 if (!message.getChannel().isPrivate()
@@ -146,8 +123,35 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 }
                 return "";
             }).build());
+        configureSoundbitesCommand();
         configureQueueCommand();
         configureVolumeCommand();
+    }
+
+    private void configureSoundbitesCommand() {
+        OptionParser parser = newParser();
+        soundbitesEnableSpec = parser.accepts("enable", "Enable soundbites in this guild");
+        soundbitesDisableSpec = parser.accepts("disable", "Disable soundbites in this guild");
+        soundbitesBlacklistAddSpec = parser.accepts("blacklist-add", "Blacklist soundbites in this channel");
+        soundbitesBlacklistRemoveSpec = parser.accepts("blacklist-remove", "Remove soundbite blacklist in this channel");
+        soundbitesRemoveSpec = parser.accepts("remove", "Remove a soundbite")
+            .withRequiredArg().describedAs("alias");
+        soundbitesEditSpec = parser.accepts("update", "Update a soundbite")
+            .withRequiredArg().describedAs("alias");
+        soundbitesInfoSpec = parser.accepts("info", "Get info of a soundbite")
+            .withRequiredArg().describedAs("alias");
+        soundbitesListSpec = parser.accepts("list", "List all soundbites");
+        soundbitesRandomSpec = parser.accepts("random", "Define a folder as the pool of random sounds")
+            .withRequiredArg().describedAs("folder");
+        soundbitesPoolSpec = parser.accepts("pool", "Define a group of sounds and pick a random one to play");
+        soundbitesSeriesSpec = parser.accepts("series", "Define a group of sounds to play in series");
+        soundbitesFolderSpec = parser.accepts("folder", "Define a folder of sounds and pick a random one to play");
+        soundbitesVolumeSpec = parser.accepts("volume", "Set the volume to use when playing this sound")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(100);
+        soundbitesNonOptionSpec = parser.nonOptions("A series of aliases of a given audio path (last argument)");
+        commandService.register(CommandBuilder.startsWith(".sounds").master()
+            .description("Manage soundbite settings")
+            .command(this::soundbites).parser(parser).optionAliases(newAliasesMap(parser)).originReplies().build());
     }
 
     private void configureQueueCommand() {
@@ -454,6 +458,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
                         } catch (NumberFormatException ex) {
                             log.warn("Invalid numeric value", ex);
                         }
+                    } else if (i == 0) {
+                        // abort if the first sound is not a valid bite (probable false positive)
+                        break;
                     }
                 }
             }
@@ -496,8 +503,6 @@ public class SoundBitePresenter implements DiscordSubscriber {
                 synchronized (lock) {
                     if (tryJoin(voiceChannel)) {
                         AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
-                        Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
-                        settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
                         volumeMap.put(source.getName(), volume != null ? volume : 100);
                         player.queue(source);
                     }
@@ -516,7 +521,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
             synchronized (lock) {
                 if (tryJoin(voiceChannel)) {
                     AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getGuild());
-                    log.debug("-- Queueing silence for {} ms --", length);
+                    log.debug("Queueing silence for {} ms", length);
                     player.queue(new SilenceProvider(length));
                 }
             }
@@ -542,7 +547,9 @@ public class SoundBitePresenter implements DiscordSubscriber {
             return "";
         }
         Map<String, Object> metadata = track.getMetadata();
-        if (metadata.containsKey("file")) {
+        if (metadata == null) {
+            return Integer.toHexString(track.hashCode());
+        } else if (metadata.containsKey("file")) {
             return ((File) metadata.get("file")).getName();
         } else if (metadata.containsKey("url")) {
             return metadata.get("url").toString();
@@ -555,8 +562,11 @@ public class SoundBitePresenter implements DiscordSubscriber {
     public void onTrackStart(TrackStartEvent event) {
         log.debug("[Started] {}", getSource(event.getTrack()));
         Map<String, Object> metadata = event.getTrack().getMetadata();
-        if (metadata != null) {
-            event.getPlayer().setVolume(volumeMap.getOrDefault(((File) metadata.get("file")).getName(), 30) / 100f);
+        if (metadata != null && metadata.containsKey("file")) {
+            File source = ((File) metadata.get("file"));
+            Integer count = settingsService.getSettings().getPlayCount().getOrDefault(source.getName(), 0);
+            settingsService.getSettings().getPlayCount().put(source.getName(), count + 1);
+            event.getPlayer().setVolume(volumeMap.getOrDefault(source.getName(), 30) / 100f);
         }
     }
 
