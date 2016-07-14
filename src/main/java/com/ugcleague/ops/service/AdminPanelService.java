@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service;
 
+import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -54,7 +55,7 @@ public class AdminPanelService {
      */
     @Retryable(backoff = @Backoff(2000L))
     public Map<String, Map<String, String>> getServerDetails() throws IOException {
-        Document document = validateSessionAndGet(Jsoup.connect(HOME_URL));
+        Document document = validateSessionAndGet(Jsoup.connect(HOME_URL).userAgent(Constants.USER_AGENT));
         Map<String, Map<String, String>> latest = new LinkedHashMap<>();
         // parse GameServers panel and cache available game servers
         for (Element server : document.select("td.section_notabs").select("tr")) {
@@ -97,7 +98,11 @@ public class AdminPanelService {
     public Map<String, String> getServerInfo(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "server_information").data("SUBID", subId).timeout(TIMEOUT));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("view", "server_information")
+                .data("SUBID", subId)
+                .timeout(TIMEOUT));
         Result result = extractResult(document.select("td.content_main").text());
         if (result != Result.SUCCESSFUL) {
             map.put("result", result.name());
@@ -119,14 +124,22 @@ public class AdminPanelService {
     @Retryable(backoff = @Backoff(2000L))
     public String getServerConsole(String subId) throws IOException {
         return new HtmlToPlainText().getPlainText(validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "console_log").data("SUBID", subId).timeout(TIMEOUT)));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("view", "console_log")
+                .data("SUBID", subId)
+                .timeout(TIMEOUT)));
     }
 
     @Retryable(backoff = @Backoff(2000L))
     public synchronized Map<String, String> getServerConfig(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "server_configuration").data("SUBID", subId).timeout(TIMEOUT));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("view", "server_configuration")
+                .data("SUBID", subId)
+                .timeout(TIMEOUT));
         Result result = extractResult(document.select("td.content_main").text());
         if (result != Result.SUCCESSFUL) {
             map.put("result", result.name());
@@ -150,7 +163,11 @@ public class AdminPanelService {
     public Map<String, String> getServerMods(String subId) throws IOException {
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId).cookies(session));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("view", "server_mods")
+                .data("SUBID", subId)
+                .cookies(session));
         Elements mods = document.select("td.section_tabs table[style=\"margin-top: 10px;\"] tr");
         mods.stream().skip(1).filter(el -> {
             Elements cols = el.children();
@@ -185,7 +202,11 @@ public class AdminPanelService {
      */
     public Result restart(String subId) throws IOException {
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "restart").timeout(TIMEOUT * 6));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("SUBID", subId)
+                .data("function", "restart")
+                .timeout(TIMEOUT * 6));
         Result result = extractResult(document.text());
         if (result == Result.SUCCESSFUL) {
             log.info("*** Server RESTART in progress: {} --", subId);
@@ -206,7 +227,11 @@ public class AdminPanelService {
      */
     public Result stop(String subId) throws IOException {
         Document document = validateSessionAndGet(
-            Jsoup.connect(SUB_URL).data("SUBID", subId).data("function", "stop").timeout(TIMEOUT * 6));
+            Jsoup.connect(SUB_URL)
+                .userAgent(Constants.USER_AGENT)
+                .data("SUBID", subId)
+                .data("function", "stop")
+                .timeout(TIMEOUT * 6));
         Result result = extractResult(document.text());
         if (result == Result.SUCCESSFUL) {
             log.info("*** Server STOP in progress: {} ***", subId);
@@ -226,8 +251,13 @@ public class AdminPanelService {
      * @throws IOException
      */
     public Result upgrade(String subId) throws IOException {
-        Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
-            .data("function", "addmod").data("modid", "730").timeout(TIMEOUT * 6));
+        Document document = validateSessionAndGet(Jsoup.connect(SUB_URL)
+            .userAgent(Constants.USER_AGENT)
+            .data("view", "server_mods")
+            .data("SUBID", subId)
+            .data("function", "addmod")
+            .data("modid", "730")
+            .timeout(TIMEOUT * 6));
         String response = document.select("td.content_main").text();
         Result result = extractResult(response);
         if (result == Result.SUCCESSFUL) {
@@ -240,8 +270,13 @@ public class AdminPanelService {
     }
 
     public Result installMod(String subId, String modId) throws IOException {
-        Document document = validateSessionAndGet(Jsoup.connect(SUB_URL).data("view", "server_mods").data("SUBID", subId)
-            .data("function", "addmod2").data("MODID", modId).timeout(TIMEOUT * 6));
+        Document document = validateSessionAndGet(Jsoup.connect(SUB_URL)
+            .userAgent(Constants.USER_AGENT)
+            .data("view", "server_mods")
+            .data("SUBID", subId)
+            .data("function", "addmod2")
+            .data("MODID", modId)
+            .timeout(TIMEOUT * 6));
         String response = document.select("td.content_main").text();
         Result result = extractResult(response);
         if (result == Result.SUCCESSFUL) {
@@ -279,9 +314,18 @@ public class AdminPanelService {
         log.info("Authenticating to GS admin panel");
         String username = leagueProperties.getGameServers().getUsername();
         String password = leagueProperties.getGameServers().getPassword();
-        Connection.Response loginForm = Jsoup.connect("https://my.gameservers.com/").method(Connection.Method.GET).execute();
-        Document document = Jsoup.connect("https://my.gameservers.com/").data("logout", "1").data("username", username)
-            .data("password", password).data("query_string", "").cookies(loginForm.cookies()).post();
+        Connection.Response loginForm = Jsoup.connect("https://my.gameservers.com/")
+            .method(Connection.Method.GET)
+            .userAgent(Constants.USER_AGENT)
+            .execute();
+        Document document = Jsoup.connect("https://my.gameservers.com/")
+            .userAgent(Constants.USER_AGENT)
+            .data("logout", "1")
+            .data("username", username)
+            .data("password", password)
+            .data("query_string", "")
+            .cookies(loginForm.cookies())
+            .post();
         session.clear();
         session.putAll(loginForm.cookies());
         return !document.title().contains("Login");

@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 public class GameServerService {
 
     private static final Logger log = LoggerFactory.getLogger(GameServerService.class);
-    private static final String INSECURE_FLAG = "insecure";
 
     private final AdminPanelService adminPanelService;
     private final SteamCondenserService steamCondenserService;
@@ -235,7 +234,7 @@ public class GameServerService {
     public void refreshRconPasswords() {
         log.debug("==== Refreshing RCON server passwords ====");
         // refreshing passwords of expired servers since they auto restart and change password
-        long count = gameServerRepository.findByRconRefreshNeeded().parallelStream()
+        long count = gameServerRepository.findByRconRefreshNeeded().stream()
             .map(this::refreshRconPassword).filter(u -> u != null).count();
         log.info("{} servers updated their RCON passwords", count);
     }
@@ -250,7 +249,7 @@ public class GameServerService {
         if (server == null) {
             return null;
         }
-        log.debug("Refreshing RCON password data: {}", server.getName());
+        log.debug("Refreshing RCON data: {}", server.getShortNameAndAddress());
         try {
             // TODO: signal abnormal conditions through incidents instead of just logging
             Map<String, String> result = adminPanelService.getServerConfig(server.getId());
@@ -265,7 +264,7 @@ public class GameServerService {
             server.setLastRconDate(ZonedDateTime.now());
             return gameServerRepository.save(server);
         } catch (RemoteAccessException | IOException e) {
-            log.warn("Could not refresh the RCON password", e.toString());
+            log.warn("Could not refresh RCON data for {}: {}", server.getShortNameAndAddress(), e.toString());
         }
         return null;
     }
@@ -402,7 +401,7 @@ public class GameServerService {
         }
         UpdateResult result = updateResultMap.computeIfAbsent(server, k -> new UpdateResult());
         if (server.getPlayers() > 0) {
-            log.info("Server update for {} {} is on hold. Players connected: {}", server.getName(), server.getAddress(),
+            log.info("Server update for {} is on hold. Players connected: {}", server.getShortNameAndAddress(),
                 server.getPlayers());
             if (result.getLastRconAnnounce().get().isBefore(Instant.now().minusSeconds(60 * 20))) {
                 try {
@@ -412,11 +411,14 @@ public class GameServerService {
                 }
             }
             result.getAttempts().incrementAndGet();
-        } else if (server.getPing() < 0) {
+        } else if (server.getPing() < 0 && result.getAttempts().get() < 3) {
             // timed out servers might be down due to a large update
-            log.info("Server update for {} {} is on hold. It appears to be offline", server.getName(), server.getAddress());
+            log.info("Server update for {} is on hold. It appears to be offline", server.getShortNameAndAddress());
             result.getAttempts().incrementAndGet();
         } else {
+            if (result.getAttempts().get() > 0) {
+                log.warn("Proceeding with game update of {} after {} failed attempts", server.getShortNameAndAddress(), result.getAttempts().get());
+            }
             try {
                 AdminPanelService.Result response = adminPanelService.upgrade(server.getId());
                 // save status so it's signalled as "dead server" during restart
@@ -440,7 +442,8 @@ public class GameServerService {
         try {
             return rcon(server, Optional.empty(), command);
         } catch (RemoteAccessException | SteamCondenserException | TimeoutException e) {
-            log.warn("Could not execute RCON command", e);
+            log.warn("Could not execute RCON command '{}' on {}: {}", server.getShortNameAndAddress(),
+                command, e.toString());
         }
         return null;
     }
@@ -585,7 +588,7 @@ public class GameServerService {
     public int attemptRestart(GameServer server) {
         if (!isEmpty(server)) {
             int count = server.getPlayers();
-            log.info("Not restarting server due to players present: {}", count);
+            log.info("Not restarting server {} due to players present: {}", server.getShortNameAndAddress(), count);
             return count;
         } else {
             try {
