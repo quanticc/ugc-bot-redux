@@ -2,8 +2,11 @@ package com.ugcleague.ops.service;
 
 import com.dropbox.core.DbxException;
 import com.dropbox.core.v2.DbxClientV2;
-import com.dropbox.core.v2.DbxFiles;
-import com.dropbox.core.v2.DbxSharing;
+import com.dropbox.core.v2.files.FileMetadata;
+import com.dropbox.core.v2.files.ListFolderResult;
+import com.dropbox.core.v2.files.Metadata;
+import com.dropbox.core.v2.files.WriteMode;
+import com.dropbox.core.v2.sharing.SharedLinkMetadata;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.RemoteFile;
 import com.ugcleague.ops.service.util.FileShareTask;
@@ -67,7 +70,7 @@ public class DropboxService {
                 command.add();
                 String destPath = String.format("%s/%s/%s",
                     leagueProperties.getDropbox().getUploadsDir(), id, zipFilename);
-                DbxFiles.Metadata metadata = uploadFile(zipPath, destPath);
+                Metadata metadata = uploadFile(zipPath, destPath);
                 if (metadata != null) {
                     Optional<String> batchShareLink = getSharedLink(destPath);
                     task.setBatchSharedUrl(batchShareLink);
@@ -95,7 +98,7 @@ public class DropboxService {
                 String destPath = String.format("%s/%s/%s", leagueProperties.getDropbox().getUploadsDir(),
                     file.getServer() + file.getFolder(), srcPath.getFileName().toString());
                 destPath = destPath.replace("\\", "/").replace("//", "/");
-                DbxFiles.Metadata metadata = uploadFile(srcPath, destPath);
+                Metadata metadata = uploadFile(srcPath, destPath);
                 if (metadata != null) {
                     task.getSuccessful().add(file);
                     getSharedLink(destPath).ifPresent(file::setSharedUrl);
@@ -116,16 +119,16 @@ public class DropboxService {
      * @throws IOException  if the local stream had a I/O error
      * @throws DbxException if a Dropbox error occurred
      */
-    public DbxFiles.FileMetadata uploadFile(Path srcPath, String destPath) throws IOException, DbxException {
+    public FileMetadata uploadFile(Path srcPath, String destPath) throws IOException, DbxException {
         long size = srcPath.toFile().length();
         if (size > CHUNK_MAX_SIZE) {
             log.warn("Skipping file {} because it is too large (> 150 MB): {}", srcPath, humanizeBytes(size));
             return null;
         } else {
             try (InputStream inputStream = new FileInputStream(srcPath.toFile())) {
-                DbxFiles.FileMetadata metadata = client.files.uploadBuilder(destPath)
-                    .mode(DbxFiles.WriteMode.add()).run(inputStream);
-                log.info("Uploaded {} to {} ({}) on {}", srcPath, metadata.pathLower, humanizeBytes(metadata.size), metadata.serverModified);
+                FileMetadata metadata = client.files().uploadBuilder(destPath)
+                    .withMode(WriteMode.ADD).uploadAndFinish(inputStream);
+                log.info("Uploaded {} to {} ({}) on {}", srcPath, metadata.getPathLower(), humanizeBytes(metadata.getSize()), metadata.getServerModified());
                 return metadata;
             }
         }
@@ -139,37 +142,37 @@ public class DropboxService {
      */
     public Optional<String> getSharedLink(String dropboxPath) {
         try {
-            DbxSharing.PathLinkMetadata result = client.sharing.createSharedLink(dropboxPath);
-            log.info("Got shared link for {}: {}", result.path, result.url);
-            return Optional.ofNullable(result.url);
+            SharedLinkMetadata result = client.sharing().createSharedLinkWithSettings(dropboxPath);
+            log.info("Got shared link for {}: {}", result.getPathLower(), result.getUrl());
+            return Optional.ofNullable(result.getUrl());
         } catch (DbxException e) {
             log.warn("Could not get a shared link for {}: {}", dropboxPath, e.toString());
         }
         return Optional.empty();
     }
 
-    public DbxFiles.Metadata exists(String path) throws DbxException {
+    public Metadata exists(String path) throws DbxException {
         // TODO validate path
-        return client.files.getMetadata(path);
+        return client.files().getMetadata(path);
     }
 
-    public DbxFiles.ListFolderResult listFolder(String path) throws DbxException {
-        return client.files.listFolder(path);
+    public ListFolderResult listFolder(String path) throws DbxException {
+        return client.files().listFolder(path);
     }
 
-    public DbxFiles.ListFolderResult listFolderContinue(String cursor) throws DbxException {
-        return client.files.listFolderContinue(cursor);
+    public ListFolderResult listFolderContinue(String cursor) throws DbxException {
+        return client.files().listFolderContinue(cursor);
     }
 
-    public DbxFiles.FileMetadata downloadFile(String srcPath, Path destPath) throws IOException, DbxException {
+    public FileMetadata downloadFile(String srcPath, Path destPath) throws IOException, DbxException {
         try (OutputStream outputStream = new FileOutputStream(destPath.toFile())) {
-            DbxFiles.FileMetadata metadata = client.files.downloadBuilder(srcPath).run(outputStream);
-            log.info("Downloaded {} to {} ({})", metadata.pathLower, destPath, humanizeBytes(metadata.size));
+            FileMetadata metadata = client.files().downloadBuilder(srcPath).download(outputStream);
+            log.info("Downloaded {} to {} ({})", metadata.getPathLower(), destPath, humanizeBytes(metadata.getSize()));
             return metadata;
         }
     }
 
-    public DbxFiles.Metadata deleteFile(String path) throws DbxException {
-        return client.files.delete(path);
+    public Metadata deleteFile(String path) throws DbxException {
+        return client.files().delete(path);
     }
 }

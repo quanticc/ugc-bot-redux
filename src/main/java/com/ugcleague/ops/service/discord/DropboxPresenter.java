@@ -1,7 +1,7 @@
 package com.ugcleague.ops.service.discord;
 
 import com.dropbox.core.DbxException;
-import com.dropbox.core.v2.DbxFiles;
+import com.dropbox.core.v2.files.*;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.DropboxService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
@@ -101,14 +101,14 @@ public class DropboxPresenter {
     }
 
     private String listFolder(String path) throws DbxException {
-        DbxFiles.ListFolderResult result = dropboxService.listFolder(path);
+        ListFolderResult result = dropboxService.listFolder(path);
         String response = "Contents of **" + path + "**\n";
         while (result != null) {
-            for (DbxFiles.Metadata metadata : result.entries) {
+            for (Metadata metadata : result.getEntries()) {
                 response += formatMetadata(metadata);
             }
-            if (result.hasMore) {
-                result = dropboxService.listFolderContinue(result.cursor);
+            if (result.getHasMore()) {
+                result = dropboxService.listFolderContinue(result.getCursor());
             } else {
                 result = null;
             }
@@ -116,19 +116,19 @@ public class DropboxPresenter {
         return response;
     }
 
-    private String formatMetadata(DbxFiles.Metadata metadata) {
+    private String formatMetadata(Metadata metadata) {
         String size = "";
         String lastModified = "";
-        if (metadata instanceof DbxFiles.FileMetadata) {
-            DbxFiles.FileMetadata fileMetadata = (DbxFiles.FileMetadata) metadata;
-            size = humanizeBytes(fileMetadata.size);
-            lastModified = formatRelative(fileMetadata.serverModified.toInstant());
-        } else if (metadata instanceof DbxFiles.FolderMetadata) {
+        if (metadata instanceof FileMetadata) {
+            FileMetadata fileMetadata = (FileMetadata) metadata;
+            size = humanizeBytes(fileMetadata.getSize());
+            lastModified = formatRelative(fileMetadata.getServerModified().toInstant());
+        } else if (metadata instanceof FolderMetadata) {
             size = "(dir)";
-        } else if (metadata instanceof DbxFiles.DeletedMetadata) {
+        } else if (metadata instanceof DeletedMetadata) {
             size = "(deleted)";
         }
-        return String.format("**%s**\t\t%s\t\t%s\n", metadata.name, size, lastModified);
+        return String.format("**%s**\t\t%s\t\t%s\n", metadata.getName(), size, lastModified);
     }
 
     private void initExistsCommand() {
@@ -228,7 +228,7 @@ public class DropboxPresenter {
                 response.append("File can't contain \"..\"\n");
             } else {
                 try {
-                    DbxFiles.Metadata metadata = dropboxService.deleteFile(uploadsDir + arg);
+                    Metadata metadata = dropboxService.deleteFile(uploadsDir + arg);
                     log.debug("Deleted: {}", metadata);
                     response.append(String.format("*Deleted %s*\n", uploadsDir + arg));
                 } catch (DbxException e) {
