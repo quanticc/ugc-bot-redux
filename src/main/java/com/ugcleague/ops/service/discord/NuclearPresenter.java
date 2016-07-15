@@ -108,8 +108,12 @@ public class NuclearPresenter {
                 for (String publisher : publishers) {
                     Optional<NuclearStream> stream = nuclearService.findStreamByPublisher(publisher);
                     if (stream.isPresent()) {
-                        nuclearService.stop(stream.get());
-                        builder.append("Stopping capture of events from **").append(publisher).append("**\n");
+                        if (nuclearService.isStreamEnabled(stream.get())) {
+                            nuclearService.stop(stream.get());
+                            builder.append("Stopping capture of events from **").append(publisher).append("**\n");
+                        } else {
+                            builder.append("Not capturing events from **").append(publisher).append("**\n");
+                        }
                     }
                 }
                 return builder.toString();
@@ -129,8 +133,12 @@ public class NuclearPresenter {
                 for (String publisher : publishers) {
                     Optional<NuclearStream> stream = nuclearService.findStreamByPublisher(publisher);
                     if (stream.isPresent()) {
-                        nuclearService.start(stream.get());
-                        builder.append("Starting capture of events from **").append(publisher).append("**\n");
+                        if (!nuclearService.isStreamEnabled(stream.get())) {
+                            nuclearService.start(stream.get());
+                            builder.append("Starting capture of events from **").append(publisher).append("**\n");
+                        } else {
+                            builder.append("Already capturing events from **").append(publisher).append("**\n");
+                        }
                     }
                 }
                 return builder.toString();

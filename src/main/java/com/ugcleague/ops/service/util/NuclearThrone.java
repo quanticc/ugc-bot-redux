@@ -35,7 +35,7 @@ public class NuclearThrone {
     public static final Map<String, List<String>> CHARACTER_TIPS = new LinkedHashMap<String, List<String>>() {
         {
             put("Random", asList(
-                "Noone compares",
+                "No one compares",
                 "Active: anything",
                 "Passive: anything",
                 "Shapeless",
@@ -56,7 +56,7 @@ public class NuclearThrone {
                 "Family"
             ));
             put("Eyes", asList(
-                "Telekineses pushes projectiles away",
+                "Telekinesis pushes projectiles away",
                 "Eyes can't speak",
                 "All these thoughts",
                 "Don't blink",
@@ -88,11 +88,11 @@ public class NuclearThrone {
                 "Guns with 6 senses",
                 "Guns that straight festive",
                 "Guns that make breakfast",
-                "Guns that send textses",
+                "Guns that send texts",
                 "Guns for fake necklace",
                 "Mony",
                 "2 Yung 2 Die",
-                "#verifyvenuz",
+                "Hashtag verifyvenuz",
                 "Thanks Gun God",
                 "So cool",
                 "Yung Venuz is the best",
@@ -265,9 +265,9 @@ public class NuclearThrone {
                 "YV fact: YV is the best",
                 "Real thugs hustle",
                 "One of these days",
-                "#blessed",
+                "Hashtag blessed",
                 "Airsiren.wav",
-                "#verifycuz"));
+                "Hashtag verifycuz"));
             put("Steroids", asList("So strong",
                 "Let's hope this is correct",
                 "Don't panic"));
@@ -824,7 +824,7 @@ public class NuclearThrone {
             put("Shovel", "Dig");
             put("Sledgehammer", "Steel on steel");
             put("Blood Hammer", "Drip");
-            put("Lightning Hammer", "Shock value :zap:");
+            put("Lightning Hammer", "Shock value");
             put("Jackhammer", "Break some legs");
             put("Energy Screwdriver", "Future fixing");
             put("Energy Sword", "Zzzwwoonggg");

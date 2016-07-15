@@ -92,6 +92,10 @@ public class NuclearService {
             .findAny();
     }
 
+    public boolean isStreamEnabled(NuclearStream stream) {
+        return enabledStreams.containsKey(stream.getId());
+    }
+
     public void start(NuclearStream stream) {
         enabledStreams.put(stream.getId(), stream);
     }
@@ -116,9 +120,7 @@ public class NuclearService {
             if (response.getStatusCode().equals(HttpStatus.OK)) {
                 String entity = response.getBody();
                 try {
-                    NuclearResponse nuclearResponse = mapper.readValue(entity, NuclearResponse.class);
-                    processUpdate(stream, nuclearResponse);
-                    //log.info("{}", humanizeRun(nuclearResponse.getCurrent()));
+                    processUpdate(stream, mapper.readValue(entity, NuclearResponse.class));
                 } catch (IOException e) {
                     log.warn("Could not parse response", e);
                 }
@@ -215,9 +217,11 @@ public class NuclearService {
     }
 
     private void onHealed(NuclearStream stream, int amount) {
-        Map<String, String> context = new HashMap<>();
-        context.put("amount", amount + "");
-        announce(stream, NuclearThrone.HEALED_RESPONSES, context);
+        if (amount >= 5) {
+            Map<String, String> context = new HashMap<>();
+            context.put("amount", amount + "");
+            announce(stream, NuclearThrone.HEALED_RESPONSES, context);
+        }
         log.info("Player {} was healed by {} points", stream.getId(), amount);
     }
 
@@ -279,16 +283,17 @@ public class NuclearService {
         int loop = run.getLoop();
 
         log.info("Player {} entered level {}", stream.getId(), run.getLevel());
-        announcePresenter.announce(stream.getPublisher().getId(), run.toString());
+        announcePresenter.announce(stream.getPublisher().getId(), run.toString(), false, false);
 
         if (run.getHealth() <= 2) {
             announce(stream, NuclearThrone.LOW_HEALTH_TIPS.get(RandomUtils.nextInt(0,
                 NuclearThrone.LOW_HEALTH_TIPS.size())));
         }
 
+        List<String> pool = new ArrayList<>();
+
         if (world == 100) {
-            announce(stream, NuclearThrone.VAULT_RESPONSES, null);
-            return;
+            pool.addAll(NuclearThrone.VAULT_RESPONSES);
         }
 
         String boss = getBossName(world, area, loop);
@@ -305,8 +310,6 @@ public class NuclearService {
             announce(stream, NuclearThrone.LOOP_TIPS.get(RandomUtils.nextInt(0, NuclearThrone.LOOP_TIPS.size())));
             return;
         }
-
-        List<String> pool = new ArrayList<>();
 
         if (boss != null) {
             pool.add("Entered {{boss}} level");
