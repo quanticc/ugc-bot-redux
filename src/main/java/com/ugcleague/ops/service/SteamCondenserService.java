@@ -63,7 +63,6 @@ public class SteamCondenserService {
         try {
             return throwingPing(server);
         } catch (Exception e) {
-            log.warn("Ping failed after retrying: {}", server.getConnectAddress());
             return -2;
         }
     }
@@ -88,7 +87,6 @@ public class SteamCondenserService {
         try {
             return throwingPlayers(server);
         } catch (Exception e) {
-            log.warn("Could not get player count after retrying: {}", server.getConnectAddress());
             return -2;
         }
     }
@@ -146,7 +144,6 @@ public class SteamCondenserService {
         try {
             return throwingInfo(server);
         } catch (Exception e) {
-            log.warn("Could not get server info after retrying: {}", e.toString());
             return Collections.emptyMap();
         }
     }

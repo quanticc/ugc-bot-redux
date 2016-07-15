@@ -319,17 +319,19 @@ public class GameServerService {
         SourceServer source = getSourceServer(server);
         if (source != null) {
             server.setStatusCheckDate(ZonedDateTime.now());
-            Integer ping = invalidateCachedValues ? steamCondenserService.ping(source) : pingGaugeValue(server);
+            Integer ping = invalidateCachedValues ? pingAndLogIncident(server) : pingGaugeValue(server);
             server.setPing(ping);
             if (ping >= 0) {
-                server.setPlayers(invalidateCachedValues ? steamCondenserService.players(source) : playersGaugeValue(server));
+                server.setPlayers(invalidateCachedValues ? playerCountAndLogIncident(server) : playersGaugeValue(server));
                 Map<String, Object> info = steamCondenserService.info(source);
                 Optional.ofNullable(info.get("maxPlayers")).map(this::safeParse).ifPresent(server::setMaxPlayers);
                 Optional.ofNullable(info.get("gameVersion")).map(this::safeParse).ifPresent(server::setVersion);
                 Optional.ofNullable(info.get("mapName")).map(Object::toString).ifPresent(server::setMapName);
                 server.setTvPort(Optional.ofNullable(info.get("tvPort")).map(this::safeParse).orElse(0));
                 //deadServerMap.put(server, new DeadServerInfo(server));
-            } /*else {
+            }
+
+            /*else {
                 deadServerMap.computeIfAbsent(server, DeadServerInfo::new).getAttempts().incrementAndGet();
             }*/
         }
@@ -349,8 +351,7 @@ public class GameServerService {
     public Integer getServerPing(GameServer server) {
         // refresh ping and player count but don't save to DB
         if (steamCondenserService.containsSourceServer(server.getAddress())) {
-            SourceServer source = getSourceServer(server);
-            return steamCondenserService.ping(source);
+            return pingAndLogIncident(server);
         }
         return null;
     }
@@ -358,17 +359,32 @@ public class GameServerService {
     public Integer getServerPlayerCount(GameServer server) {
         // refresh ping and player count but don't save to DB
         if (steamCondenserService.containsSourceServer(server.getAddress())) {
-            SourceServer source = getSourceServer(server);
-            return steamCondenserService.players(source);
+            return playerCountAndLogIncident(server);
         }
         return null;
+    }
+
+    private Integer pingAndLogIncident(GameServer server) {
+        Integer ping = steamCondenserService.ping(getSourceServer(server));
+        if (ping < 0) {
+            log.warn("Last ping to {} failed", server.getShortNameAndAddress());
+        }
+        return ping;
+    }
+
+    private Integer playerCountAndLogIncident(GameServer server) {
+        Integer count = steamCondenserService.players(getSourceServer(server));
+        if (count < 0) {
+            log.warn("Last player retrieval of {} failed", server.getShortNameAndAddress());
+        }
+        return count;
     }
 
 //    public DeadServerMap getDeadServerMap() {
 //        return deadServerMap;
 //    }
 
-    public Map<String, Object> refreshServerStatus(SourceServer source) {
+    public Map<String, Object> refreshSourceServerStatus(SourceServer source) {
         Map<String, Object> map = new LinkedHashMap<>();
         int ping = steamCondenserService.ping(source);
         map.put("ping", ping);
@@ -393,8 +409,8 @@ public class GameServerService {
         // check player count, never update if players > 0
         SourceServer source = getSourceServer(server);
         if (source != null) {
-            server.setPing(steamCondenserService.ping(source));
-            server.setPlayers(steamCondenserService.players(source));
+            server.setPing(pingAndLogIncident(server));
+            server.setPlayers(playerCountAndLogIncident(server));
         }
         if (updateResultMap.isEmpty()) {
             publisher.publishEvent(new GameUpdateStartedEvent(updateResultMap));

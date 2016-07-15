@@ -172,7 +172,7 @@ public class GameServerPresenter {
                 message.append(line);
             }
             for (SourceServer server : otherServers) {
-                Map<String, Object> map = gameServerService.refreshServerStatus(server);
+                Map<String, Object> map = gameServerService.refreshSourceServerStatus(server);
                 String plyrs = (int) map.get("ping") > 0 ? map.getOrDefault("players", "-") + "/" + map.getOrDefault("maxPlayers", "-") : "";
                 String mapName = (String) map.getOrDefault("mapName", "?");
                 String tvPort = map.getOrDefault("tvPort", "?").toString();
