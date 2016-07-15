@@ -1,11 +1,13 @@
 package com.ugcleague.ops.service;
 
+import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.domain.document.GameServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +36,7 @@ public class ExpireStatusService {
         this.gameServerService = gameServerService;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add("User-Agent", "Mozilla");
+        headers.add("User-Agent", Constants.USER_AGENT);
         this.entity = new HttpEntity<>(null, headers);
     }
 
@@ -65,7 +67,9 @@ public class ExpireStatusService {
                 return response.getBody();
             }
         } catch (RestClientException e) {
-            log.warn("Could not refresh claim status", e.toString());
+            log.warn("Could not refresh claim status: {}", e.toString());
+        } catch (HttpMessageNotReadableException e) {
+            log.warn("Could not refresh claim status", e);
         }
         return Collections.emptyMap();
     }

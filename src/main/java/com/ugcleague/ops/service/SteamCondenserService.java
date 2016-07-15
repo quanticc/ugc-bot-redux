@@ -114,7 +114,7 @@ public class SteamCondenserService {
         try {
             return throwingPlayerList(server, rconPassword);
         } catch (Exception e) {
-            log.warn("Could not get player list after retrying", e.toString());
+            log.warn("Could not get player list after retrying: {}", e.toString());
             return Collections.emptyMap();
         }
     }
@@ -131,7 +131,7 @@ public class SteamCondenserService {
         try {
             return throwingRules(server);
         } catch (Exception e) {
-            log.warn("Could not get server rules after retrying", e.toString());
+            log.warn("Could not get server rules after retrying: {}", e.toString());
             return Collections.emptyMap();
         }
     }
@@ -146,7 +146,7 @@ public class SteamCondenserService {
         try {
             return throwingInfo(server);
         } catch (Exception e) {
-            log.warn("Could not get server info after retrying", e.toString());
+            log.warn("Could not get server info after retrying: {}", e.toString());
             return Collections.emptyMap();
         }
     }
