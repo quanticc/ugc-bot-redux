@@ -1,10 +1,6 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.CachedGauge;
-import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.health.HealthCheck;
-import com.codahale.metrics.health.HealthCheckRegistry;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.ugcleague.ops.domain.document.GameServer;
 import com.ugcleague.ops.event.GameUpdateCompletedEvent;
@@ -30,8 +26,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -46,7 +44,6 @@ public class GameServerService {
     private final GameServerRepository gameServerRepository;
     private final ApplicationEventPublisher publisher;
     private final MetricRegistry metricRegistry;
-    private final HealthCheckRegistry healthCheckRegistry;
 
     private final UpdateResultMap updateResultMap = new UpdateResultMap();
     //private final DeadServerMap deadServerMap = new DeadServerMap();
@@ -55,13 +52,12 @@ public class GameServerService {
     @Autowired
     public GameServerService(GameServerRepository gameServerRepository, SteamCondenserService steamCondenserService,
                              AdminPanelService adminPanelService, ApplicationEventPublisher publisher,
-                             MetricRegistry metricRegistry, HealthCheckRegistry healthCheckRegistry) {
+                             MetricRegistry metricRegistry) {
         this.gameServerRepository = gameServerRepository;
         this.steamCondenserService = steamCondenserService;
         this.adminPanelService = adminPanelService;
         this.publisher = publisher;
         this.metricRegistry = metricRegistry;
-        this.healthCheckRegistry = healthCheckRegistry;
     }
 
     @PostConstruct
@@ -69,129 +65,6 @@ public class GameServerService {
 //        if (gameServerRepository.count() == 0) {
 //            refreshServerDetails();
 //        }
-
-        healthCheckRegistry.register("GameServers.PingCheck", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                long count = gameServerRepository.count();
-                List<GameServer> nonResponsiveServers = gameServerRepository.findByPingLessThanEqual(0);
-                if (nonResponsiveServers.isEmpty()) {
-                    return Result.healthy("All " + count + " game servers are OK");
-                } else {
-                    String result = nonResponsiveServers.stream()
-                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
-                    return Result.unhealthy("Unresponsive: " + result);
-                }
-            }
-        });
-        healthCheckRegistry.register("GameServers.ValidRconCheck", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                List<GameServer> rconlessServers = gameServerRepository.findByRconPasswordIsNull();
-                if (rconlessServers.isEmpty()) {
-                    return Result.healthy("All servers have a valid RCON password");
-                } else {
-                    String result = rconlessServers.stream()
-                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
-                    return Result.unhealthy("Missing RCON passwords: " + result);
-                }
-            }
-        });
-        healthCheckRegistry.register("GameServers.GameVersionCheck", new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                List<GameServer> outdatedServers = findOutdatedServers();
-                if (outdatedServers.isEmpty()) {
-                    return Result.healthy("All servers have the latest TF2 version");
-                } else {
-                    String result = outdatedServers.stream()
-                        .map(GameServer::getShortName).collect(Collectors.joining(", "));
-                    return Result.unhealthy("Outdated: " + result);
-                }
-            }
-        });
-        Map<String, List<Gauge<Integer>>> pingGaugesPerRegion = new LinkedHashMap<>();
-        Map<String, List<Gauge<Integer>>> playersGaugesPerRegion = new LinkedHashMap<>();
-        for (GameServer server : gameServerRepository.findAll()) {
-            Gauge<Integer> ping = metricRegistry.register(MetricNames.gameServerPing(server), new CachedGauge<Integer>(5, TimeUnit.MINUTES) {
-                @Override
-                protected Integer loadValue() {
-                    // truncate negative values that signal abnormal conditions
-                    Integer value = getServerPing(server);
-                    return value != null && value > 0 ? value : null;
-                }
-            });
-            Gauge<Integer> players = metricRegistry.register(MetricNames.gameServerPlayers(server), new CachedGauge<Integer>(5, TimeUnit.MINUTES) {
-                @Override
-                protected Integer loadValue() {
-                    // truncate negative values that signal abnormal conditions
-                    Integer value = getServerPlayerCount(server);
-                    return value != null && value >= 0 ? value : null;
-                }
-            });
-            String region = server.getShortName().substring(0, 3);
-            pingGaugesPerRegion.computeIfAbsent(region, k -> new ArrayList<>()).add(ping);
-            playersGaugesPerRegion.computeIfAbsent(region, k -> new ArrayList<>()).add(players);
-        }
-
-        // compute gs.ping.* for average region-wide ping
-        for (Map.Entry<String, List<Gauge<Integer>>> entry : pingGaugesPerRegion.entrySet()) {
-            String region = entry.getKey();
-            metricRegistry.register("gs.ping." + region, new CachedGauge<Double>(1, TimeUnit.MINUTES) {
-                @Override
-                protected Double loadValue() {
-                    return entry.getValue().stream()
-                        .map(Gauge::getValue)
-                        .filter(v -> v != null)
-                        .collect(Collectors.averagingInt(v -> v));
-                }
-            });
-        }
-
-        // compute gs.players.count.* and avg.* for player total and average per region
-        List<Gauge<Integer>> playerCounts = new ArrayList<>();
-        List<Gauge<Double>> playerAverages = new ArrayList<>();
-        for (Map.Entry<String, List<Gauge<Integer>>> entry : playersGaugesPerRegion.entrySet()) {
-            String region = entry.getKey();
-            Gauge<Integer> sum = metricRegistry.register("gs.players.count." + region, new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
-                @Override
-                protected Integer loadValue() {
-                    return entry.getValue().stream()
-                        .map(Gauge::getValue)
-                        .filter(v -> v != null)
-                        .collect(Collectors.summingInt(v -> v));
-                }
-            });
-            Gauge<Double> average = metricRegistry.register("gs.players.avg." + region, new CachedGauge<Double>(1, TimeUnit.MINUTES) {
-                @Override
-                protected Double loadValue() {
-                    return entry.getValue().stream()
-                        .map(Gauge::getValue)
-                        .filter(v -> v != null)
-                        .collect(Collectors.averagingInt(v -> v));
-                }
-            });
-            playerCounts.add(sum);
-            playerAverages.add(average);
-        }
-
-        // compute gs.players.count and avg for worldwide player count and average player count
-        metricRegistry.register("gs.players.count", new CachedGauge<Integer>(1, TimeUnit.MINUTES) {
-            @Override
-            protected Integer loadValue() {
-                return playerCounts.stream().map(Gauge::getValue)
-                    .filter(v -> v != null)
-                    .collect(Collectors.summingInt(v -> v));
-            }
-        });
-        metricRegistry.register("gs.players.avg", new CachedGauge<Double>(1, TimeUnit.MINUTES) {
-            @Override
-            protected Double loadValue() {
-                return playerAverages.stream().map(Gauge::getValue)
-                    .filter(v -> v != null)
-                    .collect(Collectors.averagingDouble(v -> v));
-            }
-        });
 
         availableMods.put("metamod", "5171820e847b6");
         availableMods.put("sourcemod", "517176e485ca6");

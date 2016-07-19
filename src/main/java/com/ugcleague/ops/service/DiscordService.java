@@ -1,17 +1,16 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.*;
-import com.codahale.metrics.health.HealthCheck;
-import com.codahale.metrics.health.HealthCheckRegistry;
 import com.ugcleague.ops.config.LeagueProperties;
+import com.ugcleague.ops.domain.document.Incident;
+import com.ugcleague.ops.event.IncidentCreatedEvent;
 import com.ugcleague.ops.service.discord.command.SplitMessage;
 import com.ugcleague.ops.service.discord.util.DiscordSubscriber;
-import com.ugcleague.ops.service.util.MetricNames;
+import org.codehaus.plexus.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.ClientBuilder;
@@ -19,6 +18,7 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.api.events.IListener;
 import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
+import sx.blah.discord.handle.impl.events.DiscordReconnectedEvent;
 import sx.blah.discord.handle.impl.events.GuildCreateEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.obj.*;
@@ -48,47 +48,22 @@ public class DiscordService implements DiscordSubscriber {
     private static final int LENGTH_LIMIT = 2000;
 
     private final LeagueProperties properties;
-    private final HealthCheckRegistry healthCheckRegistry;
+    private final ApplicationEventPublisher publisher;
     private final Executor taskExecutor;
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
     private final AtomicBoolean reconnect = new AtomicBoolean(true);
-    private final Histogram responseTime;
-    private final Counter restartCounter;
-    private volatile DiscordDisconnectedEvent lastDisconnectEvent = null;
-    private volatile ZonedDateTime lastRestartTime = null;
 
     @Autowired
-    public DiscordService(LeagueProperties properties, MetricRegistry metricRegistry,
-                          HealthCheckRegistry healthCheckRegistry, Executor taskExecutor) {
+    public DiscordService(LeagueProperties properties, ApplicationEventPublisher publisher, Executor taskExecutor) {
         this.properties = properties;
-        this.healthCheckRegistry = healthCheckRegistry;
+        this.publisher = publisher;
         this.taskExecutor = taskExecutor;
-        this.responseTime = metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM,
-            new Histogram(new UniformReservoir()));
-        metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE, (Gauge<Long>) this::getMeanResponseTime);
-        metricRegistry.register(MetricNames.DISCORD_USERS_JOINED, (Gauge<Long>) this::getUserCount);
-        metricRegistry.register(MetricNames.DISCORD_USERS_CONNECTED, (Gauge<Long>) this::getConnectedUserCount);
-        metricRegistry.register(MetricNames.DISCORD_USERS_ONLINE, (Gauge<Long>) this::getOnlineUserCount);
-        this.restartCounter = metricRegistry.register(MetricNames.DISCORD_WS_RESTARTS, new Counter());
     }
 
     @PostConstruct
     private void configure() {
-        healthCheckRegistry.register(MetricNames.HEALTH_DISCORD_WS, new HealthCheck() {
-            @Override
-            protected Result check() throws Exception {
-                long mean = (long) responseTime.getSnapshot().getMean();
-                long restarts = restartCounter.getCount();
-                if (restarts > 0) {
-                    return Result.unhealthy(String.format("%d restarts, last one on %s (%s). Mean response time: %dms",
-                        restarts, lastRestartTime, lastDisconnectEvent.getReason().toString(), mean));
-                } else {
-                    return Result.healthy("Mean response time: " + mean + "ms");
-                }
-            }
-        });
         if (properties.getDiscord().isAutologin()) {
             tryLogin();
         }
@@ -156,14 +131,27 @@ public class DiscordService implements DiscordSubscriber {
     }
 
     @EventSubscriber
+    public void onReconnect(DiscordReconnectedEvent event) {
+        log.info("*** Discord bot reconnected ***");
+        publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident("Reconnected bot to Discord")));
+    }
+
+    @EventSubscriber
     public void onDisconnect(DiscordDisconnectedEvent event) {
         if (reconnect.get() && event.getReason() != DiscordDisconnectedEvent.Reason.RECONNECTING) {
-            log.info("Reconnecting bot due to {}", event.getReason().toString());
-            restartCounter.inc();
-            lastDisconnectEvent = event;
-            lastRestartTime = ZonedDateTime.now();
+            String reason = StringUtils.capitalise(event.getReason().toString());
+            log.info("Reconnecting bot due to {}", reason);
+            publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident(reason)));
             tryLogin();
         }
+    }
+
+    private Incident newRestartIncident(String reason) {
+        Incident incident = new Incident();
+        incident.setGroup(IncidentService.DISCORD_RESTART);
+        incident.setName(reason);
+        incident.setCreatedAt(ZonedDateTime.now());
+        return incident;
     }
 
     public void logout(boolean thenReconnect) {
@@ -423,15 +411,11 @@ public class DiscordService implements DiscordSubscriber {
             .filter(u -> u.getPresence().equals(Presences.ONLINE)).count();
     }
 
-    public long getMeanResponseTime() {
-        return (long) responseTime.getSnapshot().getMean();
-    }
-
-    @Scheduled(cron = "*/10 * * * * *")
-    void checkResponseTime() { // scheduled each 10 seconds
+    public long getResponseTime() {
         if (client != null && client.isReady()) {
-            long ms = client.getResponseTime();
-            responseTime.update(ms);
+            return client.getResponseTime();
+        } else {
+            return 0;
         }
     }
 
@@ -469,14 +453,14 @@ public class DiscordService implements DiscordSubscriber {
     public static String channelString(IChannel channel, IUser user) {
         String id = channel.getID();
         String name = channel.getName();
-        String topic = channel.getTopic();
+        //String topic = channel.getTopic();
         //String roleOverrides = channel.getRoleOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
         //String userOverrides = channel.getUserOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
         String userModifiedPermissions = channel.getModifiedPermissions(user).toString();
         return "Channel ["
             + "id='" + id + '\''
             + ", name='" + name + '\''
-            + ", topic='" + topic + '\''
+            //+ ", topic='" + topic + '\''
             //+ ", roleOverrides=" + roleOverrides
             //+ ", userOverrides=" + userOverrides
             + ", userModifiedPermissions=" + userModifiedPermissions

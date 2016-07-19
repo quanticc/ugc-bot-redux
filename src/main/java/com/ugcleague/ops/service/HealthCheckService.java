@@ -40,8 +40,8 @@ public class HealthCheckService {
 
     @PostConstruct
     private void configure() {
-        registerPingCheck("StatusCheck-ugcleague.org", "http://ugcleague.org");
-        registerPingCheck("StatusCheck-ugcleague.net", "http://ugcleague.net");
+        registerPingCheck("StatusCheck-UGCLeague.org", "http://ugcleague.org");
+        registerPingCheck("StatusCheck-UGCLeague.net", "http://ugcleague.net");
     }
 
     public void registerPingCheck(final String name, final String url) {
@@ -54,12 +54,12 @@ public class HealthCheckService {
                     ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET,
                         new HttpEntity<>(headers), String.class);
                     if (response.getStatusCode().is2xxSuccessful()) {
-                        return Result.healthy(response.getStatusCode().value() + " " + response.getStatusCode().getReasonPhrase());
+                        return Result.healthy(response.getStatusCode().getReasonPhrase());
                     } else {
                         String payload = String.format("%s returned status %d (%s)", url,
                             response.getStatusCode().value(), response.getStatusCode().getReasonPhrase());
                         announcePresenter.announce("website", payload);
-                        return Result.unhealthy(response.getStatusCode().value() + " " + response.getStatusCode().getReasonPhrase());
+                        return Result.unhealthy(response.getStatusCode().getReasonPhrase() + " (" + response.getStatusCode().value() + ")");
                     }
                 } catch (HttpStatusCodeException e) {
                     log.warn("Failed ping check to {} with code {} ({})", url, e.getStatusCode().value(), e.getStatusText());

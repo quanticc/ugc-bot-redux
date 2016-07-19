@@ -2,6 +2,7 @@ package com.ugcleague.ops.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ugcleague.ops.repository.mongo.GameServerRepository;
+import com.ugcleague.ops.repository.mongo.IncidentRepository;
 import com.ugcleague.ops.service.discord.CommandService;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
@@ -34,12 +35,13 @@ public class ScriptService {
     private final CommandService commandService;
     private final ObjectMapper mapper;
     private final RestOperations restTemplate;
+    private final IncidentRepository incidentRepository;
 
     @Autowired
     public ScriptService(ApplicationContext context, DiscordService discordService,
                          GameServerService gameServerService, GameServerRepository gameServerRepository,
                          PermissionService permissionService, CommandService commandService, ObjectMapper mapper,
-                         RestOperations restTemplate) {
+                         RestOperations restTemplate, IncidentRepository incidentRepository) {
         this.context = context;
         this.discordService = discordService;
         this.gameServerService = gameServerService;
@@ -48,6 +50,7 @@ public class ScriptService {
         this.commandService = commandService;
         this.mapper = mapper;
         this.restTemplate = restTemplate;
+        this.incidentRepository = incidentRepository;
     }
 
     private GroovyShell createShell(Map<String, Object> bindingValues) {
@@ -61,6 +64,7 @@ public class ScriptService {
         bindingValues.put("mapper", mapper);
         bindingValues.put("rest", restTemplate);
         bindingValues.put("commands", commandService);
+        bindingValues.put("incidents", incidentRepository);
         return new GroovyShell(this.getClass().getClassLoader(), new Binding(bindingValues));
     }
 

@@ -227,7 +227,7 @@ public class AnnouncePresenter {
 
     @EventListener
     private void onUpdateCompleted(GameUpdateCompletedEvent event) {
-        announce("updates", "TF2 game servers updated to v" + event.getVersion() + " :ok_hand: ");
+        announce("updates", "TF2 game servers updated to v" + event.getVersion());
     }
 
     @EventListener
@@ -254,13 +254,14 @@ public class AnnouncePresenter {
     }
 
     public void announce(String publisherName, String message, boolean tts, boolean prefixPublisherName) {
-        publisherRepository.findById(publisherName).ifPresent(pub -> {
+        Optional<Publisher> publisher = publisherRepository.findById(publisherName);
+        if (publisher.isPresent()) {
             Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
             if (latest.containsKey(publisherName) && message.equals(latest.get(publisherName).getMessage())) {
                 log.debug("Not publishing identical announcement to {}", publisherName);
             } else {
                 latest.put(publisherName, new SettingsService.AnnounceData(message));
-                Set<ChannelSubscription> subs = pub.getChannelSubscriptions();
+                Set<ChannelSubscription> subs = publisher.get().getChannelSubscriptions();
                 subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
                     try {
                         IDiscordClient client = discordService.getClient();
@@ -273,13 +274,15 @@ public class AnnouncePresenter {
                                 commandService.answerToChannel(channel, message, tts);
                             }
                         } else {
-                            log.warn("Could not find a channel with id {} to send our {} message", sub.getChannel().getId(), publisherName);
+                            log.warn("Could not find a channel with id {} to send the announcement", sub.getChannel().getId());
                         }
                     } catch (Exception e) {
                         log.warn("Could not send message to '{}': {}", publisherName, e.toString());
                     }
                 });
             }
-        });
+        } else {
+            log.warn("Announcement not published because '{}' does not exist", publisherName);
+        }
     }
 }
