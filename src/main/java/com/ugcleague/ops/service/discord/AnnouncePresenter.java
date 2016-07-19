@@ -149,22 +149,29 @@ public class AnnouncePresenter {
         return null;
     }
 
+    private Publisher findOrCreatePublisher(String id) {
+        Optional<Publisher> publisher = publisherRepository.findById(id);
+        if (!publisher.isPresent()) {
+            Publisher p = new Publisher();
+            p.setId(id);
+            return publisherRepository.save(p);
+        } else {
+            return publisher.get();
+        }
+    }
+
     private String subscribeAnnouncer(IUser author, String announcer, IChannel channel) {
         if (!announcer.isEmpty()) {
-            Optional<Publisher> publisher = publisherRepository.findById(announcer);
-            if (!publisher.isPresent()) {
-                log.warn("Publisher not found by name: {}", announcer);
-                return "Not a valid announcer name";
-            }
-            List<ChannelSubscription> matching = publisher.get().getChannelSubscriptions().stream()
+            Publisher publisher = findOrCreatePublisher(announcer);
+            List<ChannelSubscription> matching = publisher.getChannelSubscriptions().stream()
                 .filter(s -> s.getChannel().getId().equals(channel.getID())).collect(Collectors.toList());
             if (matching.isEmpty()) {
                 ChannelSubscription subscription = new ChannelSubscription();
                 subscription.setChannel(cacheService.getOrCreateChannel(channel));
                 subscription.setEnabled(true);
                 subscription.setMode(Subscription.Mode.ALWAYS);
-                publisher.get().getChannelSubscriptions().add(subscription);
-                publisherRepository.save(publisher.get());
+                publisher.getChannelSubscriptions().add(subscription);
+                publisherRepository.save(publisher);
                 log.debug("Subscribing channel {} ({}) to announcer {}", channel.getName(), channel.getID(), announcer);
                 if (channel.isPrivate()) {
                     return ":satellite: I'll PM you about **" + announcer + "**";
@@ -182,12 +189,8 @@ public class AnnouncePresenter {
 
     private String unsubscribeAnnouncer(IUser author, String announcer, IChannel channel) {
         if (!announcer.isEmpty()) {
-            Optional<Publisher> publisher = publisherRepository.findById(announcer);
-            if (!publisher.isPresent()) {
-                log.warn("Publisher not found by name: {}", announcer);
-                return "Not a valid announcer name";
-            }
-            List<ChannelSubscription> matching = publisher.get().getChannelSubscriptions().stream()
+            Publisher publisher = findOrCreatePublisher(announcer);
+            List<ChannelSubscription> matching = publisher.getChannelSubscriptions().stream()
                 .filter(s -> s.getChannel().getId().equals(channel.getID())).collect(Collectors.toList());
             if (matching.isEmpty()) {
                 return "That channel is not receiving announcements about **" + announcer + "**";
@@ -195,7 +198,7 @@ public class AnnouncePresenter {
                 for (ChannelSubscription subscription : matching) {
                     subscription.setEnabled(false);
                 }
-                publisherRepository.save(publisher.get());
+                publisherRepository.save(publisher);
                 return String.format("Cancelled subscription of %s to **%s**", channel.mention(), announcer);
             }
         } else {
@@ -254,35 +257,31 @@ public class AnnouncePresenter {
     }
 
     public void announce(String publisherName, String message, boolean tts, boolean prefixPublisherName) {
-        Optional<Publisher> publisher = publisherRepository.findById(publisherName);
-        if (publisher.isPresent()) {
-            Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
-            if (latest.containsKey(publisherName) && message.equals(latest.get(publisherName).getMessage())) {
-                log.debug("Not publishing identical announcement to {}", publisherName);
-            } else {
-                latest.put(publisherName, new SettingsService.AnnounceData(message));
-                Set<ChannelSubscription> subs = publisher.get().getChannelSubscriptions();
-                subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
-                    try {
-                        IDiscordClient client = discordService.getClient();
-                        IChannel channel = client.getChannelByID(sub.getChannel().getId());
-                        if (channel != null) {
-                            log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
-                            if (prefixPublisherName) {
-                                commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message, tts);
-                            } else {
-                                commandService.answerToChannel(channel, message, tts);
-                            }
-                        } else {
-                            log.warn("Could not find a channel with id {} to send the announcement", sub.getChannel().getId());
-                        }
-                    } catch (Exception e) {
-                        log.warn("Could not send message to '{}': {}", publisherName, e.toString());
-                    }
-                });
-            }
+        Publisher publisher = findOrCreatePublisher(publisherName);
+        Map<String, SettingsService.AnnounceData> latest = settingsService.getSettings().getLastAnnounce();
+        if (latest.containsKey(publisherName) && message.equals(latest.get(publisherName).getMessage())) {
+            log.debug("Not publishing identical announcement to {}", publisherName);
         } else {
-            log.warn("Announcement not published because '{}' does not exist", publisherName);
+            latest.put(publisherName, new SettingsService.AnnounceData(message));
+            Set<ChannelSubscription> subs = publisher.getChannelSubscriptions();
+            subs.stream().filter(Subscription::isEnabled).forEach(sub -> {
+                try {
+                    IDiscordClient client = discordService.getClient();
+                    IChannel channel = client.getChannelByID(sub.getChannel().getId());
+                    if (channel != null) {
+                        log.debug("Making an announcement from {} to {}", publisherName, channel.getName());
+                        if (prefixPublisherName) {
+                            commandService.answerToChannel(channel, "**[" + publisherName + "]** " + message, tts);
+                        } else {
+                            commandService.answerToChannel(channel, message, tts);
+                        }
+                    } else {
+                        log.warn("Could not find a channel with id {} to send the announcement", sub.getChannel().getId());
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not send message to '{}': {}", publisherName, e.toString());
+                }
+            });
         }
     }
 }
