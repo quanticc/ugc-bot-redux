@@ -6,6 +6,8 @@ import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
 import com.dropbox.core.v2.files.WriteMode;
+import com.dropbox.core.v2.sharing.CreateSharedLinkWithSettingsError;
+import com.dropbox.core.v2.sharing.CreateSharedLinkWithSettingsErrorException;
 import com.dropbox.core.v2.sharing.SharedLinkMetadata;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.domain.document.RemoteFile;
@@ -47,7 +49,7 @@ public class DropboxService {
      * @param task a FileShareTask containing the file definitions to upload
      * @return the same FileShareTask instance, now containing the successfully uploaded files.
      */
-    public FileShareTask batchUpload(FileShareTask task) {
+    public synchronized FileShareTask batchUpload(FileShareTask task) {
         Path downloadsPath = Paths.get(leagueProperties.getRemote().getDownloadsDir());
         List<RemoteFile> files = task.getRequested();
         if (task.isZip()) {
@@ -119,7 +121,7 @@ public class DropboxService {
      * @throws IOException  if the local stream had a I/O error
      * @throws DbxException if a Dropbox error occurred
      */
-    public FileMetadata uploadFile(Path srcPath, String destPath) throws IOException, DbxException {
+    public synchronized FileMetadata uploadFile(Path srcPath, String destPath) throws IOException, DbxException {
         long size = srcPath.toFile().length();
         if (size > CHUNK_MAX_SIZE) {
             log.warn("Skipping file {} because it is too large (> 150 MB): {}", srcPath, humanizeBytes(size));
@@ -140,31 +142,41 @@ public class DropboxService {
      * @param dropboxPath the dropbox path where the file is located
      * @return a URL with a shared link or an empty optional if an error happened.
      */
-    public Optional<String> getSharedLink(String dropboxPath) {
+    public synchronized Optional<String> getSharedLink(String dropboxPath) {
         try {
             SharedLinkMetadata result = client.sharing().createSharedLinkWithSettings(dropboxPath);
             log.info("Got shared link for {}: {}", result.getPathLower(), result.getUrl());
             return Optional.ofNullable(result.getUrl());
+        } catch (CreateSharedLinkWithSettingsErrorException e) {
+            if (e.errorValue == CreateSharedLinkWithSettingsError.SHARED_LINK_ALREADY_EXISTS) {
+                try {
+                    SharedLinkMetadata result = client.sharing().getSharedLinkMetadata(dropboxPath);
+                    log.info("Got shared link for {}: {}", result.getPathLower(), result.getUrl());
+                    return Optional.ofNullable(result.getUrl());
+                } catch (DbxException ex) {
+                    log.warn("Could not get existing shared link for {}: {}", dropboxPath, e.toString());
+                }
+            }
         } catch (DbxException e) {
             log.warn("Could not get a shared link for {}: {}", dropboxPath, e.toString());
         }
         return Optional.empty();
     }
 
-    public Metadata exists(String path) throws DbxException {
+    public synchronized Metadata exists(String path) throws DbxException {
         // TODO validate path
         return client.files().getMetadata(path);
     }
 
-    public ListFolderResult listFolder(String path) throws DbxException {
+    public synchronized ListFolderResult listFolder(String path) throws DbxException {
         return client.files().listFolder(path);
     }
 
-    public ListFolderResult listFolderContinue(String cursor) throws DbxException {
+    public synchronized ListFolderResult listFolderContinue(String cursor) throws DbxException {
         return client.files().listFolderContinue(cursor);
     }
 
-    public FileMetadata downloadFile(String srcPath, Path destPath) throws IOException, DbxException {
+    public synchronized FileMetadata downloadFile(String srcPath, Path destPath) throws IOException, DbxException {
         try (OutputStream outputStream = new FileOutputStream(destPath.toFile())) {
             FileMetadata metadata = client.files().downloadBuilder(srcPath).download(outputStream);
             log.info("Downloaded {} to {} ({})", metadata.getPathLower(), destPath, humanizeBytes(metadata.getSize()));
@@ -172,7 +184,7 @@ public class DropboxService {
         }
     }
 
-    public Metadata deleteFile(String path) throws DbxException {
+    public synchronized Metadata deleteFile(String path) throws DbxException {
         return client.files().delete(path);
     }
 }
