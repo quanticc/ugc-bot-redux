@@ -55,7 +55,6 @@ public class CommandService implements DiscordSubscriber {
     private final Executor taskExecutor;
     private final Set<Command> commandList = new ConcurrentSkipListSet<>();
     private final Map<String, IMessage> invokerToStatusMap = new ConcurrentHashMap<>();
-    private final Map<String, FutureTask<String>> userTaskMap = new ConcurrentHashMap<>();
 
     private OptionSpec<String> helpNonOptionSpec;
     private OptionSpec<Boolean> helpFullSpec;
@@ -71,29 +70,7 @@ public class CommandService implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         initHelpCommand();
-        initCancelCommand();
-
         discordService.subscribe(this);
-    }
-
-    private void initCancelCommand() {
-        OptionParser parser = newParser();
-        Map<String, String> aliases = newAliasesMap();
-        commandList.add(CommandBuilder.anyMatch(".cancel").description("Cancel your current background job")
-            .unrestricted().parser(parser).optionAliases(aliases)
-            .command((m, o) -> {
-                if (o.has("?")) {
-                    return null;
-                }
-                FutureTask<String> task = userTaskMap.get(m.getAuthor().getID());
-                if (task != null) {
-                    task.cancel(true);
-                } else {
-                    return "You have no running commands";
-                }
-                return "";
-            })
-            .build());
     }
 
     private void initHelpCommand() {
@@ -229,39 +206,37 @@ public class CommandService implements DiscordSubscriber {
                 command.getKey(), args);
             if (command.isQueued()) {
                 String key = m.getAuthor().getID();
-                if (userTaskMap.containsKey(key)) {
-                    tryReplyFrom(m, command, "Please wait until your previous command finishes or cancel it using `.cancel`");
-                } else {
-                    String a = args;
-                    FutureTask<String> task = new FutureTask<>(() -> command.execute(m, a));
-                    statusReplyFrom(m, command, "Executing command...");
-                    userTaskMap.put(key, task);
-                    CompletableFuture.supplyAsync(() -> {
-                        task.run();
-                        try {
-                            return task.get();
-                        } catch (InterruptedException | ExecutionException e) {
-                            return null;
+                String a = args;
+                FutureTask<String> task = new FutureTask<>(() -> command.execute(m, a));
+                statusReplyFrom(m, command, "Please wait...");
+                CompletableFuture.supplyAsync(() -> {
+                    task.run();
+                    try {
+                        // impose a hard-limit on duration of command execution
+                        return task.get(10, TimeUnit.MINUTES);
+                    } catch (InterruptedException | ExecutionException e) {
+                        return null;
+                    } catch (TimeoutException e) {
+                        log.warn("Command has timed out: {} -> {}", key, command.getKey());
+                        return null;
+                    }
+                }, taskExecutor)
+                    .exceptionally(t -> {
+                        log.warn("Command was terminated exceptionally", t);
+                        if (t instanceof MissingRequiredPropertiesException || t instanceof OptionException) {
+                            return ":no_good: $#@%! " + t.getMessage();
+                        } else if (t instanceof CompletionException || t instanceof TimeoutException) {
+                            return ":no_good: Command was cancelled";
+                        } else {
+                            return ":no_good: Something happened. Something happened.";
                         }
-                    }, taskExecutor)
-                        .exceptionally(t -> {
-                            log.warn("Command was terminated exceptionally", t);
-                            if (t instanceof MissingRequiredPropertiesException || t instanceof OptionException) {
-                                return ":no_good: $#@%! " + t.getMessage();
-                            } else if (t instanceof CompletionException) {
-                                return ":no_good: Command was cancelled";
-                            } else {
-                                return ":no_good: Something happened. Something happened.";
-                            }
-                        })
-                        .thenApply(s -> {
-                            log.info("Command execution done: {} -> {}", key, command.getKey());
-                            userTaskMap.remove(key);
-                            return s;
-                        })
-                        .thenAccept(response -> handleResponse(m, command, response))
-                        .thenRun(() -> statusReplyFrom(m, command, (String) null));
-                }
+                    })
+                    .thenApply(s -> {
+                        log.info("Command execution done: {} -> {}", key, command.getKey());
+                        return s;
+                    })
+                    .thenAccept(response -> handleResponse(m, command, response))
+                    .thenRun(() -> statusReplyFrom(m, command, (String) null));
             } else {
                 try {
                     String response = command.execute(m, args);
