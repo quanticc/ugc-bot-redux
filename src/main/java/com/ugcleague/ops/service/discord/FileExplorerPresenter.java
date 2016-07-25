@@ -82,17 +82,17 @@ public class FileExplorerPresenter {
 
     private void initCommonParser() {
         parser = newParser();
-        getNonOptionSpec = parser.nonOptions("exact filenames to download from the server, separated by spaces").ofType(String.class);
-        getServerSpec = parser.acceptsAll(asList("s", "server", "from"), "a GS server identifier (dal5, chi3), name (\"Miami 4\" **with** quotes) or IP address")
+        getNonOptionSpec = parser.nonOptions("Download mode: Exact filenames to download, separated by spaces").ofType(String.class);
+        getServerSpec = parser.acceptsAll(asList("s", "server", "from"), "A GS server identifier (dal5, chi3), name (\"Miami 4\" **with** quotes) or IP address")
             .withRequiredArg().required();
-        getFilenameFilterSpec = parser.acceptsAll(asList("f", "filename", "like"), "only display files containing this filename").withRequiredArg();
-        getAfterFilterSpec = parser.acceptsAll(asList("a", "after", "since"), "only display files last modified after this date").withRequiredArg();
-        getBeforeFilterSpec = parser.acceptsAll(asList("b", "before", "until"), "only display files last modified before this date").withRequiredArg();
-        getLengthFilterSpec = parser.acceptsAll(asList("l", "length"), "only display files with size (in bytes) greater than this")
-            .withRequiredArg().ofType(Integer.class).defaultsTo(100000); // 100 KB
-        getZipSpec = parser.acceptsAll(asList("z", "zip"), "try to put all files into a zip archive")
+        getFilenameFilterSpec = parser.acceptsAll(asList("f", "filename", "like"), "Filter mode: files containing this filename").withRequiredArg();
+        getAfterFilterSpec = parser.acceptsAll(asList("a", "after", "since"), "Filter mode: files last modified after this date").withRequiredArg();
+        getBeforeFilterSpec = parser.acceptsAll(asList("b", "before", "until"), "Filter mode: files last modified before this date").withRequiredArg();
+        getLengthFilterSpec = parser.accepts("size", "Filter mode: files with size (in bytes) greater than this")
+            .withRequiredArg().ofType(Integer.class).defaultsTo(100000);
+        getZipSpec = parser.acceptsAll(asList("z", "zip"), "Download mode: try to put all files into a zip archive")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
-        getExactDateSpec = parser.accepts("absolute-date", "display last modified date in absolute terms")
+        getExactDateSpec = parser.accepts("absolute-date", "Filter mode: display non-relative dates")
             .withOptionalArg().ofType(Boolean.class).defaultsTo(true);
         getOptionAliases = new HashMap<>();
         getOptionAliases.put("from", "-s");
@@ -104,6 +104,8 @@ public class FileExplorerPresenter {
         getOptionAliases.put("like", "-f");
         getOptionAliases.put("filename", "-f");
         getOptionAliases.put("absolute", "--absolute-date");
+        getOptionAliases.put("size", "--size");
+        getOptionAliases.put("zip", "-z");
     }
 
     private void initGetLogsCommand() {
@@ -174,7 +176,7 @@ public class FileExplorerPresenter {
                     }
                 }
             } else {
-                response.append("*Use `--after <date>` and `--before <date>` to filter by modified date*\n");
+                response.append("*Use `after <date>` and `before <date>` to filter by modified date*\n");
             }
             // construct the filter
 
