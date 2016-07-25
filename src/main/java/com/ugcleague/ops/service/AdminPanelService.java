@@ -4,9 +4,9 @@ import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.examples.HtmlToPlainText;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.safety.Whitelist;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,12 +123,12 @@ public class AdminPanelService {
 
     @Retryable(backoff = @Backoff(2000L))
     public String getServerConsole(String subId) throws IOException {
-        return new HtmlToPlainText().getPlainText(validateSessionAndGet(
-            Jsoup.connect(SUB_URL)
-                .userAgent(Constants.USER_AGENT)
-                .data("view", "console_log")
-                .data("SUBID", subId)
-                .timeout(TIMEOUT)));
+        String bodyHtml = validateSessionAndGet(Jsoup.connect(SUB_URL)
+            .userAgent(Constants.USER_AGENT)
+            .data("view", "console_log")
+            .data("SUBID", subId)
+            .timeout(TIMEOUT)).body().toString();
+        return Jsoup.clean(bodyHtml, "", Whitelist.none(), new Document.OutputSettings().prettyPrint(false));
     }
 
     @Retryable(backoff = @Backoff(2000L))
