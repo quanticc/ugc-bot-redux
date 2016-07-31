@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MessageList;
-import sx.blah.discord.util.MissingPermissionsException;
 
 import javax.annotation.PostConstruct;
 import java.time.ZoneId;
@@ -29,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
+import static com.ugcleague.ops.service.discord.util.DiscordUtil.deleteInBatch;
 import static java.util.Arrays.asList;
 
 @Service
@@ -160,21 +159,7 @@ public class ModerationPresenter {
                 break;
             }
         }
-        log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(channel));
-        for (IMessage m : toDelete) {
-            if (Thread.interrupted()) {
-                log.warn("Deletion interrupted");
-                break;
-            }
-            log.debug("Deleting message #{} by {} @ {}", m.getID(), DiscordUtil.toString(m.getAuthor()),
-                DiscordUtil.toString(m.getChannel()));
-            try {
-                Thread.sleep(1000);
-                discordService.deleteMessage(m);
-            } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
-                log.warn("Could not delete message: {}", e.toString());
-            }
-        }
+        deleteInBatch(channel, toDelete);
         messages.setCacheCapacity(capacity);
         return "";
     }
