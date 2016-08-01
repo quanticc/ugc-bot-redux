@@ -38,7 +38,6 @@ public class DiscordUtil {
     }
 
     public static void deleteInBatch(IChannel channel, List<IMessage> toDelete) {
-        log.info("Preparing to delete {} messages from {}", toDelete.size(), DiscordUtil.toString(channel));
         if (toDelete.isEmpty()) {
             log.info("No messages to delete");
         } else {
