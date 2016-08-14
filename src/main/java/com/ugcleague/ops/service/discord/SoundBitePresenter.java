@@ -23,10 +23,7 @@ import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 import sx.blah.discord.util.audio.AudioPlayer;
-import sx.blah.discord.util.audio.events.SkipEvent;
-import sx.blah.discord.util.audio.events.TrackFinishEvent;
-import sx.blah.discord.util.audio.events.TrackQueueEvent;
-import sx.blah.discord.util.audio.events.TrackStartEvent;
+import sx.blah.discord.util.audio.events.*;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -581,7 +578,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onSkip(SkipEvent event) {
+    public void onTrackSkip(TrackSkipEvent event) {
         log.debug("[Skipped] {}", getSource(event.getTrack()));
     }
 
