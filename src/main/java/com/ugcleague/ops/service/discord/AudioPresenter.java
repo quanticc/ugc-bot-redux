@@ -319,7 +319,7 @@ public class AudioPresenter implements DiscordSubscriber {
 
     @EventSubscriber
     public void onShuffle(ShuffleEvent event) {
-        log.debug("Shuffling {} tracks. Current playlist: {}", event.getPlayer().playlistSize(),
+        log.debug("Shuffling {} tracks. Current playlist: {}", event.getPlayer().getPlaylistSize(),
             playlistToString(event.getPlayer()));
     }
 

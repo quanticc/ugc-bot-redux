@@ -72,6 +72,7 @@ public class LeagueProperties {
         private String token;
         private long timeoutDelay = 10000;
         private int maxMissedPings = 50;
+        private int maxReconnects = 10;
         private List<String> invites = new ArrayList<>();
         private String master;
         private List<String> quitting = new ArrayList<>();

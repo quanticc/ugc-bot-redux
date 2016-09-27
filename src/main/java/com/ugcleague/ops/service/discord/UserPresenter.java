@@ -224,7 +224,6 @@ public class UserPresenter {
                     .append(leftPad("ID: ", pad)).append("<").append(user.getID()).append(">\n")
                     .append(leftPad("Joined: ", pad)).append(discordIdToUtc(user.getID())).append("\n")
                     .append(leftPad("Status: ", pad)).append(user.getPresence().name().toLowerCase()).append("\n")
-                    .append((user.getGame().isPresent() ? leftPad("Playing: ", pad) + user.getGame().get() + "\n" : ""))
                     .append(leftPad("Roles: ", pad)).append(guild != null ? formatList(user.getRolesForGuild(guild)) : "<not shown>")
                     .append("\n```").append(user.getAvatarURL()).append("\n");
             } else if (matching.size() > 1) {

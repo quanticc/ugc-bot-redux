@@ -74,7 +74,7 @@ public class DiscordService implements DiscordSubscriber {
         ClientBuilder builder = new ClientBuilder()
             .withTimeout(discord.getTimeoutDelay())
             .withPingTimeout(discord.getMaxMissedPings())
-            .withReconnects();
+            .setMaxReconnectAttempts(discord.getMaxReconnects());
         if (discord.getToken() != null) {
             return builder.withToken(discord.getToken());
         } else {
