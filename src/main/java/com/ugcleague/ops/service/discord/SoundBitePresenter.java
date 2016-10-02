@@ -213,13 +213,13 @@ public class SoundBitePresenter implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onTrackStart(VoiceUserSpeakingEvent event) {
+    public void onUserSpeaking(VoiceUserSpeakingEvent event) {
         if (!event.isSpeaking()) {
             SettingsService.ResponseConfig config = settingsService.getSettings()
                 .getUserToVoiceResponse().get(event.getUser().getID());
             if (config != null) {
                 List<String> responses = config.getResponses();
-                if (!responses.isEmpty()) {
+                if (!responses.isEmpty() && RandomUtils.nextInt(0, 100) < config.getChance()) {
                     String text = (responses.size() == 1 ? responses.get(0) :
                         responses.get(RandomUtils.nextInt(0, responses.size())));
                     try {
