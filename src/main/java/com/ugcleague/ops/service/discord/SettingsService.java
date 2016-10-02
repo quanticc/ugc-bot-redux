@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,6 +65,7 @@ public class SettingsService {
         private final Map<String, Integer> playCount = new ConcurrentHashMap<>();
         private final Map<String, AnnounceData> lastAnnounce = new ConcurrentHashMap<>();
         private final Map<String, List<RollData>> rolls = new ConcurrentHashMap<>();
+        private final Map<String, ResponseConfig> userToVoiceResponse = new ConcurrentHashMap<>();
 
         public Set<String> getSoundBitesWhitelist() {
             return soundBitesWhitelist;
@@ -91,6 +93,36 @@ public class SettingsService {
 
         public Map<String, List<RollData>> getRolls() {
             return rolls;
+        }
+
+        public Map<String, ResponseConfig> getUserToVoiceResponse() {
+            return userToVoiceResponse;
+        }
+    }
+
+    public static class ResponseConfig {
+        private int chance = 10;
+        private final List<String> responses = new ArrayList<>();
+        private String channelId;
+
+        public int getChance() {
+            return chance;
+        }
+
+        public List<String> getResponses() {
+            return responses;
+        }
+
+        public void setChance(int chance) {
+            this.chance = chance;
+        }
+
+        public String getChannelId() {
+            return channelId;
+        }
+
+        public void setChannelId(String channelId) {
+            this.channelId = channelId;
         }
     }
 

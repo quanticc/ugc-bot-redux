@@ -17,13 +17,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
+import sx.blah.discord.handle.impl.events.VoiceUserSpeakingEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 import sx.blah.discord.util.audio.AudioPlayer;
-import sx.blah.discord.util.audio.events.*;
+import sx.blah.discord.util.audio.events.TrackFinishEvent;
+import sx.blah.discord.util.audio.events.TrackQueueEvent;
+import sx.blah.discord.util.audio.events.TrackSkipEvent;
+import sx.blah.discord.util.audio.events.TrackStartEvent;
 
 import javax.annotation.PostConstruct;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -79,6 +83,12 @@ public class SoundBitePresenter implements DiscordSubscriber {
     private OptionSpec<Void> soundbitesBlacklistAddSpec;
     private OptionSpec<Void> soundbitesBlacklistRemoveSpec;
     private OptionSpec<String> queueNonOptionSpec;
+    private OptionSpec<String> voiceResponseUserSpec;
+    private OptionSpec<String> voiceResponseMessageSpec;
+    private OptionSpec<Integer> voiceResponseChanceSpec;
+    private OptionSpec<Void> voiceResponseResetSpec;
+    private OptionSpec<String> voiceResponseLocationSpec;
+    private OptionSpec<Void> voiceResponseViewSpec;
 
     @Autowired
     public SoundBitePresenter(DiscordService discordService, SoundBiteRepository soundBiteRepository,
@@ -123,6 +133,7 @@ public class SoundBitePresenter implements DiscordSubscriber {
         configureSoundbitesCommand();
         configureQueueCommand();
         configureVolumeCommand();
+        configureVoiceResponseCommand();
     }
 
     private void configureSoundbitesCommand() {
@@ -149,6 +160,75 @@ public class SoundBitePresenter implements DiscordSubscriber {
         commandService.register(CommandBuilder.startsWith(".sounds").master()
             .description("Manage soundbite settings")
             .command(this::soundbites).parser(parser).optionAliases(newAliasesMap(parser)).originReplies().build());
+    }
+
+    private void configureVoiceResponseCommand() {
+        OptionParser parser = newParser();
+        voiceResponseUserSpec = parser.accepts("user").withOptionalArg().required();
+        voiceResponseViewSpec = parser.accepts("view");
+        voiceResponseMessageSpec = parser.accepts("message").withRequiredArg();
+        voiceResponseLocationSpec = parser.accepts("location").withRequiredArg();
+        voiceResponseChanceSpec = parser.accepts("chance").withRequiredArg().ofType(Integer.class).defaultsTo(10);
+        voiceResponseResetSpec = parser.accepts("reset");
+        commandService.register(CommandBuilder.startsWith(".response").master()
+            .description("Manage voice response settings")
+            .command(this::voiceResponse).parser(parser).optionAliases(newAliasesMap(parser)).originReplies().build());
+    }
+
+    private String voiceResponse(IMessage message, OptionSet optionSet) {
+        String text = optionSet.valueOf(voiceResponseMessageSpec);
+        String user = optionSet.valueOf(voiceResponseUserSpec).trim();
+        int chance = optionSet.valueOf(voiceResponseChanceSpec);
+
+        String id = user.replaceAll("<@!?([0-9]+)>", "$1");
+
+        if (id == null || id.isEmpty()) {
+            return "Invalid user: use mention or ID";
+        }
+
+        if (optionSet.has(voiceResponseResetSpec)) {
+            settingsService.getSettings().getUserToVoiceResponse().remove(id);
+            return "Voice response removed for that user";
+        } else {
+            SettingsService.ResponseConfig config = settingsService.getSettings()
+                .getUserToVoiceResponse().computeIfAbsent(id, k -> new SettingsService.ResponseConfig());
+            if (optionSet.has(voiceResponseChanceSpec)) {
+                config.setChance(chance);
+            }
+            if (optionSet.has(voiceResponseLocationSpec)) {
+                String chId = optionSet.valueOf(voiceResponseLocationSpec).trim().replaceAll("<#([0-9]+)>", "$1");
+                config.setChannelId(chId);
+            } else if (config.getChannelId() == null) {
+                config.setChannelId(message.getChannel().getID());
+            }
+            config.getResponses().add(text);
+            if (optionSet.has(voiceResponseViewSpec)) {
+                return String.format("Responses for %s (%s%% chance to <#%s>): %s",
+                    user, config.getChance(), config.getChannelId(), config.getResponses());
+            } else {
+                return "Voice response added for that user";
+            }
+        }
+    }
+
+    @EventSubscriber
+    public void onTrackStart(VoiceUserSpeakingEvent event) {
+        if (!event.isSpeaking()) {
+            SettingsService.ResponseConfig config = settingsService.getSettings()
+                .getUserToVoiceResponse().get(event.getUser().getID());
+            if (config != null) {
+                List<String> responses = config.getResponses();
+                if (!responses.isEmpty()) {
+                    String text = (responses.size() == 1 ? responses.get(0) :
+                        responses.get(RandomUtils.nextInt(0, responses.size())));
+                    try {
+                        discordService.sendMessage(config.getChannelId(), text);
+                    } catch (DiscordException | MissingPermissionsException | InterruptedException e) {
+                        log.warn("Could not send voice response", e);
+                    }
+                }
+            }
+        }
     }
 
     private void configureQueueCommand() {
