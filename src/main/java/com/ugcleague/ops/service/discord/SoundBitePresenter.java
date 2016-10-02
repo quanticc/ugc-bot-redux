@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
+import sx.blah.discord.handle.impl.events.MessageSendEvent;
 import sx.blah.discord.handle.impl.events.VoiceUserSpeakingEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
@@ -485,12 +486,20 @@ public class SoundBitePresenter implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onMessage(MessageReceivedEvent e) {
-        CompletableFuture.runAsync(() -> asyncOnMessage(e), taskExecutor);
+    public void onMessage(MessageSendEvent e) {
+        if (settingsService.getSettings().getUserToVoiceResponse().values().stream()
+            .map(SettingsService.ResponseConfig::getChannelId)
+            .anyMatch(c -> c != null && c.equals(e.getMessage().getChannel().getID()))) {
+            CompletableFuture.runAsync(() -> asyncOnMessage(e.getMessage()), taskExecutor);
+        }
     }
 
-    public void asyncOnMessage(MessageReceivedEvent e) {
-        IMessage message = e.getMessage();
+    @EventSubscriber
+    public void onMessage(MessageReceivedEvent e) {
+        CompletableFuture.runAsync(() -> asyncOnMessage(e.getMessage()), taskExecutor);
+    }
+
+    public void asyncOnMessage(IMessage message) {
         if (!message.getChannel().isPrivate()
             && settingsService.getSettings().getSoundBitesWhitelist().contains(message.getGuild().getID())
             && !settingsService.getSettings().getSoundBitesBlacklist().contains(message.getChannel().getID())) {
