@@ -3,6 +3,7 @@ package com.ugcleague.ops.service.discord;
 import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.github.koraktor.steamcondenser.exceptions.WebApiException;
 import com.github.koraktor.steamcondenser.steam.community.SteamId;
+import com.ugcleague.ops.service.SteamCondenserService;
 import com.ugcleague.ops.service.discord.command.CommandBuilder;
 import com.ugcleague.ops.service.util.SteamIdConverter;
 import joptsimple.OptionParser;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static org.apache.commons.lang3.StringUtils.leftPad;
@@ -31,20 +33,63 @@ public class SteamQueryPresenter {
     private static final Pattern STEAM_URL = Pattern.compile("(https?:\\/\\/steamcommunity\\.com\\/)(id|profiles)\\/([\\w-]+)\\/?");
 
     private final CommandService commandService;
+    private final SteamCondenserService steamCondenserService;
 
     private OptionSpec<String> steamNonOptionSpec;
+    private OptionSpec<String> friendsNonOptionSpec;
 
     @Autowired
-    public SteamQueryPresenter(CommandService commandService) {
+    public SteamQueryPresenter(CommandService commandService, SteamCondenserService steamCondenserService) {
         this.commandService = commandService;
+        this.steamCondenserService = steamCondenserService;
     }
 
     @PostConstruct
     private void configure() {
+        configureSteamCommand();
+        configureFriendsCommand();
+    }
+
+    private void configureSteamCommand() {
         OptionParser parser = newParser();
         steamNonOptionSpec = parser.nonOptions("A single SteamID32, SteamID64 or Community URL of a Steam user").ofType(String.class);
         commandService.register(CommandBuilder.startsWith(".steam").description("Retrieves info about a Steam user")
             .unrestricted().originReplies().queued().parser(parser).command(this::executeSteamQuery).build());
+    }
+
+    private void configureFriendsCommand() {
+        OptionParser parser = newParser();
+        friendsNonOptionSpec = parser.nonOptions("A single SteamID32, SteamID64 or Community URL of a Steam user").ofType(String.class);
+        commandService.register(CommandBuilder.startsWith(".friends").description("Retrieves info about a Steam user's friends")
+            .unrestricted().originReplies().queued().parser(parser).command(this::friends).build());
+
+    }
+
+    private String friends(IMessage message, OptionSet optionSet) {
+        List<String> nonOptions = optionSet.valuesOf(friendsNonOptionSpec);
+        if (optionSet.has("?") || nonOptions.isEmpty()) {
+            return null;
+        }
+        String key = nonOptions.get(0);
+        long steamId64 = anyToSteamId64(key); // can be 0 (failed)
+        if (steamId64 == 0) {
+            return "Could not found user or the Steam Community servers are down";
+        }
+        StringBuilder builder = new StringBuilder("```http\n");
+        try {
+            List<SteamCondenserService.SteamFriend> friends = steamCondenserService.getFriends(steamId64 + "");
+            List<SteamCondenserService.SteamFriend> oldest = friends.stream()
+                .sorted((o1, o2) -> o1.friend_since < o2.friend_since ? -1 : 1)
+                .limit(5)
+                .collect(Collectors.toList());
+            for (SteamCondenserService.SteamFriend friend : oldest) {
+                builder.append(friend.steamid).append(" since ").append(Instant.ofEpochSecond(friend.friend_since)).append("\n");
+            }
+        } catch (WebApiException e) {
+            log.warn("Could not get friends list", e);
+            return "Could not retrieve friend data";
+        }
+        return builder.append("```\n").toString();
     }
 
     private String executeSteamQuery(IMessage message, OptionSet optionSet) {

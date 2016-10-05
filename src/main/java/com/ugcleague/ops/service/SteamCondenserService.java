@@ -4,6 +4,7 @@ import com.github.koraktor.steamcondenser.exceptions.SteamCondenserException;
 import com.github.koraktor.steamcondenser.exceptions.WebApiException;
 import com.github.koraktor.steamcondenser.steam.SteamPlayer;
 import com.github.koraktor.steamcondenser.steam.community.WebApi;
+import com.google.gson.Gson;
 import com.ugcleague.ops.config.LeagueProperties;
 import com.ugcleague.ops.service.util.SourceServer;
 import org.json.JSONException;
@@ -20,6 +21,7 @@ import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
@@ -199,7 +201,7 @@ public class SteamCondenserService {
     }
 
     private Integer loadLatestVersion() throws JSONException, SteamCondenserException {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, Object> params = new HashMap<>();
         params.put("appid", 440);
         params.put("version", 1);
         String json = WebApi.getJSON("ISteamApps", "UpToDateCheck", 1, params);
@@ -226,5 +228,27 @@ public class SteamCondenserService {
 
     public Integer getLastCachedVersion() {
         return lastCachedVersion;
+    }
+
+    public List<SteamFriend> getFriends(String steamId64) throws WebApiException {
+        Map<String, Object> params = new HashMap<>();
+        params.put("steamid", steamId64);
+        String json = WebApi.getJSON("ISteamUser", "GetFriendList", 1, params);
+        FriendsListResponse response = new Gson().fromJson(json, FriendsListResponse.class);
+        return response.friendslist.friends.get("friends");
+    }
+
+    public static class FriendsListResponse {
+        public FriendsList friendslist;
+    }
+
+    public static class FriendsList {
+        public Map<String, List<SteamFriend>> friends;
+    }
+
+    public static class SteamFriend {
+        public String steamid;
+        public String relationship;
+        public long friend_since;
     }
 }
