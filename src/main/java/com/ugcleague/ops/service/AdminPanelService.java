@@ -1,5 +1,6 @@
 package com.ugcleague.ops.service;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.ugcleague.ops.config.Constants;
 import com.ugcleague.ops.config.LeagueProperties;
 import org.jsoup.Connection;
@@ -38,6 +39,7 @@ public class AdminPanelService {
     private static final int TIMEOUT = 10000;
 
     private final Map<String, String> session = new ConcurrentHashMap<>();
+    private final RateLimiter rateLimiter = RateLimiter.create(0.5);
     private final LeagueProperties leagueProperties;
     private final RestOperations restTemplate;
 
@@ -55,6 +57,7 @@ public class AdminPanelService {
      */
     @Retryable(backoff = @Backoff(2000L))
     public Map<String, Map<String, String>> getServerDetails() throws IOException {
+        rateLimiter.acquire();
         Document document = validateSessionAndGet(Jsoup.connect(HOME_URL).userAgent(Constants.USER_AGENT));
         Map<String, Map<String, String>> latest = new LinkedHashMap<>();
         // parse GameServers panel and cache available game servers
@@ -96,6 +99,7 @@ public class AdminPanelService {
      */
     @Retryable(backoff = @Backoff(2000L))
     public Map<String, String> getServerInfo(String subId) throws IOException {
+        rateLimiter.acquire();
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL)
@@ -123,6 +127,7 @@ public class AdminPanelService {
 
     @Retryable(backoff = @Backoff(2000L))
     public String getServerConsole(String subId) throws IOException {
+        rateLimiter.acquire();
         String bodyHtml = validateSessionAndGet(Jsoup.connect(SUB_URL)
             .userAgent(Constants.USER_AGENT)
             .data("view", "console_log")
@@ -133,6 +138,7 @@ public class AdminPanelService {
 
     @Retryable(backoff = @Backoff(2000L))
     public synchronized Map<String, String> getServerConfig(String subId) throws IOException {
+        rateLimiter.acquire();
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL)
@@ -161,6 +167,7 @@ public class AdminPanelService {
      */
     @Retryable(backoff = @Backoff(2000L))
     public Map<String, String> getServerMods(String subId) throws IOException {
+        rateLimiter.acquire();
         Map<String, String> map = new HashMap<>();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL)
@@ -201,6 +208,7 @@ public class AdminPanelService {
      * @throws IOException
      */
     public Result restart(String subId) throws IOException {
+        rateLimiter.acquire();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL)
                 .userAgent(Constants.USER_AGENT)
@@ -226,6 +234,7 @@ public class AdminPanelService {
      * @throws IOException
      */
     public Result stop(String subId) throws IOException {
+        rateLimiter.acquire();
         Document document = validateSessionAndGet(
             Jsoup.connect(SUB_URL)
                 .userAgent(Constants.USER_AGENT)
@@ -251,6 +260,7 @@ public class AdminPanelService {
      * @throws IOException
      */
     public Result upgrade(String subId) throws IOException {
+        rateLimiter.acquire();
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL)
             .userAgent(Constants.USER_AGENT)
             .data("view", "server_mods")
@@ -270,6 +280,7 @@ public class AdminPanelService {
     }
 
     public Result installMod(String subId, String modId) throws IOException {
+        rateLimiter.acquire();
         Document document = validateSessionAndGet(Jsoup.connect(SUB_URL)
             .userAgent(Constants.USER_AGENT)
             .data("view", "server_mods")
@@ -311,6 +322,7 @@ public class AdminPanelService {
     }
 
     private synchronized boolean login() throws IOException {
+        rateLimiter.acquire();
         log.info("Authenticating to GS admin panel");
         String username = leagueProperties.getGameServers().getUsername();
         String password = leagueProperties.getGameServers().getPassword();
