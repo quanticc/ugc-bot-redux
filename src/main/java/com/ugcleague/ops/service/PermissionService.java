@@ -174,7 +174,7 @@ public class PermissionService {
     }
 
     public String keyToString(String permissionName, IUser user, IChannel channel) {
-        return permissionName + " by " + DiscordUtil.toString(user) + " on " + DiscordUtil.toString(channel);
+        return permissionName + " by " + (user == null ? "anyone" : DiscordUtil.toString(user)) + " on " + DiscordUtil.toString(channel);
     }
 
     private boolean slowCanPerform(String permissionName, IUser user, IChannel channel) {
@@ -206,9 +206,9 @@ public class PermissionService {
         Set<Permission> set = new HashSet<>();
 
         // collect bot operation permissions from the given user
-        DiscordUser cachedUser = cacheService.findUserById(user.getID()).orElseGet(() -> cacheService.saveUser(new DiscordUser(user)));
+        DiscordUser cachedUser = cacheService.findUserById(user == null ? "0" : user.getID()).orElseGet(() -> cacheService.saveUser(new DiscordUser(user)));
         if (cachedUser.getName() == null) {
-            cachedUser.setName(user.getName());
+            cachedUser.setName(user == null ? "anyone" : user.getName());
             cachedUser = cacheService.saveUser(cachedUser);
         }
         set.addAll(mapper.apply(cachedUser));
@@ -222,7 +222,7 @@ public class PermissionService {
         set.addAll(mapper.apply(cachedGuild));
 
         // collect bot operation permissions from the roles of the given user in the given guild
-        List<IRole> roles = user.getRolesForGuild(guild);
+        List<IRole> roles = user == null ? Collections.singletonList(guild.getEveryoneRole()) : user.getRolesForGuild(guild);
         Set<DiscordRole> cachedRoles = cachedGuild.getRoles();
         boolean rolesModified = false;
         for (IRole role : roles) {
