@@ -14,8 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sx.blah.discord.handle.impl.obj.User;
-import sx.blah.discord.handle.obj.*;
+import sx.blah.discord.handle.obj.IChannel;
+import sx.blah.discord.handle.obj.IGuild;
+import sx.blah.discord.handle.obj.IRole;
+import sx.blah.discord.handle.obj.IUser;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
@@ -32,7 +34,6 @@ public class PermissionService {
     private final DiscordService discordService;
     private final PermissionRepository permissionRepository;
     private final DiscordCacheService cacheService;
-    private final IUser anyone = anyone();
     private final Map<Triple<String, String, String>, Boolean> permissionCache = new ConcurrentHashMap<>();
 
     @Autowired
@@ -42,10 +43,6 @@ public class PermissionService {
         this.discordService = discordService;
         this.permissionRepository = permissionRepository;
         this.cacheService = cacheService;
-    }
-
-    private IUser anyone() {
-        return new User(null, "anyone", "0", "0", "", Presences.OFFLINE, false);
     }
 
     @PostConstruct
@@ -139,7 +136,7 @@ public class PermissionService {
     private boolean canDisplayResult(String permissionName, IChannel channel) {
         // private channels can always display a command result
         // but this should not be called on private channels (without user check)
-        return channel.isPrivate() || canPerform(permissionName, anyone, channel);
+        return channel.isPrivate() || canPerform(permissionName, null, channel);
     }
 
     /**
@@ -164,7 +161,7 @@ public class PermissionService {
      */
     @Timed
     public boolean canPerform(String permissionName, IUser user, IChannel channel) {
-        Triple<String, String, String> key = Triple.of(permissionName, user.getID(), channel.getID());
+        Triple<String, String, String> key = Triple.of(permissionName, user == null ? "0" : user.getID(), channel.getID());
         Boolean cached = permissionCache.get(key);
         if (cached != null) {
             return cached;
