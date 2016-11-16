@@ -151,6 +151,7 @@ public class GameServerService {
     public void updateGameServers() {
         log.debug("==== Refreshing server status ====");
         int latestVersion = steamCondenserService.getLatestVersion();
+        // check for availability of game update from GS side
         long refreshed = gameServerRepository.findAll().stream().map(this::refreshServerStatus)
             .map(gameServerRepository::save).count();
         long updating = findOutdatedServers().stream().map(this::performGameUpdate)
@@ -305,6 +306,7 @@ public class GameServerService {
             log.info("Server update for {} is on hold. It appears to be offline", server.getShortNameAndAddress());
             result.getAttempts().incrementAndGet();
         } else {
+//            ZonedDateTime last = adminPanelService.getLastAvailableUpdate(server.getId());
             if (result.getAttempts().get() > 0) {
                 log.warn("Proceeding with game update of {} after {} failed attempts", server.getShortNameAndAddress(), result.getAttempts().get());
             }

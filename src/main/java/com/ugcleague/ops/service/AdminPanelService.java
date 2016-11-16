@@ -19,10 +19,11 @@ import org.springframework.web.client.RestOperations;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -197,6 +198,21 @@ public class AdminPanelService {
             }
         });
         return map;
+    }
+
+    public ZonedDateTime getLastAvailableUpdate(String subId) {
+        try {
+            Map<String, String> map = getServerMods(subId);
+            String text = map.get("latest-update");
+            if (text != null) {
+                LocalDateTime localDateTime = LocalDateTime.parse(text,
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH));
+                return ZonedDateTime.of(localDateTime, ZoneOffset.ofHours(-3));
+            }
+        } catch (IOException e) {
+            log.warn("Could not get server #{} mods data: {}", subId, e.toString());
+        }
+        return null;
     }
 
     /**
