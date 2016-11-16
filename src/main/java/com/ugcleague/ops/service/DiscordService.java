@@ -17,10 +17,7 @@ import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.api.events.IListener;
-import sx.blah.discord.handle.impl.events.DiscordDisconnectedEvent;
-import sx.blah.discord.handle.impl.events.DiscordReconnectedEvent;
-import sx.blah.discord.handle.impl.events.GuildCreateEvent;
-import sx.blah.discord.handle.impl.events.ReadyEvent;
+import sx.blah.discord.handle.impl.events.*;
 import sx.blah.discord.handle.obj.*;
 import sx.blah.discord.util.*;
 import sx.blah.discord.util.Image;
@@ -31,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -78,7 +74,7 @@ public class DiscordService implements DiscordSubscriber {
         if (discord.getToken() != null) {
             return builder.withToken(discord.getToken());
         } else {
-            return builder.withLogin(discord.getEmail(), discord.getPassword());
+            throw new IllegalArgumentException("Must configure a bot token");
         }
     }
 
@@ -87,7 +83,7 @@ public class DiscordService implements DiscordSubscriber {
             try {
                 Thread.sleep(5000L); // 1/5 API rate limit for logging in
                 login();
-            } catch (DiscordException | InterruptedException e) {
+            } catch (DiscordException | InterruptedException | RateLimitException e) {
                 throw new RuntimeException(e); // rethrow to handle retry
             }
         }, taskExecutor).exceptionally(e -> {
@@ -97,7 +93,7 @@ public class DiscordService implements DiscordSubscriber {
         });
     }
 
-    public void login() throws DiscordException, InterruptedException {
+    public void login() throws DiscordException, InterruptedException, RateLimitException {
         log.debug("Logging in to Discord");
         if (client != null) {
             client.login();
@@ -131,17 +127,22 @@ public class DiscordService implements DiscordSubscriber {
     }
 
     @EventSubscriber
-    public void onReconnect(DiscordReconnectedEvent event) {
-        log.info("*** Discord bot reconnected ***");
+    public void onReconnectSuccess(ReconnectSuccessEvent event) {
+        log.info("*** Discord bot reconnect succeeded ***");
         publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident("Reconnected bot to Discord")));
     }
 
     @EventSubscriber
-    public void onDisconnect(DiscordDisconnectedEvent event) {
-        if (reconnect.get() && event.getReason() != DiscordDisconnectedEvent.Reason.RECONNECTING) {
+    public void onReconnectFailure(ReconnectFailureEvent event) {
+        log.warn("*** Discord bot reconnect failed ***");
+    }
+
+    @EventSubscriber
+    public void onDisconnect(DisconnectedEvent event) {
+        log.warn("*** Discord bot disconnected due to {} ***", event.getReason());
+        if (reconnect.get() && event.getReason() != DisconnectedEvent.Reason.RECONNECT_OP) {
             String reason = StringUtils.capitalise(event.getReason().toString());
-            log.info("Reconnecting bot due to {}", reason);
-            publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident(reason)));
+            publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident("Disconnected due to " + reason)));
             tryLogin();
         }
     }
@@ -158,7 +159,7 @@ public class DiscordService implements DiscordSubscriber {
         reconnect.set(thenReconnect);
         try {
             client.logout();
-        } catch (RateLimitException | DiscordException e) {
+        } catch (DiscordException e) {
             log.warn("Logout failed", e);
         }
     }
@@ -411,27 +412,18 @@ public class DiscordService implements DiscordSubscriber {
             .filter(u -> u.getPresence().equals(Presences.ONLINE)).count();
     }
 
-    public long getResponseTime() {
-        if (client != null && client.isReady()) {
-            return client.getResponseTime();
-        } else {
-            return 0;
-        }
-    }
-
     public static String guildString(IGuild guild, IUser user) {
         String id = guild.getID();
         String name = guild.getName();
         IUser owner = guild.getOwner();
         List<IRole> roles = guild.getRoles();
         List<IChannel> channels = guild.getChannels();
-        return "Guild ["
-            + "id='" + id
-            + "', name='" + name
-            + "', owner='" + userString(owner)
-            + "', roles=[" + roles.stream().map(DiscordService::roleString).collect(Collectors.joining(", "))
-            + "], channels=[" + channels.stream().map(c -> channelString(c, user)).collect(Collectors.joining(", "))
-            + "]]";
+        return "Guild **" + name + "** <" + id + "> owned by " + owner.getName() +
+            " <" + owner.getID() + ">\n**Roles**\n" +
+            roles.stream().map(DiscordService::roleString).collect(Collectors.joining("\n")) +
+            "\n**Channels**\n" +
+            channels.stream().map(c -> channelString(c, user)).collect(Collectors.joining("\n")) +
+            "\n";
     }
 
     public static String roleString(IRole role) {
@@ -441,46 +433,19 @@ public class DiscordService implements DiscordSubscriber {
         Color color = role.getColor();
         String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
         String permissions = role.getPermissions().toString();
-        return "Role ["
-            + "id='" + id
-            + "', name='" + name
-            + "', position=" + position
-            + ", color=" + hex
-            + ", permissions=" + permissions
-            + "']";
+        return "(#" + position + ") " + name + " <" + id + "> (" + hex + ") " + permissions;
     }
 
     public static String channelString(IChannel channel, IUser user) {
         String id = channel.getID();
         String name = channel.getName();
-        //String topic = channel.getTopic();
-        //String roleOverrides = channel.getRoleOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
-        //String userOverrides = channel.getUserOverrides().entrySet().stream().map(DiscordService::permOverrideEntryToString).collect(Collectors.joining(", "));
         String userModifiedPermissions = channel.getModifiedPermissions(user).toString();
-        return "Channel ["
-            + "id='" + id + '\''
-            + ", name='" + name + '\''
-            //+ ", topic='" + topic + '\''
-            //+ ", roleOverrides=" + roleOverrides
-            //+ ", userOverrides=" + userOverrides
-            + ", userModifiedPermissions=" + userModifiedPermissions
-            //+ ", roleModifiedPermissionsPerRole=" + channel.getGuild().getRoles().stream()
-            //.map(r -> "{" + r.getName() + " -> " + channel.getModifiedPermissions(r).toString() + "}").collect(Collectors.joining(", "))
-            + "']";
-    }
-
-    private static String permOverrideEntryToString(Map.Entry<String, IChannel.PermissionOverride> e) {
-        return "{" + e.getKey() + " -> allow=" + e.getValue().allow() + ", deny=" + e.getValue().deny() + "}";
+        return "#" + name + " <" + id + "> where bot has permissions to: " + userModifiedPermissions;
     }
 
     public static String userString(IUser user) {
         String id = user.getID();
         String name = user.getName();
-        Presences status = user.getPresence();
-        return "User ["
-            + "id='" + id
-            + "', name='" + name
-            + "', status='" + status
-            + "']";
+        return name + " <" + id + ">";
     }
 }

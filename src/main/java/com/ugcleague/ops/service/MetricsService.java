@@ -1,6 +1,9 @@
 package com.ugcleague.ops.service;
 
-import com.codahale.metrics.*;
+import com.codahale.metrics.CachedGauge;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
 import com.codahale.metrics.health.HealthCheckRegistry;
 import com.ugcleague.ops.domain.document.GameServer;
@@ -10,7 +13,6 @@ import com.ugcleague.ops.service.util.MetricNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,10 +56,7 @@ public class MetricsService {
     }
 
     private void initDiscordMetrics() {
-        metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM,
-            new Histogram(new UniformReservoir()));
         metricRegistry.register(MetricNames.DISCORD_WS_RESTARTS, new Counter());
-        metricRegistry.register(MetricNames.DISCORD_WS_RESPONSE, (Gauge<Long>) this::getMeanResponseTime);
         metricRegistry.register(MetricNames.DISCORD_USERS_JOINED, (Gauge<Long>) discordService::getUserCount);
         metricRegistry.register(MetricNames.DISCORD_USERS_CONNECTED, (Gauge<Long>) discordService::getConnectedUserCount);
         metricRegistry.register(MetricNames.DISCORD_USERS_ONLINE, (Gauge<Long>) discordService::getOnlineUserCount);
@@ -67,18 +66,16 @@ public class MetricsService {
         healthCheckRegistry.register(MetricNames.HEALTH_DISCORD_WS, new HealthCheck() {
             @Override
             protected Result check() throws Exception {
-                Histogram responseTime = metricRegistry.histogram(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM);
                 Counter restartCounter = metricRegistry.counter(MetricNames.DISCORD_WS_RESTARTS);
                 Optional<Incident> incident = incidentService.getLastIncidentFromGroup(IncidentService.DISCORD_RESTART);
                 ZonedDateTime time = incident.isPresent() ? incident.get().getCreatedDate() : null;
                 String reason = incident.isPresent() ? incident.get().getName() : null;
-                long mean = (long) responseTime.getSnapshot().getMean();
                 long restarts = restartCounter.getCount();
                 if (restarts > 0) {
-                    return Result.unhealthy(String.format("%d restart%s, last one on %s (%s). Mean response time: %dms",
-                        restarts, restarts == 1 ? "" : "s", time, reason, mean));
+                    return Result.unhealthy(String.format("%d restart%s, last one on %s (%s)",
+                        restarts, restarts == 1 ? "" : "s", time, reason));
                 } else {
-                    return Result.healthy("Mean response time: " + mean + "ms");
+                    return Result.healthy("OK");
                 }
             }
         });
@@ -210,19 +207,5 @@ public class MetricsService {
                 }
             }
         });
-    }
-
-    private long getMeanResponseTime() {
-        Histogram responseTime = metricRegistry.histogram(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM);
-        return (long) responseTime.getSnapshot().getMean();
-    }
-
-    @Scheduled(cron = "*/10 * * * * *")
-    void checkResponseTime() { // scheduled each 10 seconds
-        Histogram responseTime = metricRegistry.histogram(MetricNames.DISCORD_WS_RESPONSE_HISTOGRAM);
-        long millis = discordService.getResponseTime();
-        if (millis > 0) {
-            responseTime.update(millis);
-        }
     }
 }

@@ -5,8 +5,6 @@ import com.ugcleague.ops.domain.document.GameServer;
 
 public class MetricNames {
 
-    public static final String DISCORD_WS_RESPONSE = "discord.ws.response";
-    public static final String DISCORD_WS_RESPONSE_HISTOGRAM = "histogram.discord.ws.response";
     public static final String DISCORD_USERS_JOINED = "discord.users.joined";
     public static final String DISCORD_USERS_CONNECTED = "discord.users.connected";
     public static final String DISCORD_USERS_ONLINE = "discord.users.online";
