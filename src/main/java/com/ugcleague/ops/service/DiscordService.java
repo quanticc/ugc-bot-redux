@@ -61,6 +61,7 @@ public class DiscordService implements DiscordSubscriber {
         if (properties.getDiscord().isAutologin()) {
             RequestBuffer.request(() -> {
                 try {
+                    Thread.sleep(5000L);
                     login();
                 } catch (DiscordException | InterruptedException e) {
                     log.error("Could not connect discord bot", e);
