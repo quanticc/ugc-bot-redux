@@ -90,13 +90,7 @@ public class BotPresenter {
         commandService.register(CommandBuilder.equalsTo(".beep logout")
             .description("Logout from discord").master()
             .command((message, optionSet) -> {
-                discordService.logout(false);
-                return "";
-            }).build());
-        commandService.register(CommandBuilder.equalsTo(".beep retry")
-            .description("Reconnect to Discord").master()
-            .command((message, optionSet) -> {
-                discordService.logout(true);
+                discordService.logout();
                 return "";
             }).build());
         initProfileCommand();

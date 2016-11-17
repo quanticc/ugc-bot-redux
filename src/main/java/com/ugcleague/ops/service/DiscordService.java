@@ -33,7 +33,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,7 +48,6 @@ public class DiscordService implements DiscordSubscriber {
     private final Queue<IListener<?>> queuedListeners = new ConcurrentLinkedQueue<>();
     private final Queue<DiscordSubscriber> queuedSubscribers = new ConcurrentLinkedQueue<>();
     private volatile IDiscordClient client;
-    private final AtomicBoolean reconnect = new AtomicBoolean(true);
 
     @Autowired
     public DiscordService(LeagueProperties properties, ApplicationEventPublisher publisher, Executor taskExecutor) {
@@ -61,7 +59,13 @@ public class DiscordService implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         if (properties.getDiscord().isAutologin()) {
-            tryLogin();
+            RequestBuffer.request(() -> {
+                try {
+                    login();
+                } catch (DiscordException | InterruptedException e) {
+                    log.error("Could not connect discord bot", e);
+                }
+            });
         }
     }
 
@@ -78,25 +82,12 @@ public class DiscordService implements DiscordSubscriber {
         }
     }
 
-    public void tryLogin() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                Thread.sleep(5000L); // 1/5 API rate limit for logging in
-                login();
-            } catch (DiscordException | InterruptedException | RateLimitException e) {
-                throw new RuntimeException(e); // rethrow to handle retry
-            }
-        }, taskExecutor).exceptionally(e -> {
-            log.error("Could not connect discord bot", e);
-            tryLogin();
-            return null;
-        });
-    }
-
     public void login() throws DiscordException, InterruptedException, RateLimitException {
         log.debug("Logging in to Discord");
         if (client != null) {
-            client.login();
+            if (client.getShards().isEmpty()) {
+                client.login();
+            }
         } else {
             client = newClientBuilder().login();
             log.debug("Registering Discord event listeners");
@@ -134,17 +125,14 @@ public class DiscordService implements DiscordSubscriber {
 
     @EventSubscriber
     public void onReconnectFailure(ReconnectFailureEvent event) {
-        log.warn("*** Discord bot reconnect failed ***");
+        log.warn("*** Discord bot reconnect failed after {} attempt{} ***", event.getCurAttempt(), event.getCurAttempt() == 1 ? "" : "s");
     }
 
     @EventSubscriber
     public void onDisconnect(DisconnectedEvent event) {
         log.warn("*** Discord bot disconnected due to {} ***", event.getReason());
-        if (reconnect.get() && event.getReason() != DisconnectedEvent.Reason.RECONNECT_OP) {
-            String reason = StringUtils.capitalise(event.getReason().toString());
-            publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident("Disconnected due to " + reason)));
-            tryLogin();
-        }
+        String reason = StringUtils.capitalise(event.getReason().toString());
+        publisher.publishEvent(new IncidentCreatedEvent(newRestartIncident("Disconnected due to " + reason)));
     }
 
     private Incident newRestartIncident(String reason) {
@@ -155,8 +143,7 @@ public class DiscordService implements DiscordSubscriber {
         return incident;
     }
 
-    public void logout(boolean thenReconnect) {
-        reconnect.set(thenReconnect);
+    public void logout() {
         try {
             client.logout();
         } catch (DiscordException e) {
