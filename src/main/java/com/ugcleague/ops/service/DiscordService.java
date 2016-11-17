@@ -59,14 +59,7 @@ public class DiscordService implements DiscordSubscriber {
     @PostConstruct
     private void configure() {
         if (properties.getDiscord().isAutologin()) {
-            RequestBuffer.request(() -> {
-                try {
-                    Thread.sleep(5000L);
-                    login();
-                } catch (DiscordException | InterruptedException e) {
-                    log.error("Could not connect discord bot", e);
-                }
-            });
+            tryLogin();
         }
     }
 
@@ -81,6 +74,20 @@ public class DiscordService implements DiscordSubscriber {
         } else {
             throw new IllegalArgumentException("Must configure a bot token");
         }
+    }
+
+    public void tryLogin() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(5000L); // 1/5 API rate limit for logging in
+                login();
+            } catch (DiscordException | InterruptedException | RateLimitException e) {
+                throw new RuntimeException(e); // rethrow to handle retry
+            }
+        }, taskExecutor).exceptionally(e -> {
+            log.error("Could not connect discord bot", e);
+            return null;
+        });
     }
 
     public void login() throws DiscordException, InterruptedException, RateLimitException {
