@@ -133,7 +133,7 @@ public class DiscordService implements DiscordSubscriber {
 
     @EventSubscriber
     public void onReconnectFailure(ReconnectFailureEvent event) {
-        log.warn("*** Discord bot reconnect failed after {} attempt{} ***", event.getCurAttempt(), event.getCurAttempt() == 1 ? "" : "s");
+        log.warn("*** Discord bot reconnect failed after {} attempt{} ***", event.getCurAttempt() + 1, event.getCurAttempt() + 1 == 1 ? "" : "s");
     }
 
     @EventSubscriber
