@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class DiscordService implements DiscordSubscriber {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
-    private static final int LENGTH_LIMIT = 2000;
+    private static final int LENGTH_LIMIT = 1990;
 
     private final LeagueProperties properties;
     private final ApplicationEventPublisher publisher;
