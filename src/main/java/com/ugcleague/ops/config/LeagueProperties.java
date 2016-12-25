@@ -70,7 +70,6 @@ public class LeagueProperties {
         private String email;
         private String password;
         private String token;
-        private long timeoutDelay = 10000;
         private int maxMissedPings = 50;
         private int maxReconnects = 10;
         private List<String> invites = new ArrayList<>();
