@@ -77,7 +77,7 @@ public class ModerationPresenter {
             .describedAs("timex");
         commandService.register(CommandBuilder.startsWith(".delete").support()
             .description("Delete messages in this channel").parser(parser).optionAliases(aliases)
-            .command(this::delete).queued().build());
+            .privateReplies().command(this::delete).build());
     }
 
     private String delete(IMessage message, OptionSet optionSet) {
@@ -88,7 +88,7 @@ public class ModerationPresenter {
             && !optionSet.has(deleteBeforeSpec)
             && !optionSet.has(deleteAfterSpec)) {
             // require at least 1 explicit criteria
-            return "Please specify at least 1 deletion criteria";
+            return "Please specify at least one deletion criteria: last, matching, like, from, before, after";
         }
         IChannel channel = message.getChannel();
         MessageList messages = channel.getMessages();
@@ -107,7 +107,7 @@ public class ModerationPresenter {
             String key = optionSet.valueOf(deleteFromSpec).replaceAll("<@!?([0-9]+)>", "$1");
             List<IUser> matching = discordService.getClient().getGuilds().stream()
                 .flatMap(g -> g.getUsers().stream())
-                .filter(u -> u.getName().equalsIgnoreCase(key) || u.getID().equals(key))
+                .filter(u -> u.getName().equalsIgnoreCase(key) || u.getID().equals(key) || key.equals(u.getName() + u.getDiscriminator()))
                 .distinct().collect(Collectors.toList());
             if (matching.size() > 1) {
                 StringBuilder builder = new StringBuilder("Multiple users matched, please narrow search or use ID\n");
@@ -161,7 +161,7 @@ public class ModerationPresenter {
         }
         deleteInBatch(channel, toDelete);
         messages.setCacheCapacity(capacity);
-        return "";
+        return (toDelete.size() == 0 ? "No messages were deleted" : "Deleted " + toDelete.size() + " message" + (toDelete.size() == 1 ? "" : "s"));
     }
 
     private ZonedDateTime parseTimeDate(String s) {
