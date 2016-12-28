@@ -81,6 +81,9 @@ public class ModerationPresenter {
     }
 
     private String delete(IMessage message, OptionSet optionSet) {
+        if (optionSet.has("?")) {
+            return null; // display help
+        }
         IChannel channel = message.getChannel();
         if (channel.isPrivate()) {
             return "This command does not work for private messages, use `.unsay`";
