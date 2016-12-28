@@ -81,6 +81,10 @@ public class ModerationPresenter {
     }
 
     private String delete(IMessage message, OptionSet optionSet) {
+        IChannel channel = message.getChannel();
+        if (channel.isPrivate()) {
+            return "This command does not work for private messages, use `.unsay`";
+        }
         if (!optionSet.has(deleteLastSpec)
             && !optionSet.has(deleteMatchingSpec)
             && !optionSet.has(deleteLikeSpec)
@@ -90,7 +94,6 @@ public class ModerationPresenter {
             // require at least 1 explicit criteria
             return "Please specify at least one deletion criteria: last, matching, like, from, before, after";
         }
-        IChannel channel = message.getChannel();
         MessageList messages = channel.getMessages();
         int capacity = messages.getCacheCapacity();
         messages.setCacheCapacity(MessageList.UNLIMITED_CAPACITY);

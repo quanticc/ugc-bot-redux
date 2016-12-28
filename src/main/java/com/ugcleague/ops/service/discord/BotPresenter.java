@@ -13,7 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.handle.obj.*;
+import sx.blah.discord.handle.obj.IChannel;
+import sx.blah.discord.handle.obj.IGuild;
+import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.handle.obj.Status;
 import sx.blah.discord.util.*;
 
 import javax.annotation.PostConstruct;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
@@ -288,7 +292,24 @@ public class BotPresenter {
                     break;
                 }
             }
-            deleteInBatch(c, toDelete);
+            if (c.isPrivate()) {
+                AtomicBoolean abort = new AtomicBoolean(false);
+                for (IMessage message : toDelete) {
+                    if (abort.get()) {
+                        break;
+                    }
+                    RequestBuffer.request(() -> {
+                        try {
+                            message.delete();
+                        } catch (MissingPermissionsException | DiscordException e) {
+                            log.warn("Could not delete message - aborting", e);
+                            abort.set(true);
+                        }
+                    });
+                }
+            } else {
+                deleteInBatch(c, toDelete);
+            }
             c.getMessages().setCacheCapacity(cap);
         }
     }
