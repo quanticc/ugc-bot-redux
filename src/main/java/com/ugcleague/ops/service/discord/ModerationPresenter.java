@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
+import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MessageList;
+import sx.blah.discord.util.MissingPermissionsException;
+import sx.blah.discord.util.RequestBuffer;
 
 import javax.annotation.PostConstruct;
 import java.time.ZoneId;
@@ -165,9 +168,20 @@ public class ModerationPresenter {
                 break;
             }
         }
-        deleteInBatch(channel, toDelete);
+        // bulk delete requires at least 2 messages
+        if (toDelete.size() == 1) {
+            RequestBuffer.request(() -> {
+                try {
+                    toDelete.get(0).delete();
+                } catch (MissingPermissionsException | DiscordException e) {
+                    log.warn("Could not delete message", e);
+                }
+            });
+        } else {
+            deleteInBatch(channel, toDelete);
+        }
         messages.setCacheCapacity(capacity);
-        return (toDelete.size() == 0 ? "No messages were deleted" : "Deleted " + toDelete.size() + " message" + (toDelete.size() == 1 ? "" : "s"));
+        return (toDelete.size() == 0 ? "No messages were deleted" : "Deleting " + toDelete.size() + " message" + (toDelete.size() == 1 ? "" : "s"));
     }
 
     private ZonedDateTime parseTimeDate(String s) {

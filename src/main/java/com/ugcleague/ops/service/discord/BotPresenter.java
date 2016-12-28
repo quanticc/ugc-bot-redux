@@ -292,7 +292,7 @@ public class BotPresenter {
                     break;
                 }
             }
-            if (c.isPrivate()) {
+            if (c.isPrivate() || toDelete.size() == 1) {
                 AtomicBoolean abort = new AtomicBoolean(false);
                 for (IMessage message : toDelete) {
                     if (abort.get()) {
