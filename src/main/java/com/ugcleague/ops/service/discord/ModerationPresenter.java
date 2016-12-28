@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newAliasesMap;
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
+import static com.ugcleague.ops.service.discord.util.DiscordLimiter.acquireDelete;
 import static com.ugcleague.ops.service.discord.util.DiscordUtil.deleteInBatch;
 import static java.util.Arrays.asList;
 
@@ -144,7 +145,7 @@ public class ModerationPresenter {
                 }
                 // break if we reach "--after" timex
                 if (after != null && msg.getTimestamp().isBefore(after.toLocalDateTime())) {
-                    log.debug("Search interrupted after hitting time constraint");
+                    log.debug("Search interrupted after hitting date constraint");
                     break;
                 }
                 // exclude by content (.matches)
@@ -172,6 +173,7 @@ public class ModerationPresenter {
         if (toDelete.size() == 1) {
             RequestBuffer.request(() -> {
                 try {
+                    acquireDelete();
                     toDelete.get(0).delete();
                 } catch (MissingPermissionsException | DiscordException e) {
                     log.warn("Could not delete message", e);

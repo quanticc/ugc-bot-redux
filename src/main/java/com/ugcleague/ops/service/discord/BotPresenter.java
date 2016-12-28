@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 import static com.ugcleague.ops.service.discord.CommandService.newParser;
 import static com.ugcleague.ops.service.discord.util.DiscordUtil.deleteInBatch;
+import static com.ugcleague.ops.service.discord.util.DiscordLimiter.acquireDelete;
 import static com.ugcleague.ops.util.DateUtil.formatHuman;
 import static java.util.Arrays.asList;
 
@@ -300,6 +301,7 @@ public class BotPresenter {
                     }
                     RequestBuffer.request(() -> {
                         try {
+                            acquireDelete();
                             message.delete();
                         } catch (MissingPermissionsException | DiscordException e) {
                             log.warn("Could not delete message - aborting", e);

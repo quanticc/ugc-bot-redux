@@ -9,6 +9,8 @@ import sx.blah.discord.util.RequestBuffer;
 
 import java.util.List;
 
+import static com.ugcleague.ops.service.discord.util.DiscordLimiter.acquireDelete;
+
 public class DiscordUtil {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordUtil.class);
@@ -46,6 +48,7 @@ public class DiscordUtil {
                 List<IMessage> subList = toDelete.subList(x * 100, Math.min(toDelete.size(), (x + 1) * 100));
                 RequestBuffer.request(() -> {
                     try {
+                        acquireDelete();
                         channel.getMessages().bulkDelete(subList);
                     } catch (MissingPermissionsException | DiscordException e) {
                         log.warn("Failed to delete message", e);

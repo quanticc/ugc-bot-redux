@@ -35,6 +35,9 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.ugcleague.ops.service.discord.util.DiscordLimiter.acquire;
+import static com.ugcleague.ops.service.discord.util.DiscordLimiter.acquireDelete;
+
 @Service
 @Transactional
 public class DiscordService implements DiscordSubscriber {
@@ -276,9 +279,11 @@ public class DiscordService implements DiscordSubscriber {
                 SplitMessage splitMessage = new SplitMessage(message);
                 List<String> splits = splitMessage.split(LENGTH_LIMIT);
                 for (String split : splits) {
+                    acquire(channel);
                     response = channel.sendMessage(split);
                 }
             } else {
+                acquire(channel);
                 response = channel.sendMessage(message, tts);
             }
         } catch (RateLimitException e) {
@@ -333,6 +338,7 @@ public class DiscordService implements DiscordSubscriber {
     public void deleteMessage(IMessage message) throws DiscordException, MissingPermissionsException, InterruptedException {
         while (true) {
             try {
+                acquireDelete();
                 message.delete();
                 return;
             } catch (RateLimitException e) {
@@ -350,6 +356,7 @@ public class DiscordService implements DiscordSubscriber {
             }
         }).thenRun(() -> RequestBuffer.request(() -> {
             try {
+                acquireDelete();
                 message.delete();
             } catch (MissingPermissionsException | DiscordException e) {
                 log.warn("Failed to delete message", e);
